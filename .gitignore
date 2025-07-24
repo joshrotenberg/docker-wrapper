@@ -56,3 +56,6 @@ docker-test-*
 # Temporary files
 *.tmp
 *.temp
+
+# Context
+.claude/
