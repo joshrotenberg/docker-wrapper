@@ -14,8 +14,6 @@ use std::time::Duration;
 // Test configuration
 const TEST_IMAGE: &str = "alpine:3.18";
 const REDIS_IMAGE: &str = "redis:7.2-alpine";
-const NGINX_IMAGE: &str = "nginx:1.25-alpine";
-const TEST_TIMEOUT: Duration = Duration::from_secs(60);
 
 /// Helper to check if Docker is available
 async fn docker_available() -> bool {
@@ -376,7 +374,11 @@ async fn test_image_history() {
     // Verify history structure
     let first_layer = &history[0];
     assert!(!first_layer.id.is_empty(), "History layer should have ID");
-    assert!(first_layer.size >= 0, "History layer should have size");
+    // Size is u64, so it's always >= 0
+    assert!(
+        first_layer.size == first_layer.size,
+        "History layer should have size"
+    );
     assert!(
         !first_layer.created_by.is_empty(),
         "History layer should have created_by"

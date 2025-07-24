@@ -234,6 +234,84 @@ pub struct DockerImage {
     pub containers: i32,
 }
 
+/// Temporary struct to parse Docker CLI images format
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ImageCliEntry {
+    #[serde(rename = "Containers")]
+    pub containers: String,
+    #[serde(rename = "CreatedAt")]
+    pub created_at: String,
+    #[serde(rename = "CreatedSince")]
+    pub created_since: String,
+    #[serde(rename = "Digest")]
+    pub digest: String,
+    #[serde(rename = "ID")]
+    pub id: String,
+    #[serde(rename = "Repository")]
+    pub repository: String,
+    #[serde(rename = "SharedSize")]
+    pub shared_size: String,
+    #[serde(rename = "Size")]
+    pub size: String,
+    #[serde(rename = "Tag")]
+    pub tag: String,
+    #[serde(rename = "UniqueSize")]
+    pub unique_size: String,
+    #[serde(rename = "VirtualSize")]
+    pub virtual_size: String,
+}
+
+impl ImageCliEntry {
+    /// Parse size string to bytes
+    fn size_bytes(&self) -> u64 {
+        self.parse_size_string(&self.size)
+    }
+
+    /// Parse virtual size string to bytes
+    fn virtual_size_bytes(&self) -> u64 {
+        self.parse_size_string(&self.virtual_size)
+    }
+
+    /// Convert created_at string to Unix timestamp
+    fn created_timestamp(&self) -> i64 {
+        // Try to parse the created_at string - if it fails, return 0
+        chrono::DateTime::parse_from_rfc3339(&self.created_at)
+            .or_else(|_| {
+                chrono::DateTime::parse_from_str(&self.created_at, "%Y-%m-%d %H:%M:%S %z %Z")
+            })
+            .map(|dt| dt.timestamp())
+            .unwrap_or(0)
+    }
+
+    /// Parse size strings like "13.3MB", "1.2GB" to bytes
+    fn parse_size_string(&self, size_str: &str) -> u64 {
+        if size_str == "N/A" || size_str.is_empty() {
+            return 0;
+        }
+
+        let size_str = size_str.trim();
+        if let Some(pos) = size_str.find(|c: char| c.is_alphabetic()) {
+            let (number_part, unit_part) = size_str.split_at(pos);
+            if let Ok(number) = number_part.parse::<f64>() {
+                let multiplier = match unit_part.to_uppercase().as_str() {
+                    "B" => 1_u64,
+                    "KB" => 1_000_u64,
+                    "MB" => 1_000_000_u64,
+                    "GB" => 1_000_000_000_u64,
+                    "TB" => 1_000_000_000_000_u64,
+                    "KIB" => 1_024_u64,
+                    "MIB" => 1_024_u64 * 1_024_u64,
+                    "GIB" => 1_024_u64 * 1_024_u64 * 1_024_u64,
+                    "TIB" => 1_024_u64 * 1_024_u64 * 1_024_u64 * 1_024_u64,
+                    _ => 1_u64,
+                };
+                return (number * multiplier as f64) as u64;
+            }
+        }
+        0
+    }
+}
+
 impl DockerImage {
     /// Get the created time as SystemTime
     pub fn created_time(&self) -> SystemTime {
@@ -261,6 +339,7 @@ impl DockerImage {
 }
 
 /// Detailed image information from inspect
+/// Docker image inspection information
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImageInspect {
     /// Image ID
@@ -281,9 +360,6 @@ pub struct ImageInspect {
     /// Created timestamp
     #[serde(rename = "Created")]
     pub created: String,
-    /// Container configuration
-    #[serde(rename = "Container")]
-    pub container: String,
     /// Docker version used to build
     #[serde(rename = "DockerVersion")]
     pub docker_version: String,
@@ -296,15 +372,15 @@ pub struct ImageInspect {
     /// Architecture
     #[serde(rename = "Architecture")]
     pub architecture: String,
+    /// Variant (for multi-arch images)
+    #[serde(rename = "Variant")]
+    pub variant: Option<String>,
     /// OS
     #[serde(rename = "Os")]
     pub os: String,
     /// Size in bytes
     #[serde(rename = "Size")]
     pub size: u64,
-    /// Virtual size in bytes
-    #[serde(rename = "VirtualSize")]
-    pub virtual_size: u64,
     /// Root filesystem information
     #[serde(rename = "RootFS")]
     pub rootfs: Option<RootFS>,
@@ -316,36 +392,9 @@ pub struct ImageInspect {
 /// Image configuration from inspect
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImageConfig {
-    /// Hostname
-    #[serde(rename = "Hostname")]
-    pub hostname: String,
-    /// Domain name
-    #[serde(rename = "Domainname")]
-    pub domainname: String,
     /// User
     #[serde(rename = "User")]
     pub user: String,
-    /// Attach stdin
-    #[serde(rename = "AttachStdin")]
-    pub attach_stdin: bool,
-    /// Attach stdout
-    #[serde(rename = "AttachStdout")]
-    pub attach_stdout: bool,
-    /// Attach stderr
-    #[serde(rename = "AttachStderr")]
-    pub attach_stderr: bool,
-    /// Exposed ports
-    #[serde(rename = "ExposedPorts")]
-    pub exposed_ports: Option<HashMap<String, serde_json::Value>>,
-    /// TTY enabled
-    #[serde(rename = "Tty")]
-    pub tty: bool,
-    /// Open stdin
-    #[serde(rename = "OpenStdin")]
-    pub open_stdin: bool,
-    /// Stdin once
-    #[serde(rename = "StdinOnce")]
-    pub stdin_once: bool,
     /// Environment variables
     #[serde(rename = "Env")]
     pub env: Option<Vec<String>>,
@@ -355,9 +404,6 @@ pub struct ImageConfig {
     /// Entrypoint
     #[serde(rename = "Entrypoint")]
     pub entrypoint: Option<Vec<String>>,
-    /// Image name
-    #[serde(rename = "Image")]
-    pub image: String,
     /// Volumes
     #[serde(rename = "Volumes")]
     pub volumes: Option<HashMap<String, serde_json::Value>>,
@@ -367,6 +413,9 @@ pub struct ImageConfig {
     /// Labels
     #[serde(rename = "Labels")]
     pub labels: Option<HashMap<String, String>>,
+    /// OnBuild instructions
+    #[serde(rename = "OnBuild")]
+    pub on_build: Option<Vec<String>>,
 }
 
 /// Root filesystem information
@@ -922,22 +971,59 @@ impl<'a> ImageManager<'a> {
         }
 
         let stdout = &output.stdout;
-        let mut images = Vec::new();
+        let mut image_map: HashMap<String, DockerImage> = HashMap::new();
 
+        // Parse CLI format and aggregate by image ID
         for line in stdout.lines() {
             if line.trim().is_empty() {
                 continue;
             }
 
-            match serde_json::from_str::<DockerImage>(line) {
-                Ok(image) => images.push(image),
+            match serde_json::from_str::<ImageCliEntry>(line) {
+                Ok(cli_entry) => {
+                    let image_id = cli_entry.id.clone();
+                    let repo_tag = if cli_entry.repository == "<none>" {
+                        None
+                    } else {
+                        Some(format!("{}:{}", cli_entry.repository, cli_entry.tag))
+                    };
+
+                    if let Some(existing_image) = image_map.get_mut(&image_id) {
+                        // Add this repo:tag to existing image
+                        if let Some(tag) = repo_tag {
+                            if let Some(ref mut tags) = existing_image.repo_tags {
+                                if !tags.contains(&tag) {
+                                    tags.push(tag);
+                                }
+                            } else {
+                                existing_image.repo_tags = Some(vec![tag]);
+                            }
+                        }
+                    } else {
+                        // Create new image entry
+                        let repo_tags = repo_tag.map(|tag| vec![tag]);
+                        let image = DockerImage {
+                            id: image_id.clone(),
+                            parent: String::new(), // CLI format doesn't provide parent
+                            repo_tags,
+                            repo_digests: None, // Will be populated if needed
+                            created: cli_entry.created_timestamp(),
+                            size: cli_entry.size_bytes(),
+                            virtual_size: cli_entry.virtual_size_bytes(),
+                            shared_size: -1, // CLI format doesn't provide shared size
+                            labels: None,    // CLI format doesn't provide labels in basic listing
+                            containers: cli_entry.containers.parse().unwrap_or(0),
+                        };
+                        image_map.insert(image_id, image);
+                    }
+                }
                 Err(e) => {
                     log::warn!("Failed to parse image JSON: {} - {}", e, line);
                 }
             }
         }
 
-        Ok(images)
+        Ok(image_map.into_values().collect())
     }
 
     /// Inspect an image
@@ -1229,8 +1315,8 @@ impl<'a> ImageManager<'a> {
                 continue;
             }
 
-            match serde_json::from_str::<ImageHistoryItem>(line) {
-                Ok(item) => history.push(item),
+            match serde_json::from_str::<ImageHistoryCliItem>(line) {
+                Ok(cli_item) => history.push(cli_item.into()),
                 Err(e) => {
                     log::warn!("Failed to parse history JSON: {} - {}", e, line);
                 }
@@ -1250,27 +1336,88 @@ pub struct PruneResult {
     pub reclaimed_space: u64,
 }
 
+/// Image history item from CLI
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct ImageHistoryCliItem {
+    /// Image ID
+    #[serde(rename = "ID")]
+    pub id: String,
+    /// Created at timestamp string
+    #[serde(rename = "CreatedAt")]
+    pub created_at: String,
+    /// Created since (human readable)
+    #[serde(rename = "CreatedSince")]
+    pub created_since: String,
+    /// Created by command
+    #[serde(rename = "CreatedBy")]
+    pub created_by: String,
+    /// Size string (like "8.35MB")
+    #[serde(rename = "Size")]
+    pub size: String,
+    /// Comment
+    #[serde(rename = "Comment")]
+    pub comment: String,
+}
+
 /// Image history item
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ImageHistoryItem {
     /// Image ID
-    #[serde(rename = "Id")]
     pub id: String,
     /// Created timestamp
-    #[serde(rename = "Created")]
     pub created: i64,
     /// Created by command
-    #[serde(rename = "CreatedBy")]
     pub created_by: String,
     /// Size in bytes
-    #[serde(rename = "Size")]
     pub size: u64,
     /// Comment
-    #[serde(rename = "Comment")]
     pub comment: String,
-    /// Tags
-    #[serde(rename = "Tags")]
-    pub tags: Option<Vec<String>>,
+}
+
+impl From<ImageHistoryCliItem> for ImageHistoryItem {
+    fn from(cli_item: ImageHistoryCliItem) -> Self {
+        ImageHistoryItem {
+            id: cli_item.id,
+            created: parse_timestamp(&cli_item.created_at),
+            created_by: cli_item.created_by,
+            size: parse_size_string(&cli_item.size),
+            comment: cli_item.comment,
+        }
+    }
+}
+
+fn parse_timestamp(timestamp_str: &str) -> i64 {
+    chrono::DateTime::parse_from_rfc3339(timestamp_str)
+        .or_else(|_| chrono::DateTime::parse_from_str(timestamp_str, "%Y-%m-%dT%H:%M:%S%z"))
+        .map(|dt| dt.timestamp())
+        .unwrap_or(0)
+}
+
+fn parse_size_string(size_str: &str) -> u64 {
+    if size_str == "0B" || size_str.is_empty() {
+        return 0;
+    }
+
+    let size_str = size_str.trim();
+    if let Some(pos) = size_str.find(|c: char| c.is_alphabetic()) {
+        let (number_part, unit_part) = size_str.split_at(pos);
+        if let Ok(number) = number_part.parse::<f64>() {
+            let multiplier = match unit_part.to_uppercase().as_str() {
+                "B" => 1_u64,
+                "KB" => 1_000_u64,
+                "MB" => 1_000_000_u64,
+                "GB" => 1_000_000_000_u64,
+                "TB" => 1_000_000_000_000_u64,
+                "KIB" => 1_024_u64,
+                "MIB" => 1_024_u64 * 1_024_u64,
+                "GIB" => 1_024_u64 * 1_024_u64 * 1_024_u64,
+                "TIB" => 1_024_u64 * 1_024_u64 * 1_024_u64 * 1_024_u64,
+                _ => 1_u64,
+            };
+            return (number * multiplier as f64) as u64;
+        }
+    }
+    0
 }
 
 #[cfg(test)]
