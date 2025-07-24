@@ -133,6 +133,61 @@ impl DockerVolume {
     }
 }
 
+/// Temporary struct to parse Docker CLI volume ls format
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct VolumeCliEntry {
+    /// Volume name
+    #[serde(rename = "Name")]
+    pub name: String,
+    /// Driver name
+    #[serde(rename = "Driver")]
+    pub driver: String,
+    /// Mount point on host
+    #[serde(rename = "Mountpoint")]
+    pub mountpoint: String,
+    /// Scope (local or global)
+    #[serde(rename = "Scope")]
+    pub scope: String,
+    /// Labels (as string)
+    #[serde(rename = "Labels")]
+    pub labels: String,
+    /// Availability (CLI specific)
+    #[serde(rename = "Availability")]
+    pub availability: String,
+    /// Group (CLI specific)
+    #[serde(rename = "Group")]
+    pub group: String,
+    /// Links (CLI specific)
+    #[serde(rename = "Links")]
+    pub links: String,
+    /// Size (CLI specific)
+    #[serde(rename = "Size")]
+    pub size: String,
+    /// Status (CLI specific)
+    #[serde(rename = "Status")]
+    pub status: String,
+}
+
+impl From<VolumeCliEntry> for DockerVolume {
+    fn from(cli_entry: VolumeCliEntry) -> Self {
+        DockerVolume {
+            name: cli_entry.name,
+            driver: cli_entry.driver,
+            mountpoint: cli_entry.mountpoint,
+            created_at: None, // CLI format doesn't provide creation time
+            scope: cli_entry.scope,
+            labels: if cli_entry.labels.is_empty() {
+                None
+            } else {
+                // Parse simple comma-separated labels if needed
+                Some(HashMap::new())
+            },
+            options: None,    // CLI format doesn't provide options in basic listing
+            usage_data: None, // CLI format doesn't provide usage data
+        }
+    }
+}
+
 /// Volume usage data
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VolumeUsageData {
@@ -421,13 +476,13 @@ pub struct VolumeInspect {
     pub status: Option<HashMap<String, serde_json::Value>>,
     /// Labels
     #[serde(rename = "Labels")]
-    pub labels: HashMap<String, String>,
+    pub labels: Option<HashMap<String, String>>,
     /// Scope
     #[serde(rename = "Scope")]
     pub scope: String,
     /// Options
     #[serde(rename = "Options")]
-    pub options: HashMap<String, String>,
+    pub options: Option<HashMap<String, String>>,
     /// Usage data
     #[serde(rename = "UsageData")]
     pub usage_data: Option<VolumeUsageData>,
@@ -559,8 +614,8 @@ impl<'a> VolumeManager<'a> {
                 continue;
             }
 
-            match serde_json::from_str::<DockerVolume>(line) {
-                Ok(volume) => volumes.push(volume),
+            match serde_json::from_str::<VolumeCliEntry>(line) {
+                Ok(cli_entry) => volumes.push(cli_entry.into()),
                 Err(e) => {
                     log::warn!("Failed to parse volume JSON: {} - {}", e, line);
                 }
