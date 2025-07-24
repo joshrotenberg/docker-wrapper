@@ -2,7 +2,7 @@
 
 Thank you for your interest in contributing to Docker Wrapper! We welcome contributions from the community and are excited to see what you'll bring to the project.
 
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -33,7 +33,7 @@ Thank you for your interest in contributing to Docker Wrapper! We welcome contri
    cargo run --example basic_usage
    ```
 
-## 🛠️ Development Workflow
+## Development Workflow
 
 ### Making Changes
 
@@ -109,7 +109,7 @@ Thank you for your interest in contributing to Docker Wrapper! We welcome contri
 - **Update README** if adding major features
 - **Add examples** to the `examples/` directory for significant features
 
-## 🧪 Testing Guidelines
+## Testing Guidelines
 
 ### Running Tests
 
@@ -158,30 +158,30 @@ async fn test_container_lifecycle() {
 }
 ```
 
-## 📚 Areas for Contribution
+## Areas for Contribution
 
 ### High Priority
 
-- **🐛 Bug Fixes**: Issues labeled `bug`
-- **📚 Documentation**: Improving docs and examples
-- **🧪 Test Coverage**: Adding tests for untested code
-- **🚀 Performance**: Optimizing critical paths
+- **Bug Fixes**: Issues labeled `bug`
+- **Documentation**: Improving docs and examples
+- **Test Coverage**: Adding tests for untested code
+- **Performance**: Optimizing critical paths
 
 ### Medium Priority
 
-- **✨ New Features**: Docker Compose support, additional drivers
-- **🔧 Developer Experience**: Better error messages, debugging tools
-- **📦 Platform Support**: Windows compatibility improvements
-- **🌐 Ecosystem**: Kubernetes integration, cloud platform helpers
+- **New Features**: Docker Compose support, additional drivers
+- **Developer Experience**: Better error messages, debugging tools
+- **Platform Support**: Windows compatibility improvements
+- **Ecosystem**: Kubernetes integration, cloud platform helpers
 
 ### Advanced Contributions
 
-- **🏗️ Architecture**: Core design improvements
-- **📊 Monitoring**: Advanced metrics and observability
-- **🔄 Streaming**: Performance optimizations for event/stats streaming
-- **🛡️ Security**: Security audits and improvements
+- **Architecture**: Core design improvements
+- **Monitoring**: Advanced metrics and observability
+- **Streaming**: Performance optimizations for event/stats streaming
+- **Security**: Security audits and improvements
 
-## 🐛 Reporting Issues
+## Reporting Issues
 
 ### Bug Reports
 
@@ -204,7 +204,7 @@ For feature requests, please include:
 - **Alternative approaches considered**
 - **Willingness to implement** (helps with prioritization)
 
-## 🏷️ Commit Message Guidelines
+## Commit Message Guidelines
 
 We follow conventional commits for clear history:
 
@@ -224,7 +224,7 @@ docs: add examples for volume management
 test: improve container lifecycle test coverage
 ```
 
-## 🏆 Recognition
+## Recognition
 
 Contributors are recognized in:
 
@@ -233,7 +233,7 @@ Contributors are recognized in:
 - **README.md** - Major feature contributors
 - **Social media** - Highlighting great contributions
 
-## 📞 Getting Help
+## Getting Help
 
 Need help contributing? We're here to help:
 
@@ -242,7 +242,7 @@ Need help contributing? We're here to help:
 - **Discord**: [Join our community](https://discord.gg/docker-wrapper) for real-time chat
 - **Email**: maintainers@docker-wrapper.org for private matters
 
-## 🎯 Contribution Ideas for Beginners
+## Contribution Ideas for Beginners
 
 Looking for a good first contribution? Try these:
 
@@ -253,14 +253,14 @@ Looking for a good first contribution? Try these:
 5. **Update dependencies** to latest versions
 6. **Improve CI/CD** workflows
 
-## 📜 Code of Conduct
+## Code of Conduct
 
 This project follows the [Rust Code of Conduct](https://www.rust-lang.org/policies/code-of-conduct). By participating, you agree to uphold this code.
 
-## 📄 License
+## License
 
 By contributing to Docker Wrapper, you agree that your contributions will be licensed under the same MIT OR Apache-2.0 dual license as the project.
 
 ---
 
-Thank you for contributing to Docker Wrapper! Every contribution, no matter how small, makes a difference. Together, we're building the best Docker management library for Rust! 🚀
+Thank you for contributing to Docker Wrapper! Every contribution, no matter how small, makes a difference. Together, we're building the best Docker management library for Rust!

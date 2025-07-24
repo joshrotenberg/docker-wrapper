@@ -77,7 +77,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Type-safe error handling with comprehensive context
 - Resource cleanup automation with RAII patterns
 
-## [0.1.0] - 2025-01-18
+## [0.1.0] - 2025-07-24
 
 ### Added
 - Initial public release

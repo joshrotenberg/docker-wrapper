@@ -9,9 +9,9 @@
 
 Docker Wrapper provides an intuitive, type-safe, and feature-complete interface to Docker with real-time monitoring, complete ecosystem control, and zero-compromise performance. Built for developers who need powerful Docker automation without the complexity.
 
-## ✨ Why Docker Wrapper?
+## Why Docker Wrapper?
 
-### 🚀 **Complete Docker Ecosystem Management**
+### **Complete Docker Ecosystem Management**
 - **Containers**: Full lifecycle with advanced configuration
 - **Images**: Pull, build, tag, inspect with registry support
 - **Networks**: Create, connect, manage with custom drivers  
@@ -19,21 +19,21 @@ Docker Wrapper provides an intuitive, type-safe, and feature-complete interface 
 - **Events**: Real-time monitoring with filtering
 - **Statistics**: Live performance metrics with aggregation
 
-### ⚡ **Production-Ready Performance**
+### **Production-Ready Performance**
 - **Real-time streaming** for events and statistics
 - **Memory-efficient** with bounded resource usage
 - **Concurrent operations** with async/await support
 - **Zero-copy processing** where possible
 - **Minimal overhead** with direct CLI integration
 
-### 🛡️ **Type-Safe & Intuitive API**
+### **Type-Safe & Intuitive API**
 - **Builder patterns** for complex configurations  
 - **Comprehensive error handling** with context
 - **Resource cleanup** automation
 - **IDE-friendly** with excellent IntelliSense
 - **Zero unsafe code** with memory safety guarantees
 
-## 📦 Quick Start
+## Quick Start
 
 Add to your `Cargo.toml`:
 ```toml
@@ -63,7 +63,7 @@ async fn main() -> Result<(), DockerError> {
     // Wait for container to be ready
     client.containers().wait_for_ready(&container_id, Duration::from_secs(30)).await?;
     
-    println!("✅ Redis running on container: {}", container_id);
+    println!("Redis running on container: {}", container_id);
     
     // Cleanup
     client.containers().stop(&container_id, None).await?;
@@ -121,7 +121,7 @@ async fn main() -> Result<(), DockerError> {
     
     while let Some(stats) = stream.next().await {
         let stats = stats?;
-        println!("📊 CPU: {:.1}%, Memory: {:.1} MB, Network: {}/{} bytes",
+        println!("CPU: {:.1}%, Memory: {:.1} MB, Network: {}/{} bytes",
             stats.cpu_usage_percent(),
             stats.memory_usage_mb(),
             stats.network_rx_bytes(),
@@ -130,7 +130,7 @@ async fn main() -> Result<(), DockerError> {
         
         // Alert on high resource usage
         if stats.is_high_cpu_usage() {
-            println!("🚨 High CPU usage detected!");
+            println!("High CPU usage detected!");
         }
     }
     
@@ -138,7 +138,7 @@ async fn main() -> Result<(), DockerError> {
 }
 ```
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
 Docker Wrapper is built around specialized managers that provide focused APIs:
 
@@ -156,7 +156,7 @@ let stats = client.stats();            // Performance metrics & monitoring
 
 Each manager provides intuitive, type-safe methods with comprehensive error handling and resource management.
 
-## 📚 Comprehensive Examples
+## Comprehensive Examples
 
 ### Advanced Container Configuration
 ```rust
@@ -245,21 +245,7 @@ let stats = client.stats()
 println!("Container CPU usage dropped below 50%: {:.2}%", stats.cpu_usage_percent());
 ```
 
-## 🆚 Comparison with Alternatives
-
-| Feature | docker-wrapper | bollard | testcontainers |
-|---------|----------------|---------|----------------|
-| **API Complexity** | 🟢 Simple & Intuitive | 🔺 Complex HTTP API | 🟡 Testing-focused |
-| **Container Management** | 🟢 Complete with builders | 🟡 Complete but verbose | 🟡 Basic lifecycle |
-| **Image Operations** | 🟢 Full registry support | 🟡 HTTP API calls | ❌ None |
-| **Network Management** | 🟢 Advanced with IPAM | 🟡 Manual configuration | ❌ None |
-| **Volume Management** | 🟢 Multi-driver support | 🟡 Basic operations | ❌ None |
-| **Real-time Events** | 🟢 Type-safe streaming | 🔺 Complex webhooks | ❌ None |
-| **Statistics Monitoring** | 🟢 Live aggregation | 🔺 HTTP polling | ❌ None |
-| **Production Ready** | 🟢 Yes | 🟡 Yes (complex) | ❌ Testing only |
-| **Learning Curve** | 🟢 Gentle | 🔺 Steep | 🟡 Moderate |
-
-## 🚀 Performance Benchmarks
+## Performance Benchmarks
 
 Docker Wrapper is designed for production workloads with excellent performance characteristics:
 
@@ -269,7 +255,7 @@ Docker Wrapper is designed for production workloads with excellent performance c
 - **Concurrent Containers**: Tested with 1000+ containers
 - **Memory Efficiency**: Bounded memory usage with configurable limits
 
-## 🛠️ Integration Testing
+## Integration Testing
 
 Perfect for integration tests with automatic cleanup:
 
@@ -310,7 +296,7 @@ async fn test_redis_integration() -> Result<(), DockerError> {
 - **[Integration Guide](docs/integration.md)** - Production deployment patterns
 - **[Migration Guide](docs/migration.md)** - Migrating from other libraries
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
@@ -319,7 +305,7 @@ We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) f
 - **Documentation**: Help improve our docs and examples
 - **Testing**: Platform testing and integration scenarios
 
-## 📄 License
+## License
 
 Licensed under either of:
 
@@ -328,9 +314,9 @@ Licensed under either of:
 
 at your option.
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
-Built with ❤️ for the Rust community. Special thanks to:
+Built for the Rust community. Special thanks to:
 
 - The Docker team for the excellent CLI interface
 - The Rust async ecosystem (tokio, serde, etc.)
@@ -338,4 +324,4 @@ Built with ❤️ for the Rust community. Special thanks to:
 
 ---
 
-**Ready to simplify your Docker operations in Rust?** Get started with `docker-wrapper` today! 🚀
+**Ready to simplify your Docker operations in Rust?** Get started with `docker-wrapper` today!
