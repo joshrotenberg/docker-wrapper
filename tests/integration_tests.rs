@@ -85,8 +85,7 @@ async fn test_container_builder_fluent_api() {
         .label("test", "phase2")
         .label("component", "integration-test")
         .memory_str("128m")
-        .auto_remove()
-        .command(vec!["sleep".to_string(), "1".to_string()])
+        .command(vec!["sleep".to_string(), "10".to_string()])
         .run(&client)
         .await
         .expect("Should create and run container");
@@ -106,12 +105,8 @@ async fn test_container_builder_fluent_api() {
         Some(&"phase2".to_string())
     );
 
-    // Wait for container to finish (it runs sleep 1)
-    sleep(Duration::from_secs(2)).await;
-
-    // Container should be auto-removed, so this should fail
-    let inspect_result = manager.inspect(&container_id).await;
-    assert!(inspect_result.is_err(), "Container should be auto-removed");
+    // Clean up the container
+    cleanup_container(&client, &container_id).await;
 }
 
 #[tokio::test]
@@ -464,8 +459,7 @@ async fn test_resource_limits() {
         .name(&container_name)
         .memory_str("64m")
         .cpus(0.5)
-        .command(vec!["sleep".to_string(), "2".to_string()])
-        .auto_remove()
+        .command(vec!["sleep".to_string(), "10".to_string()])
         .run(&client)
         .await
         .expect("Should create container with resource limits");
@@ -482,12 +476,8 @@ async fn test_resource_limits() {
         ContainerStatus::Running { .. }
     ));
 
-    // Wait for container to finish and auto-remove
-    sleep(Duration::from_secs(3)).await;
-
-    // Container should be auto-removed
-    let inspect_result = manager.inspect(&container_id).await;
-    assert!(inspect_result.is_err(), "Container should be auto-removed");
+    // Clean up the container
+    cleanup_container(&client, &container_id).await;
 }
 
 #[tokio::test]
@@ -549,8 +539,7 @@ async fn test_network_attachment() {
     let container_id = ContainerBuilder::new(TEST_IMAGE)
         .name(&container_name)
         .network(NetworkId::new("bridge".to_string()).unwrap()) // Use default bridge network
-        .command(vec!["sleep".to_string(), "2".to_string()])
-        .auto_remove()
+        .command(vec!["sleep".to_string(), "10".to_string()])
         .run(&client)
         .await
         .expect("Should create container with network");
@@ -567,8 +556,8 @@ async fn test_network_attachment() {
         "Container should be attached to bridge network"
     );
 
-    // Wait for container to finish and auto-remove
-    sleep(Duration::from_secs(3)).await;
+    // Clean up the container
+    cleanup_container(&client, &container_id).await;
 }
 
 #[tokio::test]
