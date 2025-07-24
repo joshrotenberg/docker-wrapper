@@ -179,6 +179,11 @@ async fn test_network_listing() {
         .await
         .expect("Should list networks");
 
+    println!("Initial networks count: {}", initial_networks.len());
+    for (i, net) in initial_networks.iter().enumerate() {
+        println!("Initial network {}: {} ({})", i, net.name, net.id);
+    }
+
     // Create a test network
     let network_name = test_network_name("list");
     let network_config = NetworkConfig::new(&network_name).label("test", "listing");
@@ -188,13 +193,26 @@ async fn test_network_listing() {
         .await
         .expect("Should create network");
 
+    println!("Created network: {} with ID: {}", network_name, network_id);
+
     // List networks again
     let networks_after = network_manager
         .list(ListNetworksOptions::default())
         .await
         .expect("Should list networks after creation");
 
-    assert_eq!(networks_after.len(), initial_networks.len() + 1);
+    println!("Networks after creation count: {}", networks_after.len());
+    for (i, net) in networks_after.iter().enumerate() {
+        println!("After network {}: {} ({})", i, net.name, net.id);
+    }
+
+    assert_eq!(
+        networks_after.len(),
+        initial_networks.len() + 1,
+        "Expected {} networks after creation, but found {}",
+        initial_networks.len() + 1,
+        networks_after.len()
+    );
 
     // Find our test network
     let test_network = networks_after.iter().find(|n| n.name == network_name);
@@ -229,7 +247,7 @@ async fn test_network_container_connection() {
         .await
         .expect("Should create Docker client");
     let network_manager = client.networks();
-    let container_manager = ContainerManager::new(&client);
+    let _container_manager = ContainerManager::new(&client);
 
     // Create a test network
     let network_name = test_network_name("connect");
@@ -312,7 +330,7 @@ async fn test_multi_container_communication() {
         .await
         .expect("Should create Docker client");
     let network_manager = client.networks();
-    let container_manager = ContainerManager::new(&client);
+    let _container_manager = ContainerManager::new(&client);
 
     // Create a custom network
     let network_name = test_network_name("multicomm");
@@ -327,7 +345,7 @@ async fn test_multi_container_communication() {
     let redis_name = test_container_name("multicomm", "redis");
     let redis_id = ContainerBuilder::new(REDIS_IMAGE)
         .name(&redis_name)
-        .network(&network_name)
+        .network(NetworkId::new(&network_name).expect("Should create network ID"))
         .run(&client)
         .await
         .expect("Should create Redis container");
@@ -336,7 +354,7 @@ async fn test_multi_container_communication() {
     let client_name = test_container_name("multicomm", "client");
     let client_id = ContainerBuilder::new(REDIS_IMAGE)
         .name(&client_name)
-        .network(&network_name)
+        .network(NetworkId::new(&network_name).expect("Should create network ID"))
         .command(vec!["sleep".to_string(), "30".to_string()])
         .run(&client)
         .await
@@ -684,7 +702,7 @@ async fn test_network_connect_with_options() {
         .await
         .expect("Should create Docker client");
     let network_manager = client.networks();
-    let container_manager = ContainerManager::new(&client);
+    let _container_manager = ContainerManager::new(&client);
 
     // Create a test network with custom subnet
     let network_name = test_network_name("connectopt");
@@ -723,8 +741,7 @@ async fn test_network_connect_with_options() {
 
     if let Some(container_info) = network_info.containers.get(&container_id.to_string()) {
         assert_eq!(
-            container_info.ipv4_address.as_ref(),
-            Some(&"172.30.0.100/16".to_string()),
+            container_info.ipv4_address, "172.30.0.100/16",
             "Container should have custom IP address"
         );
     } else {

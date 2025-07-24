@@ -70,93 +70,6 @@ impl FromStr for ContainerId {
     }
 }
 
-/// A Docker image reference (repository:tag)
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-/// Reference to a Docker image with repository and tag
-pub struct ImageRef {
-    /// The repository name (e.g., "nginx", "registry.io/myapp")
-    pub repository: String,
-    /// The image tag (e.g., "latest", "v1.0.0")
-    pub tag: String,
-}
-
-impl ImageRef {
-    /// Create a new image reference
-    pub fn new(repository: impl Into<String>, tag: impl Into<String>) -> Self {
-        Self {
-            repository: repository.into(),
-            tag: tag.into(),
-        }
-    }
-
-    /// Create an image reference from a string like "redis:alpine"
-    pub fn parse(image: impl Into<String>) -> Result<Self, DockerError> {
-        let image = image.into();
-        if image.is_empty() {
-            return Err(DockerError::invalid_config(
-                "Image reference cannot be empty",
-            ));
-        }
-
-        let (repository, tag) = if let Some(pos) = image.rfind(':') {
-            let repo = &image[..pos];
-            let tag = &image[pos + 1..];
-
-            // Check if this might be a port (registry:port/image format)
-            if tag.chars().all(|c| c.is_ascii_digit()) && repo.contains('/') {
-                // This looks like registry:port/image, so no tag specified
-                (image.as_str(), "latest")
-            } else {
-                (repo, tag)
-            }
-        } else {
-            (image.as_str(), "latest")
-        };
-
-        if repository.is_empty() {
-            return Err(DockerError::invalid_config(
-                "Repository name cannot be empty",
-            ));
-        }
-
-        Ok(Self {
-            repository: repository.to_string(),
-            tag: tag.to_string(),
-        })
-    }
-
-    /// Get the full image reference as a string
-    pub fn to_string(&self) -> String {
-        format!("{}:{}", self.repository, self.tag)
-    }
-}
-
-impl fmt::Display for ImageRef {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}:{}", self.repository, self.tag)
-    }
-}
-
-impl FromStr for ImageRef {
-    type Err = DockerError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Self::parse(s)
-    }
-}
-
-impl From<ImageRef> for String {
-    fn from(image_ref: ImageRef) -> Self {
-        format!("{}:{}", image_ref.repository, image_ref.tag)
-    }
-}
-
-impl From<&ImageRef> for String {
-    fn from(image_ref: &ImageRef) -> Self {
-        format!("{}:{}", image_ref.repository, image_ref.tag)
-    }
-}
-
 /// A validated Docker network ID
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct NetworkId(String);
@@ -593,27 +506,6 @@ mod tests {
 
         // Empty
         assert!(ContainerId::new("").is_err());
-    }
-
-    #[test]
-    fn test_image_ref_parsing() {
-        // Basic image:tag
-        let img = ImageRef::parse("redis:alpine").unwrap();
-        assert_eq!(img.repository, "redis");
-        assert_eq!(img.tag, "alpine");
-
-        // No tag (should default to latest)
-        let img = ImageRef::parse("redis").unwrap();
-        assert_eq!(img.repository, "redis");
-        assert_eq!(img.tag, "latest");
-
-        // Registry with port
-        let img = ImageRef::parse("localhost:5000/myimage").unwrap();
-        assert_eq!(img.repository, "localhost");
-        assert_eq!(img.tag, "5000/myimage");
-
-        // Empty should fail
-        assert!(ImageRef::parse("").is_err());
     }
 
     #[test]
