@@ -76,6 +76,17 @@ architecture = ["patterns", "types", "async", "monitoring"]
 devex = ["ergonomics", "builder-patterns", "error-messages"]
 
 # Active ADRs
+
+[adrs.adr-001]
+id = "adr-001"
+title = "Network Integration Testing as Sprint 1 Priority"
+date = "2024-12-19"
+status = "active"
+category = "testing"
+impact = "high"
+tags = ["testing", "network", "sprint-planning", "test-redis-integration"]
+summary = "Prioritize comprehensive NetworkManager integration testing to unblock 85% of test-redis functionality"
+file_path = "adr-001-network-testing-priority.md"
 [adrs.active]
 
 [adrs.active.comprehensive-ci-cd-pipeline]
