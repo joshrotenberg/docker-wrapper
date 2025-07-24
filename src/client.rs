@@ -554,16 +554,7 @@ mod tests {
 
     #[test]
     fn test_version_comparison() {
-        let client_config = ClientConfig::default();
-        let docker_path = PathBuf::from("/usr/bin/docker");
-        let executor = ProcessExecutor::new(docker_path);
-        let client = DockerClient {
-            executor,
-            config: client_config,
-            version_info: None,
-            daemon_info: None,
-        };
-
+        // Test static version comparison methods
         assert!(DockerClient::version_meets_requirement(
             "20.10.21", "20.10.0"
         ));
