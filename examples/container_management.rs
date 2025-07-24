@@ -1,7 +1,7 @@
-//! Phase 2 Demo: Container Lifecycle Management
+//! Container Lifecycle Management Demo
 //!
 //! This example demonstrates the comprehensive container lifecycle management
-//! capabilities implemented in Phase 2, including:
+//! capabilities, including:
 //!
 //! - Advanced container configuration with ContainerBuilder
 //! - Container execution with streaming I/O
@@ -18,23 +18,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize tracing for better debugging
     tracing_subscriber::fmt::init();
 
-    println!("🚀 Phase 2 Demo: Container Lifecycle Management");
-    println!("================================================");
+    println!("🚀 Container Lifecycle Management Demo");
+    println!("======================================");
 
     // Create Docker client
     let client = DockerClient::new().await?;
     println!("✅ Connected to Docker daemon");
 
-    // Phase 2 Feature 1: Advanced Container Configuration
+    // Feature 1: Advanced Container Configuration
     println!("\n📦 Creating Redis container with advanced configuration...");
 
     let container_id = ContainerBuilder::new("redis:7.2-alpine")
-        .name("phase2-redis-demo")
+        .name("container-lifecycle-demo")
         .env("REDIS_PASSWORD", "supersecret")
         .port_dynamic(6379) // Dynamic port allocation
         .memory_str("256m") // Human-readable memory limit
         .auto_remove() // Cleanup automatically
-        .label("demo", "phase2")
+        .label("demo", "container-lifecycle")
         .label("component", "redis")
         .command(vec![
             "redis-server".to_string(),
@@ -48,7 +48,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("✅ Container created with ID: {}", container_id);
 
-    // Phase 2 Feature 2: Health Checking and Readiness
+    // Feature 2: Health Checking and Readiness
     println!("\n🏥 Waiting for Redis to be ready...");
 
     let health_checker = HealthChecker::new(&client);
@@ -69,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("📍 Redis is accessible on host port: {}", host_port);
 
-    // Phase 2 Feature 3: Container Execution
+    // Feature 3: Container Execution
     println!("\n⚡ Testing Redis with container execution...");
 
     let executor = ContainerExecutor::new(&client);
@@ -99,7 +99,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 "supersecret".to_string(),
                 "set".to_string(),
                 "demo:key".to_string(),
-                "Phase2Success".to_string(),
+                "ContainerSuccess".to_string(),
             ],
         )
         .await?;
@@ -122,7 +122,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("📥 Retrieved value: {}", get_result.trim());
 
-    // Phase 2 Feature 4: Log Management
+    // Feature 4: Log Management
     println!("\n📜 Demonstrating log management...");
 
     let log_manager = LogManager::new(&client);
@@ -140,7 +140,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    // Phase 2 Feature 5: Advanced Health Checks
+    // Feature 5: Advanced Health Checks
     println!("\n🔍 Testing composite health checks...");
 
     // Create a composite health check
@@ -170,7 +170,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         );
     }
 
-    // Phase 2 Feature 6: Streaming Execution
+    // Feature 6: Streaming Execution
     println!("\n🌊 Demonstrating streaming execution...");
 
     // Run a command that produces streaming output
@@ -237,7 +237,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         sleep(Duration::from_millis(100)).await;
     }
 
-    // Phase 2 Feature 7: Log Streaming
+    // Feature 7: Log Streaming
     println!("\n📺 Demonstrating log streaming...");
 
     let mut log_count = 0;
@@ -277,7 +277,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
     }
 
-    // Phase 2 Feature 8: Container Inspection
+    // Feature 8: Container Inspection
     println!("\n🔍 Container inspection...");
 
     let container_info = container_manager.inspect(&container_id).await?;
@@ -289,7 +289,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("  • Networks: {:?}", container_info.networks);
     println!("  • Ports: {} mapped", container_info.ports.len());
 
-    // Phase 2 Feature 9: Resource Monitoring
+    // Feature 9: Resource Monitoring
     println!("\n📈 Demonstrating resource monitoring...");
 
     // This would be expanded with actual resource monitoring in a real implementation
@@ -312,8 +312,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Container will be automatically removed due to auto_remove flag
     println!("✅ Container will be automatically removed (auto_remove enabled)");
 
-    println!("\n🎉 Phase 2 Demo Complete!");
-    println!("=============================");
+    println!("\n🎉 Container Management Demo Complete!");
+    println!("======================================");
     println!("Features demonstrated:");
     println!("✅ Advanced container configuration with fluent API");
     println!("✅ Dynamic port allocation and mapping");

@@ -470,7 +470,6 @@ mod tests {
 
     // Integration tests (require Docker to be installed)
     #[tokio::test]
-    #[ignore = "Requires Docker daemon running"]
     async fn test_docker_version_integration() {
         let docker_path = match find_docker_binary() {
             Ok(path) => path,
@@ -492,7 +491,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Requires Docker daemon running"]
     async fn test_docker_info_integration() {
         let docker_path = match find_docker_binary() {
             Ok(path) => path,

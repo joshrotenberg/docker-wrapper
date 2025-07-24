@@ -256,6 +256,11 @@ impl DockerClient {
     }
 
     /// Get Docker system information
+    /// Get Docker daemon information
+    ///
+    /// # Panics
+    ///
+    /// Panics if `ping()` was not called successfully first to populate daemon info
     pub async fn info(&mut self) -> DockerResult<&DockerInfo> {
         if self.daemon_info.is_none() {
             debug!("Fetching Docker system information");
@@ -328,11 +333,13 @@ impl DockerClient {
     }
 
     /// Build Docker command with common options
+    #[must_use]
     pub fn build_command(&self, subcommand: &str) -> CommandBuilder {
         CommandBuilder::new(subcommand.to_string())
     }
 
     /// Get the Docker binary path
+    #[must_use]
     pub fn docker_path(&self) -> &std::path::Path {
         &self.executor.docker_path
     }
@@ -345,7 +352,7 @@ impl DockerClient {
             // Simple version comparison - in production, use a proper semver crate
             if let Some(server_version) = &version_info.server {
                 let server_ver = server_version.clone();
-                if !self.version_meets_requirement(&server_ver, &min_version) {
+                if !Self::version_meets_requirement(&server_ver, &min_version) {
                     return Err(DockerError::unsupported_version(server_ver, min_version));
                 }
             }
@@ -354,7 +361,7 @@ impl DockerClient {
     }
 
     /// Simple version comparison (should use semver in production)
-    fn version_meets_requirement(&self, current: &str, required: &str) -> bool {
+    fn version_meets_requirement(current: &str, required: &str) -> bool {
         // Extract major.minor.patch from version strings
         let parse_version = |v: &str| -> Vec<u32> {
             v.split('.')
@@ -381,36 +388,43 @@ impl DockerClient {
     }
 
     /// Get a container manager for this client
+    #[must_use]
     pub fn containers(&self) -> crate::container::ContainerManager {
         crate::container::ContainerManager::new(self)
     }
 
     /// Get an image manager for this client
+    #[must_use]
     pub fn images(&self) -> crate::image::ImageManager {
         crate::image::ImageManager::new(self)
     }
 
     /// Get a network manager for this client
+    #[must_use]
     pub fn networks(&self) -> crate::network::NetworkManager {
         crate::network::NetworkManager::new(self)
     }
 
     /// Get a volume manager for this client
+    #[must_use]
     pub fn volumes(&self) -> crate::volume::VolumeManager {
         crate::volume::VolumeManager::new(self)
     }
 
     /// Get an events manager for this client
+    #[must_use]
     pub fn events(&self) -> crate::events::EventManager {
         crate::events::EventManager::new(self)
     }
 
     /// Get a stats manager for this client
+    #[must_use]
     pub fn stats(&self) -> crate::stats::StatsManager {
         crate::stats::StatsManager::new(self)
     }
 
     /// Get the executor for low-level command execution
+    #[must_use]
     pub fn executor(&self) -> &ProcessExecutor {
         &self.executor
     }
@@ -427,6 +441,7 @@ pub struct CommandBuilder {
 
 impl CommandBuilder {
     /// Create a new command builder
+    #[must_use]
     pub fn new(subcommand: String) -> Self {
         Self {
             subcommand,
@@ -435,12 +450,14 @@ impl CommandBuilder {
     }
 
     /// Add a single argument
+    #[must_use]
     pub fn arg(mut self, arg: impl Into<String>) -> Self {
         self.args.push(arg.into());
         self
     }
 
     /// Add multiple arguments
+    #[must_use]
     pub fn args<I, S>(mut self, args: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -542,15 +559,20 @@ mod tests {
             daemon_info: None,
         };
 
-        assert!(client.version_meets_requirement("20.10.21", "20.10.0"));
-        assert!(client.version_meets_requirement("21.0.0", "20.10.0"));
-        assert!(!client.version_meets_requirement("19.03.15", "20.10.0"));
-        assert!(client.version_meets_requirement("20.10.0", "20.10.0"));
+        assert!(DockerClient::version_meets_requirement(
+            "20.10.21", "20.10.0"
+        ));
+        assert!(DockerClient::version_meets_requirement("21.0.0", "20.10.0"));
+        assert!(!DockerClient::version_meets_requirement(
+            "19.03.15", "20.10.0"
+        ));
+        assert!(DockerClient::version_meets_requirement(
+            "20.10.0", "20.10.0"
+        ));
     }
 
     // Integration tests
     #[tokio::test]
-    #[ignore = "Requires Docker daemon running"]
     async fn test_docker_client_creation() {
         match DockerClient::new().await {
             Ok(client) => {
@@ -567,7 +589,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Requires Docker daemon running"]
     async fn test_docker_ping() {
         match DockerClient::new().await {
             Ok(client) => match client.ping().await {
@@ -581,7 +602,6 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore = "Requires Docker daemon running"]
     async fn test_docker_version() {
         match DockerClient::new().await {
             Ok(mut client) => match client.version().await {

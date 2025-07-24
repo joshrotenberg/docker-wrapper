@@ -99,7 +99,7 @@ jobs:
           docker pull redis:7.2-alpine
 
       - name: Run integration tests
-        run: cargo test --verbose --test phase2_integration --all-features
+        run: cargo test --verbose --test integration_tests --all-features
         env:
           DOCKER_HOST: unix:///var/run/docker.sock
 

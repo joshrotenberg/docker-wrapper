@@ -103,7 +103,7 @@ impl HealthCheckResult {
 }
 
 /// Types of health checks that can be performed
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum HealthCheck {
     /// Check if a port is accepting connections
     Port {
@@ -685,6 +685,235 @@ mod tests {
         match any_check {
             HealthCheck::Any(checks) => assert_eq!(checks.len(), 2),
             _ => panic!("Expected Any check"),
+        }
+    }
+    #[test]
+    fn test_health_check_command_builder() {
+        let check = HealthCheck::command(vec![
+            "curl".to_string(),
+            "-f".to_string(),
+            "http://localhost/health".to_string(),
+        ]);
+
+        match check {
+            HealthCheck::Command {
+                command,
+                expected_exit_code,
+            } => {
+                assert_eq!(command, vec!["curl", "-f", "http://localhost/health"]);
+                assert_eq!(expected_exit_code, 0);
+            }
+            _ => panic!("Expected Command health check"),
+        }
+    }
+
+    #[test]
+    fn test_health_check_port_variations() {
+        let port_check = HealthCheck::port(3000);
+        match port_check {
+            HealthCheck::Port { port, host } => {
+                assert_eq!(port, 3000);
+                assert_eq!(host, None);
+            }
+            _ => panic!("Expected Port health check"),
+        }
+    }
+
+    #[test]
+    fn test_health_check_http_variations() {
+        let http_check = HealthCheck::http("https://api.example.com/status");
+        match http_check {
+            HealthCheck::Http {
+                url,
+                expected_status,
+                request_timeout: _,
+            } => {
+                assert_eq!(url, "https://api.example.com/status");
+                assert_eq!(expected_status, Some(200));
+            }
+            _ => panic!("Expected Http health check"),
+        }
+    }
+
+    #[test]
+    fn test_health_check_command_variations() {
+        let cmd_check = HealthCheck::command(vec![
+            "pg_isready".to_string(),
+            "-h".to_string(),
+            "localhost".to_string(),
+            "-p".to_string(),
+            "5432".to_string(),
+        ]);
+
+        match cmd_check {
+            HealthCheck::Command {
+                command,
+                expected_exit_code,
+            } => {
+                assert!(command.contains(&"pg_isready".to_string()));
+                assert!(command.contains(&"-h".to_string()));
+                assert!(command.contains(&"localhost".to_string()));
+                assert_eq!(expected_exit_code, 0);
+            }
+            _ => panic!("Expected Command health check"),
+        }
+    }
+
+    #[test]
+    fn test_health_check_composite_all() {
+        let port_check = HealthCheck::port(8080);
+        let http_check = HealthCheck::http("http://localhost:8080/ready");
+        let cmd_check = HealthCheck::command(vec![
+            "test".to_string(),
+            "-f".to_string(),
+            "/tmp/ready".to_string(),
+        ]);
+
+        let all_check = HealthCheck::all(vec![port_check, http_check, cmd_check]);
+
+        match all_check {
+            HealthCheck::All(checks) => {
+                assert_eq!(checks.len(), 3);
+                // Verify each check type is present
+                let has_port = checks.iter().any(|c| matches!(c, HealthCheck::Port { .. }));
+                let has_http = checks.iter().any(|c| matches!(c, HealthCheck::Http { .. }));
+                let has_cmd = checks
+                    .iter()
+                    .any(|c| matches!(c, HealthCheck::Command { .. }));
+                assert!(has_port && has_http && has_cmd);
+            }
+            _ => panic!("Expected All health check"),
+        }
+    }
+
+    #[test]
+    fn test_health_check_composite_any() {
+        let check1 = HealthCheck::port(8080);
+        let check2 = HealthCheck::port(8081);
+
+        let any_check = HealthCheck::any(vec![check1, check2]);
+
+        match any_check {
+            HealthCheck::Any(checks) => {
+                assert_eq!(checks.len(), 2);
+                for check in checks {
+                    assert!(matches!(check, HealthCheck::Port { .. }));
+                }
+            }
+            _ => panic!("Expected Any health check"),
+        }
+    }
+
+    #[test]
+    fn test_health_check_config_defaults() {
+        let config = HealthCheckConfig::default();
+        assert_eq!(config.interval, Duration::from_millis(500));
+        assert_eq!(config.timeout, Duration::from_secs(30));
+        assert_eq!(config.retries, 3);
+        assert_eq!(config.start_period, Duration::from_secs(0));
+    }
+
+    #[test]
+    fn test_health_check_result_constructors() {
+        let success =
+            HealthCheckResult::success("Service is healthy", Duration::from_millis(250), 1);
+        assert!(success.healthy);
+        assert_eq!(success.message, "Service is healthy");
+        assert_eq!(success.duration, Duration::from_millis(250));
+        assert_eq!(success.attempts, 1);
+
+        let failure =
+            HealthCheckResult::failure("Connection refused", Duration::from_millis(5000), 3);
+        assert!(!failure.healthy);
+        assert_eq!(failure.message, "Connection refused");
+        assert_eq!(failure.duration, Duration::from_millis(5000));
+        assert_eq!(failure.attempts, 3);
+    }
+
+    #[test]
+    fn test_health_check_nested_composite() {
+        let port_check = HealthCheck::port(8080);
+        let http_check = HealthCheck::http("http://localhost:8080/health");
+
+        let service_check = HealthCheck::all(vec![port_check, http_check]);
+        let db_check = HealthCheck::port(5432);
+
+        let system_check = HealthCheck::all(vec![service_check, db_check]);
+
+        match system_check {
+            HealthCheck::All(checks) => {
+                assert_eq!(checks.len(), 2);
+                // First check should be an All check (service check)
+                assert!(matches!(checks[0], HealthCheck::All(_)));
+                // Second check should be a Port check (database)
+                assert!(matches!(checks[1], HealthCheck::Port { .. }));
+            }
+            _ => panic!("Expected nested All health check"),
+        }
+    }
+
+    #[test]
+    fn test_health_check_command_with_exit_code() {
+        let check =
+            HealthCheck::command_with_exit_code(vec!["echo".to_string(), "healthy".to_string()], 1);
+
+        // Test that we can create command with custom exit code
+        match check {
+            HealthCheck::Command {
+                command,
+                expected_exit_code,
+            } => {
+                assert_eq!(command, vec!["echo", "healthy"]);
+                assert_eq!(expected_exit_code, 1);
+            }
+            _ => panic!("Expected Command health check"),
+        }
+    }
+
+    #[test]
+    fn test_health_check_equality() {
+        let check1 = HealthCheck::port(8080);
+        let check2 = HealthCheck::port(8080);
+        let check3 = HealthCheck::port(8081);
+
+        assert_eq!(check1, check2);
+        assert_ne!(check1, check3);
+
+        let http1 = HealthCheck::http("http://localhost/health");
+        let http2 = HealthCheck::http("http://localhost/health");
+        let http3 = HealthCheck::http("http://localhost/status");
+
+        assert_eq!(http1, http2);
+        assert_ne!(http1, http3);
+    }
+
+    #[test]
+    fn test_health_check_clone() {
+        let original = HealthCheck::command(vec![
+            "test".to_string(),
+            "-f".to_string(),
+            "/tmp/healthy".to_string(),
+        ]);
+
+        let cloned = original.clone();
+        assert_eq!(original, cloned);
+
+        // Test that clone is independent
+        match (original, cloned) {
+            (
+                HealthCheck::Command {
+                    command: cmd1,
+                    expected_exit_code: exit1,
+                },
+                HealthCheck::Command {
+                    command: cmd2,
+                    expected_exit_code: exit2,
+                },
+            ) => {
+                assert_eq!(cmd1, cmd2);
+                assert_eq!(exit1, exit2);
+            }
+            _ => panic!("Expected Command health checks"),
         }
     }
 }

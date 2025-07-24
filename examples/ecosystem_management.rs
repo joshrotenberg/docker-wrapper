@@ -1,12 +1,12 @@
-//! Phase 3 Showcase: Comprehensive Image, Network, and Volume Management
+//! Ecosystem Management Demo: Comprehensive Image, Network, and Volume Management
 //!
-//! This example demonstrates all the major features implemented in Phase 3:
+//! This example demonstrates all the major ecosystem management features:
 //! - Advanced image operations (pull, build, tag, inspect)
 //! - Network creation and management
 //! - Volume creation and mounting
 //! - Integration between all components
 //!
-//! Run with: cargo run --example phase3_showcase
+//! Run with: cargo run --example ecosystem_management
 
 use docker_wrapper::*;
 
@@ -14,26 +14,26 @@ use tokio::time::{Duration, sleep};
 
 #[tokio::main]
 async fn main() -> Result<(), DockerError> {
-    println!("🚀 Docker Wrapper Phase 3 Showcase");
-    println!("====================================");
+    println!("🚀 Docker Wrapper Ecosystem Management Demo");
+    println!("============================================");
 
     // Initialize Docker client
     let client = DockerClient::new().await?;
     println!("✅ Docker client initialized");
 
-    // Phase 3 Feature 1: Advanced Image Management
+    // Feature 1: Advanced Image Management
     println!("\n📦 Image Management Demo");
     println!("-----------------------");
 
     demonstrate_image_management(&client).await?;
 
-    // Phase 3 Feature 2: Network Management
+    // Feature 2: Network Management
     println!("\n🌐 Network Management Demo");
     println!("-------------------------");
 
     let network_id = demonstrate_network_management(&client).await?;
 
-    // Phase 3 Feature 3: Volume Management
+    // Feature 3: Volume Management
     println!("\n💾 Volume Management Demo");
     println!("-----------------------");
 

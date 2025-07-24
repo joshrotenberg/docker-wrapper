@@ -6,7 +6,7 @@
 //! - Performance monitoring and aggregation
 //! - Advanced monitoring patterns
 //!
-//! Run with: cargo run --example phase4_showcase
+//! Run with: cargo run --example monitoring_and_events
 
 use docker_wrapper::*;
 use std::time::{Duration, SystemTime};
@@ -14,8 +14,8 @@ use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() -> Result<(), DockerError> {
-    println!("🚀 Docker Wrapper Phase 4 Showcase");
-    println!("====================================");
+    println!("🚀 Docker Wrapper Monitoring and Events Demo");
+    println!("=============================================");
 
     // Initialize Docker client
     let client = DockerClient::new().await?;

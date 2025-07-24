@@ -1244,4 +1244,269 @@ mod tests {
         assert_eq!(attachment.aliases.len(), 2);
         assert!(attachment.ip_address.is_some());
     }
+
+    #[test]
+    fn test_container_builder_comprehensive() {
+        let config = ContainerBuilder::new("nginx:alpine")
+            .name("test-nginx")
+            .env("ENV_VAR", "value")
+            .env("VAR1", "val1")
+            .env("VAR2", "val2")
+            .port_dynamic(80)
+            .port_udp(53, 5353)
+            .volume("/host/path", "/container/path")
+            .volume_ro("/host/ro", "/container/ro")
+            .volume_named("my-volume", "/data")
+            .label("app", "test")
+            .label("version", "1.0")
+            .label("env", "test")
+            .working_dir("/app")
+            .user("nginx")
+            .entrypoint(vec!["nginx".to_string()])
+            .command(vec!["-g".to_string(), "daemon off;".to_string()])
+            .memory_str("1g")
+            .memory_str("1g")
+            .cpus(0.5)
+            .network(NetworkId::new("custom-network".to_string()).unwrap())
+            .auto_remove()
+            .tty()
+            .interactive()
+            .build();
+
+        assert_eq!(config.image, "nginx:alpine");
+        assert_eq!(config.name, Some("test-nginx".to_string()));
+        assert_eq!(config.environment.len(), 3);
+        assert_eq!(
+            config.environment.get("ENV_VAR"),
+            Some(&"value".to_string())
+        );
+        assert_eq!(config.environment.get("VAR1"), Some(&"val1".to_string()));
+        assert_eq!(config.ports.len(), 2);
+        assert_eq!(config.volumes.len(), 3);
+        assert_eq!(config.labels.len(), 3);
+        assert_eq!(config.working_dir, Some("/app".into()));
+        assert_eq!(config.user, Some("nginx".to_string()));
+        assert_eq!(config.entrypoint, Some(vec!["nginx".to_string()]));
+        assert_eq!(
+            config.command,
+            Some(vec!["-g".to_string(), "daemon off;".to_string()])
+        );
+        assert_eq!(config.resource_limits.memory, Some(1_073_741_824)); // 1GB
+        assert_eq!(config.resource_limits.memory_swap, None); // Not set since we only called memory_str
+        assert!(config.auto_remove);
+        assert!(config.tty);
+        assert!(config.interactive);
+    }
+
+    #[test]
+    fn test_container_builder_health_check() {
+        use crate::types::HealthCheck as TypeHealthCheck;
+
+        let health_check = TypeHealthCheck {
+            test: vec![
+                "CMD".to_string(),
+                "curl".to_string(),
+                "-f".to_string(),
+                "http://localhost/health".to_string(),
+            ],
+            interval: std::time::Duration::from_secs(30),
+            timeout: std::time::Duration::from_secs(30),
+            retries: 3,
+            start_period: Some(std::time::Duration::from_secs(0)),
+        };
+
+        let config = ContainerBuilder::new("app:latest")
+            .health_check(health_check.clone())
+            .build();
+
+        assert_eq!(config.health_check, Some(health_check));
+    }
+
+    #[test]
+    fn test_container_builder_restart_policies() {
+        let config1 = ContainerBuilder::new("app:latest")
+            .restart_policy(RestartPolicy::Always)
+            .build();
+        assert_eq!(config1.restart_policy, RestartPolicy::Always);
+
+        let config2 = ContainerBuilder::new("app:latest")
+            .restart_policy(RestartPolicy::OnFailure {
+                max_retries: Some(5),
+            })
+            .build();
+        assert_eq!(
+            config2.restart_policy,
+            RestartPolicy::OnFailure {
+                max_retries: Some(5)
+            }
+        );
+
+        let config3 = ContainerBuilder::new("app:latest")
+            .restart_policy(RestartPolicy::UnlessStopped)
+            .build();
+        assert_eq!(config3.restart_policy, RestartPolicy::UnlessStopped);
+    }
+
+    #[test]
+    fn test_container_config_default() {
+        let config = ContainerConfig::default();
+        assert!(config.image.is_empty());
+        assert!(config.name.is_none());
+        assert!(config.command.is_none());
+        assert!(config.environment.is_empty());
+        assert!(config.ports.is_empty());
+        assert!(config.volumes.is_empty());
+        assert_eq!(config.restart_policy, RestartPolicy::No);
+        assert!(!config.auto_remove);
+        assert!(!config.privileged);
+    }
+
+    #[test]
+    fn test_container_id_creation() {
+        let container_id = ContainerId::new("abc123def456789012345678".to_string()).unwrap();
+        assert_eq!(container_id.as_str(), "abc123def456789012345678");
+
+        // Test with valid container ID
+        assert!(container_id.as_str().len() >= 12);
+    }
+
+    #[test]
+    fn test_remove_options_default() {
+        let options = RemoveOptions::default();
+        assert!(!options.force);
+        assert!(!options.remove_volumes);
+
+        let options_custom = RemoveOptions {
+            force: true,
+            remove_volumes: false,
+        };
+        assert!(options_custom.force);
+        assert!(!options_custom.remove_volumes);
+    }
+
+    #[test]
+    fn test_memory_parsing_edge_cases() {
+        assert_eq!(parse_memory_string("0").unwrap(), 0);
+        assert_eq!(parse_memory_string("1024").unwrap(), 1024);
+        assert_eq!(parse_memory_string("2.5m").unwrap(), 2_621_440); // 2.5 MB
+        assert_eq!(parse_memory_string("0.5g").unwrap(), 536_870_912); // 0.5 GB
+        assert_eq!(parse_memory_string("1t").unwrap(), 1_099_511_627_776); // 1 TB
+
+        // Test case insensitive
+        assert_eq!(parse_memory_string("512M").unwrap(), 536_870_912);
+        assert_eq!(parse_memory_string("1G").unwrap(), 1_073_741_824);
+
+        // Test with spaces
+        assert_eq!(parse_memory_string(" 512m ").unwrap(), 536_870_912);
+
+        // Test error cases
+        assert!(parse_memory_string("").is_err());
+        assert!(parse_memory_string("abc").is_err());
+        assert!(parse_memory_string("512x").is_err());
+    }
+
+    #[test]
+    fn test_network_attachment_complete() {
+        use std::net::{IpAddr, Ipv4Addr};
+
+        let attachment = NetworkAttachment {
+            network: NetworkId::new("custom-network".to_string()).unwrap(),
+            aliases: vec!["web".to_string(), "api".to_string()],
+            ip_address: Some(IpAddr::V4(Ipv4Addr::new(172, 18, 0, 10))),
+        };
+
+        assert_eq!(attachment.network.as_str(), "custom-network");
+        assert_eq!(attachment.aliases.len(), 2);
+        assert!(attachment.aliases.contains(&"web".to_string()));
+        assert!(attachment.aliases.contains(&"api".to_string()));
+
+        if let Some(IpAddr::V4(ipv4)) = attachment.ip_address {
+            assert_eq!(ipv4, Ipv4Addr::new(172, 18, 0, 10));
+        } else {
+            panic!("Expected IPv4 address");
+        }
+    }
+
+    #[test]
+    fn test_container_builder_volume_types() {
+        let config = ContainerBuilder::new("test:latest")
+            .volume("/host/bind", "/container/bind")
+            .volume_ro("/host/readonly", "/container/readonly")
+            .volume_named("my-volume", "/data")
+            .build();
+
+        assert_eq!(config.volumes.len(), 3);
+
+        // Check that volumes have correct source types
+        for volume in &config.volumes {
+            match &volume.source {
+                VolumeSource::HostPath(_) => {
+                    // Host bind mounts
+                    assert!(volume.target.to_string_lossy().starts_with("/container"));
+                }
+                VolumeSource::Named(_) => {
+                    // Named volumes
+                    assert_eq!(volume.target, std::path::PathBuf::from("/data"));
+                }
+                VolumeSource::Anonymous => {
+                    // Anonymous volumes
+                    // Just check that target exists
+                    assert!(!volume.target.as_os_str().is_empty());
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_container_builder_port_mappings() {
+        let config = ContainerBuilder::new("test:latest")
+            .port(8080, 80)
+            .port_dynamic(443)
+            .port_udp(5353, 53)
+            .build();
+
+        assert_eq!(config.ports.len(), 3);
+
+        let tcp_port = &config.ports[0];
+        assert_eq!(tcp_port.host_port, Some(8080));
+        assert_eq!(tcp_port.container_port, 80);
+        assert_eq!(tcp_port.protocol, crate::types::Protocol::Tcp);
+
+        let dynamic_port = &config.ports[1];
+        assert_eq!(dynamic_port.host_port, None); // Dynamic allocation
+        assert_eq!(dynamic_port.container_port, 443);
+
+        let udp_port = &config.ports[2];
+        assert_eq!(udp_port.host_port, Some(5353));
+        assert_eq!(udp_port.container_port, 53);
+        assert_eq!(udp_port.protocol, crate::types::Protocol::Udp);
+    }
+
+    #[test]
+    fn test_container_builder_resource_limits() {
+        let config = ContainerBuilder::new("test:latest")
+            .memory_str("512m")
+            .memory_str("512m")
+            .cpus(1.5)
+            .build();
+
+        let limits = &config.resource_limits;
+        assert_eq!(limits.memory, Some(536_870_912)); // 512MB
+        assert_eq!(limits.cpu_shares, Some(1536)); // 1.5 * 1024
+    }
+
+    #[test]
+    fn test_container_config_builder_chaining() {
+        // Test that builder methods return self for chaining
+        let builder = ContainerBuilder::new("test:latest");
+        let builder = builder.name("test");
+        let builder = builder.env("KEY", "value");
+        let builder = builder.port(8080, 80);
+        let config = builder.build();
+
+        assert_eq!(config.image, "test:latest");
+        assert_eq!(config.name, Some("test".to_string()));
+        assert_eq!(config.environment.get("KEY"), Some(&"value".to_string()));
+        assert_eq!(config.ports.len(), 1);
+    }
 }
