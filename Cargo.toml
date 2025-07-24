@@ -55,20 +55,20 @@ name = "docker_wrapper"
 path = "src/lib.rs"
 
 [[example]]
-name = "phase2_demo"
-path = "examples/phase2_demo.rs"
+name = "container_management"
+path = "examples/container_management.rs"
 
 [[example]]
 name = "streaming_test"
 path = "examples/streaming_test.rs"
 
 [[example]]
-name = "phase3_showcase"
-path = "examples/phase3_showcase.rs"
+name = "ecosystem_management"
+path = "examples/ecosystem_management.rs"
 
 [[example]]
-name = "phase4_showcase"
-path = "examples/phase4_showcase.rs"
+name = "monitoring_and_events"
+path = "examples/monitoring_and_events.rs"
 
 [package.metadata.docs.rs]
 all-features = true

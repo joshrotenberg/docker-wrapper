@@ -552,7 +552,7 @@ mod tests {
         let client_config = ClientConfig::default();
         let docker_path = PathBuf::from("/usr/bin/docker");
         let executor = ProcessExecutor::new(docker_path);
-        let client = DockerClient {
+        let _client = DockerClient {
             executor,
             config: client_config,
             version_info: None,
