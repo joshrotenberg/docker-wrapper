@@ -292,6 +292,7 @@ async fn test_redis_integration() -> Result<(), DockerError> {
 ## 📖 Documentation
 
 - **[API Documentation](https://docs.rs/docker-wrapper)** - Complete API reference
+- **[Feature & Test Matrix](docs/feature-test-matrix.md)** - Docker command coverage and test status
 - **[Examples](examples/)** - Comprehensive usage examples  
 - **[Integration Guide](docs/integration.md)** - Production deployment patterns
 - **[Migration Guide](docs/migration.md)** - Migrating from other libraries
