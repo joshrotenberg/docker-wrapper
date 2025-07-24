@@ -31,8 +31,7 @@ pub fn parse_duration(s: &str) -> DockerResult<Duration> {
         "ms" => Duration::from_millis(num),
         _ => {
             return Err(DockerError::invalid_config(format!(
-                "Unknown duration unit: {}",
-                unit
+                "Unknown duration unit: {unit}"
             )));
         }
     };
@@ -45,11 +44,11 @@ pub fn parse_duration(s: &str) -> DockerResult<Duration> {
 pub fn format_duration(duration: Duration) -> String {
     let secs = duration.as_secs();
     if secs >= 3600 {
-        format!("{}h", secs / 3600)
+        format!("{secs}h", secs = secs / 3600)
     } else if secs >= 60 {
-        format!("{}m", secs / 60)
+        format!("{mins}m", mins = secs / 60)
     } else {
-        format!("{}s", secs)
+        format!("{secs}s")
     }
 }
 

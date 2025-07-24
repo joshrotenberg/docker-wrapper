@@ -1464,7 +1464,6 @@ fn parse_size_string(size_str: &str) -> u64 {
         let (number_part, unit_part) = size_str.split_at(pos);
         if let Ok(number) = number_part.parse::<f64>() {
             let multiplier = match unit_part.to_uppercase().as_str() {
-                "B" => 1_u64,
                 "KB" => 1_000_u64,
                 "MB" => 1_000_000_u64,
                 "GB" => 1_000_000_000_u64,
@@ -1473,7 +1472,7 @@ fn parse_size_string(size_str: &str) -> u64 {
                 "MIB" => 1_024_u64 * 1_024_u64,
                 "GIB" => 1_024_u64 * 1_024_u64 * 1_024_u64,
                 "TIB" => 1_024_u64 * 1_024_u64 * 1_024_u64 * 1_024_u64,
-                _ => 1_u64,
+                _ => 1_u64, // Handles "B" and any unknown units
             };
             #[allow(clippy::cast_possible_truncation)]
             #[allow(clippy::cast_sign_loss)]
