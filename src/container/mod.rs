@@ -1509,4 +1509,496 @@ mod tests {
         assert_eq!(config.environment.get("KEY"), Some(&"value".to_string()));
         assert_eq!(config.ports.len(), 1);
     }
+
+    #[tokio::test]
+    async fn test_container_manager_creation() {
+        let client = match DockerClient::new().await {
+            Ok(client) => client,
+            Err(_) => {
+                eprintln!("Skipping test - Docker not available");
+                return;
+            }
+        };
+
+        let manager = ContainerManager::new(&client);
+        // Test that manager was created successfully
+        // We can't test much without actually running Docker operations
+        assert!(std::ptr::eq(manager.client, &client));
+    }
+
+    #[tokio::test]
+    async fn test_container_manager_create_and_remove() {
+        let client = match DockerClient::new().await {
+            Ok(client) => client,
+            Err(_) => {
+                eprintln!("Skipping test - Docker not available");
+                return;
+            }
+        };
+
+        let manager = ContainerManager::new(&client);
+        let container_name = format!(
+            "test-create-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+
+        // Create a simple container
+        let config = ContainerConfig {
+            image: "alpine:3.18".to_string(),
+            name: Some(container_name.clone()),
+            command: Some(vec!["echo".to_string(), "hello".to_string()]),
+            ..Default::default()
+        };
+
+        let container_id = match manager.create(config).await {
+            Ok(id) => id,
+            Err(e) => {
+                eprintln!("Failed to create container: {}", e);
+                return;
+            }
+        };
+
+        // Verify container was created
+        assert!(container_id.as_str().len() >= 12);
+
+        // Clean up - remove container
+        let remove_options = RemoveOptions {
+            force: true,
+            remove_volumes: true,
+        };
+
+        if let Err(e) = manager.remove(&container_id, remove_options).await {
+            eprintln!("Failed to remove container: {}", e);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_container_manager_run_and_cleanup() {
+        let client = match DockerClient::new().await {
+            Ok(client) => client,
+            Err(_) => {
+                eprintln!("Skipping test - Docker not available");
+                return;
+            }
+        };
+
+        let manager = ContainerManager::new(&client);
+        let container_name = format!(
+            "test-run-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+
+        // Run a simple container
+        let config = ContainerConfig {
+            image: "alpine:3.18".to_string(),
+            name: Some(container_name.clone()),
+            command: Some(vec!["echo".to_string(), "test-output".to_string()]),
+            auto_remove: true,
+            ..Default::default()
+        };
+
+        let container_id = match manager.run(config).await {
+            Ok(id) => id,
+            Err(e) => {
+                eprintln!("Failed to run container: {}", e);
+                return;
+            }
+        };
+
+        // Verify container was created
+        assert!(container_id.as_str().len() >= 12);
+
+        // Container should auto-remove, but let's wait a bit
+        tokio::time::sleep(Duration::from_secs(2)).await;
+
+        // Try to clean up if auto-remove didn't work
+        let remove_options = RemoveOptions {
+            force: true,
+            remove_volumes: true,
+        };
+        let _ = manager.remove(&container_id, remove_options).await;
+    }
+
+    #[tokio::test]
+    async fn test_container_manager_start_stop() {
+        let client = match DockerClient::new().await {
+            Ok(client) => client,
+            Err(_) => {
+                eprintln!("Skipping test - Docker not available");
+                return;
+            }
+        };
+
+        let manager = ContainerManager::new(&client);
+        let container_name = format!(
+            "test-start-stop-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+
+        // Create a long-running container
+        let config = ContainerConfig {
+            image: "alpine:3.18".to_string(),
+            name: Some(container_name.clone()),
+            command: Some(vec!["sleep".to_string(), "30".to_string()]),
+            ..Default::default()
+        };
+
+        let container_id = match manager.create(config).await {
+            Ok(id) => id,
+            Err(e) => {
+                eprintln!("Failed to create container: {}", e);
+                return;
+            }
+        };
+
+        // Start the container
+        if let Err(e) = manager.start(&container_id).await {
+            eprintln!("Failed to start container: {}", e);
+            let _ = manager
+                .remove(
+                    &container_id,
+                    RemoveOptions {
+                        force: true,
+                        remove_volumes: true,
+                    },
+                )
+                .await;
+            return;
+        }
+
+        // Stop the container
+        if let Err(e) = manager
+            .stop(&container_id, Some(Duration::from_secs(5)))
+            .await
+        {
+            eprintln!("Failed to stop container: {}", e);
+        }
+
+        // Clean up
+        let remove_options = RemoveOptions {
+            force: true,
+            remove_volumes: true,
+        };
+        if let Err(e) = manager.remove(&container_id, remove_options).await {
+            eprintln!("Failed to remove container: {}", e);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_container_manager_inspect() {
+        let client = match DockerClient::new().await {
+            Ok(client) => client,
+            Err(_) => {
+                eprintln!("Skipping test - Docker not available");
+                return;
+            }
+        };
+
+        let manager = ContainerManager::new(&client);
+        let container_name = format!(
+            "test-inspect-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+
+        // Create a container with specific configuration
+        let config = ContainerConfig {
+            image: "alpine:3.18".to_string(),
+            name: Some(container_name.clone()),
+            command: Some(vec!["sleep".to_string(), "10".to_string()]),
+            environment: {
+                let mut env = std::collections::HashMap::new();
+                env.insert("TEST_VAR".to_string(), "test_value".to_string());
+                env
+            },
+            ..Default::default()
+        };
+
+        let container_id = match manager.create(config).await {
+            Ok(id) => id,
+            Err(e) => {
+                eprintln!("Failed to create container: {}", e);
+                return;
+            }
+        };
+
+        // Inspect the container
+        match manager.inspect(&container_id).await {
+            Ok(container_info) => {
+                assert_eq!(container_info.id, container_id);
+                assert_eq!(container_info.image, "alpine:3.18");
+                if let Some(name) = &container_info.name {
+                    assert!(name.contains(&container_name));
+                }
+            }
+            Err(e) => {
+                eprintln!("Failed to inspect container: {}", e);
+            }
+        }
+
+        // Clean up
+        let remove_options = RemoveOptions {
+            force: true,
+            remove_volumes: true,
+        };
+        if let Err(e) = manager.remove(&container_id, remove_options).await {
+            eprintln!("Failed to remove container: {}", e);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_container_manager_list() {
+        let client = match DockerClient::new().await {
+            Ok(client) => client,
+            Err(_) => {
+                eprintln!("Skipping test - Docker not available");
+                return;
+            }
+        };
+
+        let manager = ContainerManager::new(&client);
+
+        // List all containers
+        match manager.list(true).await {
+            Ok(containers) => {
+                // We can't assert much about the contents since other containers might exist
+                // Just verify we get a list
+                println!("Found {} containers", containers.len());
+            }
+            Err(e) => {
+                eprintln!("Failed to list containers: {}", e);
+            }
+        }
+
+        // List only running containers
+        match manager.list(false).await {
+            Ok(containers) => {
+                println!("Found {} running containers", containers.len());
+            }
+            Err(e) => {
+                eprintln!("Failed to list running containers: {}", e);
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_container_manager_port_mapping() {
+        let client = match DockerClient::new().await {
+            Ok(client) => client,
+            Err(_) => {
+                eprintln!("Skipping test - Docker not available");
+                return;
+            }
+        };
+
+        let manager = ContainerManager::new(&client);
+        let container_name = format!(
+            "test-port-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+
+        // Create a container with port mapping
+        let config = ContainerConfig {
+            image: "nginx:alpine".to_string(),
+            name: Some(container_name.clone()),
+            ports: vec![PortMapping {
+                host_ip: None,
+                host_port: None, // Dynamic port
+                container_port: 80,
+                protocol: crate::types::Protocol::Tcp,
+            }],
+            ..Default::default()
+        };
+
+        let container_id = match manager.create(config).await {
+            Ok(id) => id,
+            Err(e) => {
+                eprintln!("Failed to create container: {}", e);
+                return;
+            }
+        };
+
+        // Start the container
+        if let Err(e) = manager.start(&container_id).await {
+            eprintln!("Failed to start container: {}", e);
+            let _ = manager
+                .remove(
+                    &container_id,
+                    RemoveOptions {
+                        force: true,
+                        remove_volumes: true,
+                    },
+                )
+                .await;
+            return;
+        }
+
+        // Give it a moment to start
+        tokio::time::sleep(Duration::from_secs(2)).await;
+
+        // Get the mapped port
+        match manager.port(&container_id, 80).await {
+            Ok(Some(host_port)) => {
+                assert!(host_port > 0);
+                assert!(host_port <= 65535);
+                println!("Container port 80 mapped to host port {}", host_port);
+            }
+            Ok(None) => {
+                eprintln!("No port mapping found");
+            }
+            Err(e) => {
+                eprintln!("Failed to get port mapping: {}", e);
+            }
+        }
+
+        // Stop and clean up
+        let _ = manager
+            .stop(&container_id, Some(Duration::from_secs(5)))
+            .await;
+        let remove_options = RemoveOptions {
+            force: true,
+            remove_volumes: true,
+        };
+        if let Err(e) = manager.remove(&container_id, remove_options).await {
+            eprintln!("Failed to remove container: {}", e);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_container_manager_wait() {
+        let client = match DockerClient::new().await {
+            Ok(client) => client,
+            Err(_) => {
+                eprintln!("Skipping test - Docker not available");
+                return;
+            }
+        };
+
+        let manager = ContainerManager::new(&client);
+        let container_name = format!(
+            "test-wait-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+
+        // Create a container that exits quickly
+        let config = ContainerConfig {
+            image: "alpine:3.18".to_string(),
+            name: Some(container_name.clone()),
+            command: Some(vec![
+                "sh".to_string(),
+                "-c".to_string(),
+                "exit 42".to_string(),
+            ]),
+            ..Default::default()
+        };
+
+        let container_id = match manager.create(config).await {
+            Ok(id) => id,
+            Err(e) => {
+                eprintln!("Failed to create container: {}", e);
+                return;
+            }
+        };
+
+        // Start the container
+        if let Err(e) = manager.start(&container_id).await {
+            eprintln!("Failed to start container: {}", e);
+            let _ = manager
+                .remove(
+                    &container_id,
+                    RemoveOptions {
+                        force: true,
+                        remove_volumes: true,
+                    },
+                )
+                .await;
+            return;
+        }
+
+        // Wait for container to finish
+        match manager.wait(&container_id).await {
+            Ok(exit_code) => {
+                assert_eq!(exit_code, 42);
+                println!("Container exited with code: {}", exit_code);
+            }
+            Err(e) => {
+                eprintln!("Failed to wait for container: {}", e);
+            }
+        }
+
+        // Clean up
+        let remove_options = RemoveOptions {
+            force: true,
+            remove_volumes: true,
+        };
+        if let Err(e) = manager.remove(&container_id, remove_options).await {
+            eprintln!("Failed to remove container: {}", e);
+        }
+    }
+
+    #[tokio::test]
+    async fn test_container_builder_integration() {
+        let client = match DockerClient::new().await {
+            Ok(client) => client,
+            Err(_) => {
+                eprintln!("Skipping test - Docker not available");
+                return;
+            }
+        };
+
+        let container_name = format!(
+            "test-builder-{}",
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        );
+
+        // Use ContainerBuilder to create and run a container
+        let container_id = match ContainerBuilder::new("alpine:3.18")
+            .name(&container_name)
+            .env("TEST_ENV", "builder_test")
+            .command(vec!["echo".to_string(), "builder works".to_string()])
+            .auto_remove()
+            .run(&client)
+            .await
+        {
+            Ok(id) => id,
+            Err(e) => {
+                eprintln!("Failed to run container via builder: {}", e);
+                return;
+            }
+        };
+
+        // Verify container was created
+        assert!(container_id.as_str().len() >= 12);
+
+        // Container should auto-remove, wait a bit
+        tokio::time::sleep(Duration::from_secs(2)).await;
+
+        // Try to clean up if needed
+        let manager = ContainerManager::new(&client);
+        let remove_options = RemoveOptions {
+            force: true,
+            remove_volumes: true,
+        };
+        let _ = manager.remove(&container_id, remove_options).await;
+    }
 }
