@@ -17,6 +17,41 @@ use tokio::process::Command;
 use tokio::sync::mpsc;
 use tracing::{debug, info, warn};
 
+/// Options for stream attachment during command execution
+#[derive(Debug, Clone)]
+pub struct AttachmentOptions {
+    /// Attach to stdin
+    pub stdin: bool,
+    /// Attach to stdout
+    pub stdout: bool,
+    /// Attach to stderr
+    pub stderr: bool,
+}
+
+impl Default for AttachmentOptions {
+    fn default() -> Self {
+        Self {
+            stdin: false,
+            stdout: true,
+            stderr: true,
+        }
+    }
+}
+
+/// Execution mode options
+#[derive(Debug, Clone, Default)]
+#[allow(clippy::struct_excessive_bools)]
+pub struct ExecutionOptions {
+    /// Allocate a pseudo-TTY
+    pub tty: bool,
+    /// Run in privileged mode
+    pub privileged: bool,
+    /// Run in detached mode
+    pub detached: bool,
+    /// Run interactively
+    pub interactive: bool,
+}
+
 /// Configuration for executing commands in containers
 #[derive(Debug, Clone)]
 pub struct ExecConfig {
@@ -28,22 +63,13 @@ pub struct ExecConfig {
     pub environment: HashMap<String, String>,
     /// User to run as
     pub user: Option<String>,
-    /// Attach to stdin
-    pub attach_stdin: bool,
-    /// Attach to stdout
-    pub attach_stdout: bool,
-    /// Attach to stderr
-    pub attach_stderr: bool,
-    /// Allocate a pseudo-TTY
-    pub tty: bool,
-    /// Run in privileged mode
-    pub privileged: bool,
-    /// Run in detached mode
-    pub detached: bool,
-    /// Run interactively
-    pub interactive: bool,
+    /// Stream attachment options
+    pub attachment: AttachmentOptions,
+    /// Execution mode options
+    pub execution: ExecutionOptions,
 }
 
+#[allow(clippy::derivable_impls)]
 impl Default for ExecConfig {
     fn default() -> Self {
         Self {
@@ -51,19 +77,15 @@ impl Default for ExecConfig {
             working_dir: None,
             environment: HashMap::new(),
             user: None,
-            attach_stdin: false,
-            attach_stdout: true,
-            attach_stderr: true,
-            tty: false,
-            privileged: false,
-            detached: false,
-            interactive: false,
+            attachment: AttachmentOptions::default(),
+            execution: ExecutionOptions::default(),
         }
     }
 }
 
 impl ExecConfig {
     /// Create a new exec configuration with the specified command
+    #[must_use]
     pub fn new(command: Vec<String>) -> Self {
         Self {
             command,
@@ -72,65 +94,77 @@ impl ExecConfig {
     }
 
     /// Create from a command string (space-separated)
+    #[must_use]
     pub fn from_command_str(command: impl Into<String>) -> Self {
         let cmd_str = command.into();
-        let command_parts: Vec<String> =
-            cmd_str.split_whitespace().map(|s| s.to_string()).collect();
+        let command_parts: Vec<String> = cmd_str
+            .split_whitespace()
+            .map(std::string::ToString::to_string)
+            .collect();
         Self::new(command_parts)
     }
 
     /// Set the working directory
+    #[must_use]
     pub fn working_dir(mut self, dir: impl Into<PathBuf>) -> Self {
         self.working_dir = Some(dir.into());
         self
     }
 
     /// Add an environment variable
+    #[must_use]
     pub fn env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.environment.insert(key.into(), value.into());
         self
     }
 
-    /// Add multiple environment variables
+    /// Set multiple environment variables
+    #[must_use]
     pub fn envs(mut self, envs: HashMap<String, String>) -> Self {
         self.environment.extend(envs);
         self
     }
 
     /// Set the user to run as
+    #[must_use]
     pub fn user(mut self, user: impl Into<String>) -> Self {
         self.user = Some(user.into());
         self
     }
 
     /// Enable stdin attachment
+    #[must_use]
     pub fn stdin(mut self) -> Self {
-        self.attach_stdin = true;
+        self.attachment.stdin = true;
         self
     }
 
     /// Enable TTY allocation
+    #[must_use]
     pub fn tty(mut self) -> Self {
-        self.tty = true;
+        self.execution.tty = true;
         self
     }
 
     /// Run in privileged mode
+    #[must_use]
     pub fn privileged(mut self) -> Self {
-        self.privileged = true;
+        self.execution.privileged = true;
         self
     }
 
     /// Run in detached mode
+    #[must_use]
     pub fn detached(mut self) -> Self {
-        self.detached = true;
+        self.execution.detached = true;
         self
     }
 
     /// Run interactively
+    #[must_use]
     pub fn interactive(mut self) -> Self {
-        self.interactive = true;
-        self.attach_stdin = true;
+        self.execution.interactive = true;
+        self.attachment.stdin = true;
         self
     }
 }
@@ -150,18 +184,20 @@ pub struct ExecResult {
 
 impl ExecResult {
     /// Check if the command executed successfully (exit code 0)
+    #[must_use]
     pub fn is_success(&self) -> bool {
         self.exit_code == 0
     }
 
     /// Get combined output (stdout + stderr)
+    #[must_use]
     pub fn combined_output(&self) -> String {
         if self.stderr.is_empty() {
             self.stdout.clone()
         } else if self.stdout.is_empty() {
             self.stderr.clone()
         } else {
-            format!("{}\n{}", self.stdout, self.stderr)
+            format!("{}\n{}", &self.stdout, &self.stderr)
         }
     }
 }
@@ -173,6 +209,7 @@ pub struct ContainerExecutor<'a> {
 
 impl<'a> ContainerExecutor<'a> {
     /// Create a new container executor
+    #[must_use]
     pub fn new(client: &'a DockerClient) -> Self {
         Self { client }
     }
@@ -190,7 +227,7 @@ impl<'a> ContainerExecutor<'a> {
 
         let start_time = std::time::Instant::now();
 
-        if config.detached {
+        if config.execution.detached {
             // For detached execution, we just start the command and return immediately
             self.exec_detached(container_id, &config).await?;
             return Ok(ExecResult {
@@ -202,7 +239,7 @@ impl<'a> ContainerExecutor<'a> {
         }
 
         // Build the exec command
-        let args = self.build_exec_args(container_id, &config)?;
+        let args = Self::build_exec_args(container_id, &config);
 
         // Execute the command
         let output = self.client.execute_command(&args, None).await?;
@@ -238,7 +275,7 @@ impl<'a> ContainerExecutor<'a> {
         );
 
         let mut args = vec!["exec".to_string(), "--detach".to_string()];
-        self.add_exec_options(&mut args, config)?;
+        Self::add_exec_options(&mut args, config);
         args.push(container_id.to_string());
         args.extend(config.command.clone());
 
@@ -253,6 +290,11 @@ impl<'a> ContainerExecutor<'a> {
     }
 
     /// Execute a command with streaming output
+    ///
+    /// # Panics
+    ///
+    /// Panics if the spawned process doesn't have stdout or stderr streams available.
+    /// This should not happen under normal circumstances when executing Docker commands.
     pub async fn exec_streaming<F>(
         &self,
         container_id: &ContainerId,
@@ -268,23 +310,23 @@ impl<'a> ContainerExecutor<'a> {
         );
 
         let start_time = std::time::Instant::now();
-        let args = self.build_exec_args(container_id, &config)?;
+        let args = Self::build_exec_args(container_id, &config);
 
         // Create the command
-        let mut cmd = Command::new(&self.client.docker_path());
+        let mut cmd = Command::new(self.client.docker_path());
         cmd.args(&args); // Include all args - docker_path() is the binary, args start with subcommand
 
         // Configure stdio
-        if config.attach_stdin {
+        if config.attachment.stdin {
             cmd.stdin(std::process::Stdio::piped());
         }
         cmd.stdout(std::process::Stdio::piped());
         cmd.stderr(std::process::Stdio::piped());
 
         // Spawn the process
-        let mut child = cmd.spawn().map_err(|e| {
-            DockerError::process_spawn(format!("Failed to spawn docker exec: {}", e))
-        })?;
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| DockerError::process_spawn(format!("Failed to spawn docker exec: {e}")))?;
 
         let stdout = child.stdout.take().unwrap();
         let stderr = child.stderr.take().unwrap();
@@ -339,7 +381,7 @@ impl<'a> ContainerExecutor<'a> {
 
         // Wait for the process to complete
         let exit_status = child.wait().await.map_err(|e| {
-            DockerError::process_wait(format!("Failed to wait for docker exec: {}", e))
+            DockerError::process_wait(format!("Failed to wait for docker exec: {e}"))
         })?;
 
         // Wait for readers to finish
@@ -383,25 +425,21 @@ impl<'a> ContainerExecutor<'a> {
     }
 
     /// Build the docker exec command arguments
-    fn build_exec_args(
-        &self,
-        container_id: &ContainerId,
-        config: &ExecConfig,
-    ) -> DockerResult<Vec<String>> {
+    fn build_exec_args(container_id: &ContainerId, config: &ExecConfig) -> Vec<String> {
         let mut args = vec!["exec".to_string()];
-        self.add_exec_options(&mut args, config)?;
+        Self::add_exec_options(&mut args, config);
         args.push(container_id.to_string());
         args.extend(config.command.clone());
-        Ok(args)
+        args
     }
 
     /// Add exec options to the command arguments
-    fn add_exec_options(&self, args: &mut Vec<String>, config: &ExecConfig) -> DockerResult<()> {
+    fn add_exec_options(args: &mut Vec<String>, config: &ExecConfig) {
         // Interactive and TTY options
-        if config.interactive {
+        if config.execution.interactive {
             args.push("--interactive".to_string());
         }
-        if config.tty {
+        if config.execution.tty {
             args.push("--tty".to_string());
         }
 
@@ -420,15 +458,13 @@ impl<'a> ContainerExecutor<'a> {
         // Environment variables
         for (key, value) in &config.environment {
             args.push("--env".to_string());
-            args.push(format!("{}={}", key, value));
+            args.push(format!("{key}={value}"));
         }
 
         // Privileged mode
-        if config.privileged {
+        if config.execution.privileged {
             args.push("--privileged".to_string());
         }
-
-        Ok(())
     }
 }
 
@@ -458,8 +494,8 @@ mod tests {
         assert_eq!(config.user, Some("root".to_string()));
         assert_eq!(config.working_dir, Some(PathBuf::from("/tmp")));
         assert_eq!(config.environment.get("VAR"), Some(&"value".to_string()));
-        assert!(config.tty);
-        assert!(config.privileged);
+        assert!(config.execution.tty);
+        assert!(config.execution.privileged);
     }
 
     #[test]

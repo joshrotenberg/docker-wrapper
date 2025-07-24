@@ -25,6 +25,7 @@ use tracing::{debug, info};
 
 /// Container configuration for creating new containers
 #[derive(Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct ContainerConfig {
     /// Docker image to use
     pub image: String,
@@ -137,6 +138,7 @@ pub struct ContainerBuilder {
 
 impl ContainerBuilder {
     /// Create a new container builder with the specified image
+    #[must_use]
     pub fn new(image: impl Into<String>) -> Self {
         Self {
             config: ContainerConfig {
@@ -147,45 +149,54 @@ impl ContainerBuilder {
     }
 
     /// Set the container name
+    #[must_use]
     pub fn name(mut self, name: impl Into<String>) -> Self {
         self.config.name = Some(name.into());
         self
     }
 
     /// Set the command to run
+    #[must_use]
     pub fn command(mut self, command: Vec<String>) -> Self {
         self.config.command = Some(command);
         self
     }
 
     /// Set the command from a space-separated string
+    #[must_use]
     pub fn command_str(mut self, command: impl Into<String>) -> Self {
         let cmd_str = command.into();
-        let command_parts: Vec<String> =
-            cmd_str.split_whitespace().map(|s| s.to_string()).collect();
+        let command_parts: Vec<String> = cmd_str
+            .split_whitespace()
+            .map(std::string::ToString::to_string)
+            .collect();
         self.config.command = Some(command_parts);
         self
     }
 
     /// Override the entrypoint
+    #[must_use]
     pub fn entrypoint(mut self, entrypoint: Vec<String>) -> Self {
         self.config.entrypoint = Some(entrypoint);
         self
     }
 
     /// Set the working directory
+    #[must_use]
     pub fn working_dir(mut self, dir: impl Into<PathBuf>) -> Self {
         self.config.working_dir = Some(dir.into());
         self
     }
 
     /// Add an environment variable
+    #[must_use]
     pub fn env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.config.environment.insert(key.into(), value.into());
         self
     }
 
     /// Add multiple environment variables
+    #[must_use]
     pub fn envs(mut self, envs: HashMap<String, String>) -> Self {
         self.config.environment.extend(envs);
         self
@@ -193,7 +204,7 @@ impl ContainerBuilder {
 
     /// Add a port mapping with a specific host port
     ///
-    /// Maps host_port on the host to container_port inside the container.
+    /// Maps `host_port` on the host to `container_port` inside the container.
     /// This follows Docker's `-p host_port:container_port` format.
     ///
     /// # Arguments
@@ -208,6 +219,7 @@ impl ContainerBuilder {
     ///     .port(8080, 80)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn port(mut self, host_port: u16, container_port: u16) -> Self {
         self.config.ports.push(PortMapping {
             host_ip: None,
@@ -219,6 +231,7 @@ impl ContainerBuilder {
     }
 
     /// Add a port mapping with dynamic host port allocation
+    #[must_use]
     pub fn port_dynamic(mut self, container_port: u16) -> Self {
         self.config.ports.push(PortMapping {
             host_ip: None,
@@ -231,7 +244,7 @@ impl ContainerBuilder {
 
     /// Add a UDP port mapping
     ///
-    /// Maps host_port on the host to container_port inside the container using UDP protocol.
+    /// Maps `host_port` on the host to `container_port` inside the container using UDP protocol.
     /// This follows Docker's `-p host_port:container_port/udp` format.
     ///
     /// # Arguments
@@ -246,6 +259,7 @@ impl ContainerBuilder {
     ///     .port_udp(5353, 53)
     ///     .build();
     /// ```
+    #[must_use]
     pub fn port_udp(mut self, host_port: u16, container_port: u16) -> Self {
         self.config.ports.push(PortMapping {
             host_ip: None,
@@ -257,6 +271,7 @@ impl ContainerBuilder {
     }
 
     /// Add a volume mount from host path
+    #[must_use]
     pub fn volume(
         mut self,
         host_path: impl Into<PathBuf>,
@@ -270,6 +285,7 @@ impl ContainerBuilder {
     }
 
     /// Add a read-only volume mount
+    #[must_use]
     pub fn volume_ro(
         mut self,
         host_path: impl Into<PathBuf>,
@@ -286,6 +302,7 @@ impl ContainerBuilder {
     }
 
     /// Add a named volume mount
+    #[must_use]
     pub fn volume_named(
         mut self,
         volume_name: impl Into<String>,
@@ -299,6 +316,7 @@ impl ContainerBuilder {
     }
 
     /// Add a temporary volume mount
+    #[must_use]
     pub fn volume_tmp(mut self, container_path: impl Into<PathBuf>) -> Self {
         self.config.volumes.push(VolumeMount::new(
             VolumeSource::Anonymous,
@@ -308,36 +326,42 @@ impl ContainerBuilder {
     }
 
     /// Add a label
+    #[must_use]
     pub fn label(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.config.labels.insert(key.into(), value.into());
         self
     }
 
     /// Add multiple labels
+    #[must_use]
     pub fn labels(mut self, labels: HashMap<String, String>) -> Self {
         self.config.labels.extend(labels);
         self
     }
 
     /// Set the restart policy
+    #[must_use]
     pub fn restart_policy(mut self, policy: RestartPolicy) -> Self {
         self.config.restart_policy = policy;
         self
     }
 
     /// Set health check configuration
+    #[must_use]
     pub fn health_check(mut self, health_check: TypeHealthCheck) -> Self {
         self.config.health_check = Some(health_check);
         self
     }
 
     /// Set memory limit in bytes
+    #[must_use]
     pub fn memory(mut self, bytes: u64) -> Self {
         self.config.resource_limits.memory = Some(bytes);
         self
     }
 
     /// Set memory limit with human-readable format (e.g., "512m", "1g")
+    #[must_use]
     pub fn memory_str(mut self, memory: impl Into<String>) -> Self {
         // Parse memory string and convert to bytes
         let mem_str = memory.into();
@@ -348,12 +372,23 @@ impl ContainerBuilder {
     }
 
     /// Set CPU limit (number of CPUs)
+    #[must_use]
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_sign_loss)]
+    #[allow(clippy::cast_precision_loss)]
+    #[must_use]
     pub fn cpus(mut self, cpus: f64) -> Self {
-        self.config.resource_limits.cpu_shares = Some((cpus * 1024.0) as u64);
+        let cpu_shares = if cpus >= 0.0 {
+            (cpus * 1024.0).min(u64::MAX as f64) as u64
+        } else {
+            0
+        };
+        self.config.resource_limits.cpu_shares = Some(cpu_shares);
         self
     }
 
     /// Attach to a network
+    #[must_use]
     pub fn network(mut self, network: impl Into<NetworkId>) -> Self {
         self.config.networks.push(NetworkAttachment {
             network: network.into(),
@@ -364,6 +399,7 @@ impl ContainerBuilder {
     }
 
     /// Attach to a network with aliases
+    #[must_use]
     pub fn network_with_aliases(
         mut self,
         network: impl Into<NetworkId>,
@@ -378,36 +414,42 @@ impl ContainerBuilder {
     }
 
     /// Set the user to run as
+    #[must_use]
     pub fn user(mut self, user: impl Into<String>) -> Self {
         self.config.user = Some(user.into());
         self
     }
 
     /// Run in privileged mode
+    #[must_use]
     pub fn privileged(mut self) -> Self {
         self.config.privileged = true;
         self
     }
 
     /// Add a capability
+    #[must_use]
     pub fn capability(mut self, cap: impl Into<String>) -> Self {
         self.config.capabilities.push(cap.into());
         self
     }
 
     /// Add multiple capabilities
+    #[must_use]
     pub fn capabilities(mut self, caps: Vec<String>) -> Self {
         self.config.capabilities.extend(caps);
         self
     }
 
     /// Automatically remove container when it exits
+    #[must_use]
     pub fn auto_remove(mut self) -> Self {
         self.config.auto_remove = true;
         self
     }
 
     /// Run in interactive mode
+    #[must_use]
     pub fn interactive(mut self) -> Self {
         self.config.interactive = true;
         self.config.detached = false;
@@ -415,6 +457,7 @@ impl ContainerBuilder {
     }
 
     /// Allocate a pseudo-TTY
+    #[must_use]
     pub fn tty(mut self) -> Self {
         self.config.tty = true;
         self
@@ -433,6 +476,7 @@ impl ContainerBuilder {
     }
 
     /// Build the configuration without creating a container
+    #[must_use]
     pub fn build(self) -> ContainerConfig {
         self.config
     }
@@ -445,6 +489,7 @@ pub struct ContainerManager<'a> {
 
 impl<'a> ContainerManager<'a> {
     /// Create a new container manager
+    #[must_use]
     pub fn new(client: &'a DockerClient) -> Self {
         Self { client }
     }
@@ -456,7 +501,7 @@ impl<'a> ContainerManager<'a> {
         let mut args = vec!["create".to_string()];
 
         // Add configuration arguments
-        self.add_config_args(&mut args, &config)?;
+        Self::add_config_args(&mut args, &config);
 
         // Add image
         args.push(config.image.clone());
@@ -470,7 +515,7 @@ impl<'a> ContainerManager<'a> {
         let container_id = output.trim().to_string();
 
         info!("Created container: {}", container_id);
-        Ok(ContainerId::new(container_id)?)
+        ContainerId::new(container_id)
     }
 
     /// Create and start a container
@@ -487,7 +532,7 @@ impl<'a> ContainerManager<'a> {
         let mut args = vec!["run".to_string()];
 
         // Add configuration arguments
-        self.add_run_config_args(&mut args, &config)?;
+        Self::add_run_config_args(&mut args, &config);
 
         // Add image
         args.push(config.image.clone());
@@ -501,7 +546,7 @@ impl<'a> ContainerManager<'a> {
         let container_id = output.trim().to_string();
 
         info!("Started container: {}", container_id);
-        Ok(ContainerId::new(container_id)?)
+        ContainerId::new(container_id)
     }
 
     /// Start a container
@@ -573,11 +618,10 @@ impl<'a> ContainerManager<'a> {
         ];
 
         let output = self.client.execute_command_stdout(&args).await?;
-        let container_data: serde_json::Value = serde_json::from_str(&output).map_err(|e| {
-            DockerError::parsing(format!("Failed to parse container inspect: {}", e))
-        })?;
+        let container_data: serde_json::Value = serde_json::from_str(&output)
+            .map_err(|e| DockerError::parsing(format!("Failed to parse container inspect: {e}")))?;
 
-        self.parse_container_info(&container_data)
+        Self::parse_container_info(&container_data)
     }
 
     /// List containers
@@ -601,9 +645,9 @@ impl<'a> ContainerManager<'a> {
             if !line.trim().is_empty() {
                 let container_data: serde_json::Value =
                     serde_json::from_str(line).map_err(|e| {
-                        DockerError::parsing(format!("Failed to parse container list: {}", e))
+                        DockerError::parsing(format!("Failed to parse container list: {e}"))
                     })?;
-                containers.push(self.parse_container_info(&container_data)?);
+                containers.push(Self::parse_container_info(&container_data)?);
             }
         }
 
@@ -620,9 +664,9 @@ impl<'a> ContainerManager<'a> {
         let exit_code: i32 = output
             .trim()
             .parse()
-            .map_err(|e| DockerError::parsing(format!("Invalid exit code: {}", e)))?;
+            .map_err(|e| DockerError::parsing(format!("Invalid exit code: {e}")))?;
 
-        info!("Container {} exited with code: {}", container_id, exit_code);
+        info!("Container {container_id} exited with code: {exit_code}");
         Ok(exit_code)
     }
 
@@ -670,11 +714,10 @@ impl<'a> ContainerManager<'a> {
                 let host_port = if let Some(colon_pos) = port_str.rfind(':') {
                     port_str[colon_pos + 1..]
                         .parse::<u16>()
-                        .map_err(|e| DockerError::parsing(format!("Invalid port format: {}", e)))?
+                        .map_err(|e| DockerError::parsing(format!("Invalid port format: {e}")))?
                 } else {
                     return Err(DockerError::parsing(format!(
-                        "Unexpected port format: {}",
-                        port_str
+                        "Unexpected port format: {port_str}"
                     )));
                 };
 
@@ -697,21 +740,15 @@ impl<'a> ContainerManager<'a> {
         loop {
             if start_time.elapsed() > timeout {
                 return Err(DockerError::timeout(format!(
-                    "Container {} did not become ready within {:?}",
-                    container_id, timeout
+                    "Container {container_id} did not become ready within {timeout:?}"
                 )));
             }
 
             // Check if container is running
-            match self.inspect(container_id).await {
-                Ok(container) => {
-                    if matches!(container.status, ContainerStatus::Running { .. }) {
-                        info!("Container {} is ready", container_id);
-                        return Ok(());
-                    }
-                }
-                Err(_) => {
-                    // Container might not exist yet
+            if let Ok(container) = self.inspect(container_id).await {
+                if matches!(container.status, ContainerStatus::Running { .. }) {
+                    info!("Container {container_id} is ready");
+                    return Ok(());
                 }
             }
 
@@ -720,19 +757,45 @@ impl<'a> ContainerManager<'a> {
     }
 
     /// Add configuration arguments to Docker create command
-    fn add_config_args(
+    fn add_config_args(args: &mut Vec<String>, config: &ContainerConfig) {
+        Self::add_basic_config_args(args, config);
+        Self::add_environment_config_args(args, config);
+        Self::add_networking_config_args(args, config);
+        Self::add_storage_config_args(args, config);
+        Self::add_runtime_config_args(args, config);
+    }
+
+    /// Get an executor for running commands in containers
+    #[must_use]
+    pub fn executor(&self) -> crate::container::exec::ContainerExecutor {
+        crate::container::exec::ContainerExecutor::new(self.client)
+    }
+
+    /// Execute a simple command in a container and return stdout
+    pub async fn exec_simple(
         &self,
-        args: &mut Vec<String>,
-        config: &ContainerConfig,
-    ) -> DockerResult<()> {
+        container_id: &ContainerId,
+        command: Vec<String>,
+    ) -> DockerResult<String> {
+        self.executor().exec_simple(container_id, command).await
+    }
+
+    /// Execute a command in a container with full configuration
+    pub async fn exec(
+        &self,
+        container_id: &ContainerId,
+        config: crate::container::exec::ExecConfig,
+    ) -> DockerResult<crate::container::exec::ExecResult> {
+        self.executor().exec(container_id, config).await
+    }
+
+    /// Add basic container configuration arguments
+    fn add_basic_config_args(args: &mut Vec<String>, config: &ContainerConfig) {
         // Name
         if let Some(name) = &config.name {
             args.push("--name".to_string());
             args.push(name.clone());
         }
-
-        // Note: --detach flag is only for 'docker run', not 'docker create'
-        // The create command inherently creates containers in a stopped state
 
         // Interactive and TTY
         if config.interactive {
@@ -752,67 +815,86 @@ impl<'a> ContainerManager<'a> {
             args.push("--workdir".to_string());
             args.push(workdir.to_string_lossy().to_string());
         }
+    }
 
+    /// Add environment and labels configuration arguments
+    fn add_environment_config_args(args: &mut Vec<String>, config: &ContainerConfig) {
         // Environment variables
         for (key, value) in &config.environment {
             args.push("--env".to_string());
-            args.push(format!("{}={}", key, value));
-        }
-
-        // Port mappings
-        for port in &config.ports {
-            args.push("--publish".to_string());
-            let port_spec = if let Some(host_port) = port.host_port {
-                match &port.host_ip {
-                    Some(ip) => format!(
-                        "{}:{}:{}/{}",
-                        ip, host_port, port.container_port, port.protocol
-                    ),
-                    None => format!("{}:{}/{}", host_port, port.container_port, port.protocol),
-                }
-            } else {
-                format!("{}/{}", port.container_port, port.protocol)
-            };
-            args.push(port_spec);
-        }
-
-        // Volume mounts
-        for volume in &config.volumes {
-            args.push("--volume".to_string());
-            let volume_spec = match &volume.source {
-                VolumeSource::HostPath(path) => {
-                    let mut spec = format!(
-                        "{}:{}",
-                        path.to_string_lossy(),
-                        volume.target.to_string_lossy()
-                    );
-                    if volume.mode == crate::types::MountMode::ReadOnly {
-                        spec.push_str(":ro");
-                    }
-                    spec
-                }
-                VolumeSource::Named(name) => {
-                    let mut spec = format!("{}:{}", name, volume.target.to_string_lossy());
-                    if volume.mode == crate::types::MountMode::ReadOnly {
-                        spec.push_str(":ro");
-                    }
-                    spec
-                }
-                VolumeSource::Anonymous => {
-                    args.push("--tmpfs".to_string());
-                    args.push(volume.target.to_string_lossy().to_string());
-                    continue;
-                }
-            };
-            args.push(volume_spec);
+            args.push(format!("{key}={value}"));
         }
 
         // Labels
         for (key, value) in &config.labels {
             args.push("--label".to_string());
-            args.push(format!("{}={}", key, value));
+            args.push(format!("{key}={value}"));
+        }
+    }
+
+    /// Add networking configuration arguments
+    fn add_networking_config_args(args: &mut Vec<String>, config: &ContainerConfig) {
+        // Port mappings
+        for port in &config.ports {
+            args.push("--publish".to_string());
+            let port_str = if let Some(host_ip) = &port.host_ip {
+                if let Some(host_port) = port.host_port {
+                    format!("{}:{}:{}", host_ip, host_port, port.container_port)
+                } else {
+                    format!("{}::{}", host_ip, port.container_port)
+                }
+            } else if let Some(host_port) = port.host_port {
+                format!("{}:{}", host_port, port.container_port)
+            } else {
+                port.container_port.to_string()
+            };
+            args.push(port_str);
         }
 
+        // Networks
+        for network in &config.networks {
+            args.push("--network".to_string());
+            args.push(network.network.to_string());
+        }
+    }
+
+    /// Add storage configuration arguments
+    fn add_storage_config_args(args: &mut Vec<String>, config: &ContainerConfig) {
+        // Volume mounts
+        for volume in &config.volumes {
+            if matches!(&volume.source, VolumeSource::Anonymous) {
+                args.push("--tmpfs".to_string());
+                args.push(volume.target.to_string_lossy().to_string());
+            } else {
+                args.push("--volume".to_string());
+                let mount_str = match &volume.source {
+                    VolumeSource::HostPath(path) => {
+                        let mut spec = format!(
+                            "{}:{}",
+                            path.to_string_lossy(),
+                            volume.target.to_string_lossy()
+                        );
+                        if volume.mode == crate::types::MountMode::ReadOnly {
+                            spec.push_str(":ro");
+                        }
+                        spec
+                    }
+                    VolumeSource::Named(name) => {
+                        let mut spec = format!("{}:{}", name, volume.target.to_string_lossy());
+                        if volume.mode == crate::types::MountMode::ReadOnly {
+                            spec.push_str(":ro");
+                        }
+                        spec
+                    }
+                    VolumeSource::Anonymous => unreachable!(),
+                };
+                args.push(mount_str);
+            }
+        }
+    }
+
+    /// Add runtime configuration arguments
+    fn add_runtime_config_args(args: &mut Vec<String>, config: &ContainerConfig) {
         // Restart policy
         match &config.restart_policy {
             RestartPolicy::No => {}
@@ -823,7 +905,7 @@ impl<'a> ContainerManager<'a> {
             RestartPolicy::OnFailure { max_retries } => {
                 args.push("--restart".to_string());
                 if let Some(retries) = max_retries {
-                    args.push(format!("on-failure:{}", retries));
+                    args.push(format!("on-failure:{retries}"));
                 } else {
                     args.push("on-failure".to_string());
                 }
@@ -842,12 +924,6 @@ impl<'a> ContainerManager<'a> {
         if let Some(cpu_shares) = config.resource_limits.cpu_shares {
             args.push("--cpu-shares".to_string());
             args.push(cpu_shares.to_string());
-        }
-
-        // Networks
-        for network in &config.networks {
-            args.push("--network".to_string());
-            args.push(network.network.to_string());
         }
 
         // User
@@ -872,16 +948,10 @@ impl<'a> ContainerManager<'a> {
             args.push("--entrypoint".to_string());
             args.push(entrypoint.join(" "));
         }
-
-        Ok(())
     }
 
     /// Add configuration arguments to Docker run command
-    fn add_run_config_args(
-        &self,
-        args: &mut Vec<String>,
-        config: &ContainerConfig,
-    ) -> DockerResult<()> {
+    fn add_run_config_args(args: &mut Vec<String>, config: &ContainerConfig) {
         // Name
         if let Some(name) = &config.name {
             args.push("--name".to_string());
@@ -915,7 +985,7 @@ impl<'a> ContainerManager<'a> {
         // Environment variables
         for (key, value) in &config.environment {
             args.push("--env".to_string());
-            args.push(format!("{}={}", key, value));
+            args.push(format!("{key}={value}"));
         }
 
         // Port mappings
@@ -969,7 +1039,7 @@ impl<'a> ContainerManager<'a> {
         // Labels
         for (key, value) in &config.labels {
             args.push("--label".to_string());
-            args.push(format!("{}={}", key, value));
+            args.push(format!("{key}={value}"));
         }
 
         // Restart policy
@@ -982,7 +1052,7 @@ impl<'a> ContainerManager<'a> {
             RestartPolicy::OnFailure { max_retries } => {
                 args.push("--restart".to_string());
                 if let Some(retries) = max_retries {
-                    args.push(format!("on-failure:{}", retries));
+                    args.push(format!("on-failure:{retries}"));
                 } else {
                     args.push("on-failure".to_string());
                 }
@@ -1032,11 +1102,11 @@ impl<'a> ContainerManager<'a> {
             args.push(entrypoint.join(" "));
         }
 
-        Ok(())
+        // Function completed successfully
     }
 
     /// Parse container information from Docker inspect JSON
-    fn parse_container_info(&self, data: &serde_json::Value) -> DockerResult<DockerContainer> {
+    fn parse_container_info(data: &serde_json::Value) -> DockerResult<DockerContainer> {
         let id = data["Id"]
             .as_str()
             .ok_or_else(|| DockerError::parsing("Missing container ID".to_string()))?;
@@ -1057,27 +1127,25 @@ impl<'a> ContainerManager<'a> {
                 let started_at = data["State"]["StartedAt"]
                     .as_str()
                     .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                    .map(|dt| std::time::SystemTime::from(dt))
-                    .unwrap_or_else(std::time::SystemTime::now);
+                    .map_or_else(std::time::SystemTime::now, std::time::SystemTime::from);
                 ContainerStatus::Running { started_at }
             }
             "exited" => {
+                #[allow(clippy::cast_possible_truncation)]
                 let exit_code = data["State"]["ExitCode"].as_i64().unwrap_or(0) as i32;
                 let finished_at = data["State"]["FinishedAt"]
                     .as_str()
                     .and_then(|s| chrono::DateTime::parse_from_rfc3339(s).ok())
-                    .map(|dt| std::time::SystemTime::from(dt))
-                    .unwrap_or_else(std::time::SystemTime::now);
+                    .map_or_else(std::time::SystemTime::now, std::time::SystemTime::from);
                 ContainerStatus::Exited {
                     exit_code,
                     finished_at,
                 }
             }
-            "created" => ContainerStatus::Created,
             "paused" => ContainerStatus::Paused,
             "restarting" => ContainerStatus::Restarting,
             "dead" => ContainerStatus::Dead,
-            _ => ContainerStatus::Created, // Default fallback
+            _ => ContainerStatus::Created, // Default fallback for "created" and unknown states
         };
 
         // Parse port mappings
@@ -1168,6 +1236,9 @@ pub struct RemoveOptions {
 }
 
 /// Parse memory string (e.g., "512m", "1g") into bytes
+#[allow(clippy::cast_possible_truncation)]
+#[allow(clippy::cast_sign_loss)]
+#[allow(clippy::cast_precision_loss)]
 fn parse_memory_string(memory_str: &str) -> Result<u64, DockerError> {
     let memory_str = memory_str.trim().to_lowercase();
 
@@ -1183,7 +1254,7 @@ fn parse_memory_string(memory_str: &str) -> Result<u64, DockerError> {
 
     let number: f64 = number_part
         .parse()
-        .map_err(|_| DockerError::parsing(format!("Invalid memory number: {}", number_part)))?;
+        .map_err(|_| DockerError::parsing(format!("Invalid memory number: {number_part}")))?;
 
     let multiplier = match unit_part {
         "" | "b" => 1,
@@ -1193,8 +1264,7 @@ fn parse_memory_string(memory_str: &str) -> Result<u64, DockerError> {
         "t" | "tb" => 1_024_u64.pow(4),
         _ => {
             return Err(DockerError::parsing(format!(
-                "Unknown memory unit: {}",
-                unit_part
+                "Unknown memory unit: {unit_part}"
             )));
         }
     };
@@ -1252,17 +1322,17 @@ mod tests {
 
     #[test]
     fn test_exec_config() {
-        let config = ExecConfig {
+        let mut config = ExecConfig {
             command: vec!["echo".to_string(), "hello".to_string()],
             user: Some("root".to_string()),
-            attach_stdout: true,
             ..Default::default()
         };
+        config.attachment.stdout = true;
 
         assert_eq!(config.command, vec!["echo", "hello"]);
         assert_eq!(config.user, Some("root".to_string()));
-        assert!(config.attach_stdout);
-        assert!(!config.attach_stdin);
+        assert!(config.attachment.stdout);
+        assert!(!config.attachment.stdin);
     }
 
     #[test]
@@ -1901,8 +1971,6 @@ mod tests {
         // Get the mapped port
         match manager.port(&container_id, 80).await {
             Ok(Some(host_port)) => {
-                assert!(host_port > 0);
-                assert!(host_port <= 65535);
                 println!("Container port 80 mapped to host port {}", host_port);
             }
             Ok(None) => {

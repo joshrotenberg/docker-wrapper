@@ -102,6 +102,7 @@ pub struct ContainerStats {
 
 impl ContainerStats {
     /// Calculate CPU usage percentage
+    #[must_use]
     pub fn cpu_usage_percent(&self) -> f64 {
         let cpu_delta = self.cpu_stats.cpu_usage.total_usage as f64
             - self.precpu_stats.cpu_usage.total_usage as f64;
@@ -117,6 +118,7 @@ impl ContainerStats {
     }
 
     /// Get memory usage in bytes
+    #[must_use]
     pub fn memory_usage_bytes(&self) -> u64 {
         self.memory_stats
             .usage
@@ -124,11 +126,13 @@ impl ContainerStats {
     }
 
     /// Get memory usage in MB
+    #[must_use]
     pub fn memory_usage_mb(&self) -> f64 {
         self.memory_usage_bytes() as f64 / 1_048_576.0
     }
 
     /// Get memory usage percentage
+    #[must_use]
     pub fn memory_usage_percent(&self) -> f64 {
         if self.memory_stats.limit > 0 {
             (self.memory_usage_bytes() as f64 / self.memory_stats.limit as f64) * 100.0
@@ -138,26 +142,31 @@ impl ContainerStats {
     }
 
     /// Get total network RX bytes
+    #[must_use]
     pub fn network_rx_bytes(&self) -> u64 {
         self.networks.values().map(|n| n.rx_bytes).sum()
     }
 
     /// Get total network TX bytes
+    #[must_use]
     pub fn network_tx_bytes(&self) -> u64 {
         self.networks.values().map(|n| n.tx_bytes).sum()
     }
 
     /// Get total network RX packets
+    #[must_use]
     pub fn network_rx_packets(&self) -> u64 {
         self.networks.values().map(|n| n.rx_packets).sum()
     }
 
     /// Get total network TX packets
+    #[must_use]
     pub fn network_tx_packets(&self) -> u64 {
         self.networks.values().map(|n| n.tx_packets).sum()
     }
 
     /// Get total block I/O read bytes
+    #[must_use]
     pub fn blkio_read_bytes(&self) -> u64 {
         self.blkio_stats
             .io_service_bytes_recursive
@@ -168,6 +177,7 @@ impl ContainerStats {
     }
 
     /// Get total block I/O write bytes
+    #[must_use]
     pub fn blkio_write_bytes(&self) -> u64 {
         self.blkio_stats
             .io_service_bytes_recursive
@@ -178,16 +188,19 @@ impl ContainerStats {
     }
 
     /// Get number of PIDs/processes
+    #[must_use]
     pub fn pids_current(&self) -> u64 {
         self.pids_stats.current
     }
 
     /// Check if container is using high CPU (> 80%)
+    #[must_use]
     pub fn is_high_cpu_usage(&self) -> bool {
         self.cpu_usage_percent() > 80.0
     }
 
     /// Check if container is using high memory (> 80%)
+    #[must_use]
     pub fn is_high_memory_usage(&self) -> bool {
         self.memory_usage_percent() > 80.0
     }
@@ -457,11 +470,13 @@ pub struct StatsOptions {
 
 impl StatsOptions {
     /// Create new stats options
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Enable streaming
+    #[must_use]
     pub fn stream(mut self) -> Self {
         self.stream = true;
         self.no_stream = false;
@@ -469,6 +484,7 @@ impl StatsOptions {
     }
 
     /// Disable streaming (one-shot)
+    #[must_use]
     pub fn no_stream(mut self) -> Self {
         self.no_stream = true;
         self.stream = false;
@@ -476,6 +492,7 @@ impl StatsOptions {
     }
 
     /// Include all containers
+    #[must_use]
     pub fn all(mut self) -> Self {
         self.all = true;
         self
@@ -529,6 +546,7 @@ pub struct StatsAggregator {
 
 impl StatsAggregator {
     /// Create new stats aggregator
+    #[must_use]
     pub fn new(container_id: ContainerId, max_history: usize) -> Self {
         Self {
             container_id,
@@ -550,6 +568,7 @@ impl StatsAggregator {
     }
 
     /// Get average CPU usage over time window
+    #[must_use]
     pub fn avg_cpu_usage(&self, window: Duration) -> f64 {
         let cutoff = SystemTime::now() - window;
         let values: Vec<f64> = self
@@ -567,6 +586,7 @@ impl StatsAggregator {
     }
 
     /// Get average memory usage over time window
+    #[must_use]
     pub fn avg_memory_usage(&self, window: Duration) -> f64 {
         let cutoff = SystemTime::now() - window;
         let values: Vec<f64> = self
@@ -584,6 +604,7 @@ impl StatsAggregator {
     }
 
     /// Get peak CPU usage over time window
+    #[must_use]
     pub fn peak_cpu_usage(&self, window: Duration) -> f64 {
         let cutoff = SystemTime::now() - window;
         self.history
@@ -594,6 +615,7 @@ impl StatsAggregator {
     }
 
     /// Get peak memory usage over time window
+    #[must_use]
     pub fn peak_memory_usage(&self, window: Duration) -> f64 {
         let cutoff = SystemTime::now() - window;
         self.history

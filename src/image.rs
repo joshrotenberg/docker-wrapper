@@ -91,6 +91,11 @@ impl ImageRef {
     /// - `docker.io/library/redis:7.2`
     /// - `localhost:5000/myapp:latest`
     /// - `redis@sha256:abc123...`
+    ///
+    /// # Panics
+    ///
+    /// Panics if the image reference is empty or malformed in a way that splitn returns no parts.
+    /// This should not happen with valid strings.
     pub fn parse(image_ref: &str) -> DockerResult<Self> {
         let mut parts = image_ref.splitn(2, '@');
         let image_part = parts.next().unwrap();
@@ -98,7 +103,7 @@ impl ImageRef {
 
         // Handle digest case
         if let Some(digest) = digest {
-            let tag = format!("@{}", digest);
+            let tag = format!("@{digest}");
             return Self::parse_image_part(image_part, tag);
         }
 
@@ -157,7 +162,8 @@ impl ImageRef {
     }
 
     /// Convert to a full image reference string
-    pub fn to_string(&self) -> String {
+    #[must_use]
+    pub fn as_string(&self) -> String {
         let mut result = String::new();
 
         if let Some(registry) = &self.registry {
@@ -178,16 +184,19 @@ impl ImageRef {
     }
 
     /// Get the repository part without registry/namespace
+    #[must_use]
     pub fn repository_name(&self) -> &str {
         &self.repository
     }
 
-    /// Get the tag part
+    /// Get the tag portion of the reference
+    #[must_use]
     pub fn tag(&self) -> &str {
         &self.tag
     }
 
-    /// Check if this is a digest reference (starts with sha256:)
+    /// Check if this is a digest reference
+    #[must_use]
     pub fn is_digest(&self) -> bool {
         self.tag.starts_with('@')
     }
@@ -195,7 +204,7 @@ impl ImageRef {
 
 impl std::fmt::Display for ImageRef {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.to_string())
+        write!(f, "{}", self.as_string())
     }
 }
 
@@ -264,15 +273,15 @@ struct ImageCliEntry {
 impl ImageCliEntry {
     /// Parse size string to bytes
     fn size_bytes(&self) -> u64 {
-        self.parse_size_string(&self.size)
+        Self::parse_size_string(&self.size)
     }
 
     /// Parse virtual size string to bytes
     fn virtual_size_bytes(&self) -> u64 {
-        self.parse_size_string(&self.virtual_size)
+        Self::parse_size_string(&self.virtual_size)
     }
 
-    /// Convert created_at string to Unix timestamp
+    /// Convert `created_at` string to Unix timestamp
     fn created_timestamp(&self) -> i64 {
         // Try to parse the created_at string - if it fails, return 0
         chrono::DateTime::parse_from_rfc3339(&self.created_at)
@@ -284,7 +293,10 @@ impl ImageCliEntry {
     }
 
     /// Parse size strings like "13.3MB", "1.2GB" to bytes
-    fn parse_size_string(&self, size_str: &str) -> u64 {
+    #[allow(clippy::cast_possible_truncation)]
+    #[allow(clippy::cast_sign_loss)]
+    #[allow(clippy::cast_precision_loss)]
+    fn parse_size_string(size_str: &str) -> u64 {
         if size_str == "N/A" || size_str.is_empty() {
             return 0;
         }
@@ -294,7 +306,6 @@ impl ImageCliEntry {
             let (number_part, unit_part) = size_str.split_at(pos);
             if let Ok(number) = number_part.parse::<f64>() {
                 let multiplier = match unit_part.to_uppercase().as_str() {
-                    "B" => 1_u64,
                     "KB" => 1_000_u64,
                     "MB" => 1_000_000_u64,
                     "GB" => 1_000_000_000_u64,
@@ -303,7 +314,7 @@ impl ImageCliEntry {
                     "MIB" => 1_024_u64 * 1_024_u64,
                     "GIB" => 1_024_u64 * 1_024_u64 * 1_024_u64,
                     "TIB" => 1_024_u64 * 1_024_u64 * 1_024_u64 * 1_024_u64,
-                    _ => 1_u64,
+                    _ => 1_u64, // Default for "B" and unknown units
                 };
                 return (number * multiplier as f64) as u64;
             }
@@ -313,7 +324,9 @@ impl ImageCliEntry {
 }
 
 impl DockerImage {
-    /// Get the created time as SystemTime
+    /// Get the created time as a `SystemTime`
+    #[must_use]
+    #[allow(clippy::cast_sign_loss)]
     pub fn created_time(&self) -> SystemTime {
         SystemTime::UNIX_EPOCH + std::time::Duration::from_secs(self.created as u64)
     }
@@ -324,10 +337,11 @@ impl DockerImage {
     }
 
     /// Check if image has the specified tag
+    #[must_use]
     pub fn has_tag(&self, tag: &str) -> bool {
         self.repo_tags
             .as_ref()
-            .map_or(false, |tags| tags.iter().any(|t| t == tag))
+            .is_some_and(|tags| tags.iter().any(|t| t == tag))
     }
 
     /// Get all tags for this image
@@ -413,7 +427,7 @@ pub struct ImageConfig {
     /// Labels
     #[serde(rename = "Labels")]
     pub labels: Option<HashMap<String, String>>,
-    /// OnBuild instructions
+    /// `OnBuild` instructions
     #[serde(rename = "OnBuild")]
     pub on_build: Option<Vec<String>>,
 }
@@ -452,29 +466,34 @@ pub struct PullOptions {
 
 impl PullOptions {
     /// Create new pull options
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Pull all tags
+    #[must_use]
     pub fn all_tags(mut self) -> Self {
         self.all_tags = true;
         self
     }
 
     /// Set registry authentication
+    #[must_use]
     pub fn auth(mut self, auth: RegistryAuth) -> Self {
         self.auth = Some(auth);
         self
     }
 
     /// Set platform for multi-arch images
+    #[must_use]
     pub fn platform(mut self, platform: impl Into<String>) -> Self {
         self.platform = Some(platform.into());
         self
     }
 
     /// Set progress callback
+    #[must_use]
     pub fn progress_callback(mut self, callback: fn(&PullProgress)) -> Self {
         self.progress_callback = Some(callback);
         self
@@ -506,18 +525,21 @@ impl RegistryAuth {
     }
 
     /// Set email
+    #[must_use]
     pub fn email(mut self, email: impl Into<String>) -> Self {
         self.email = Some(email.into());
         self
     }
 
     /// Set server address
+    #[must_use]
     pub fn server_address(mut self, server: impl Into<String>) -> Self {
         self.server_address = Some(server.into());
         self
     }
 
     /// Encode as base64 JSON for Docker API
+    #[must_use]
     pub fn encode(&self) -> String {
         let auth_json = serde_json::json!({
             "username": self.username,
@@ -563,24 +585,28 @@ pub struct ListImagesOptions {
 }
 
 impl ListImagesOptions {
-    /// Create new list options
+    /// Create new build options
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Show all images including intermediate layers
+    #[must_use]
     pub fn all(mut self) -> Self {
         self.all = true;
         self
     }
 
     /// Show digests
+    #[must_use]
     pub fn digests(mut self) -> Self {
         self.digests = true;
         self
     }
 
     /// Filter by reference pattern
+    #[must_use]
     pub fn filter_reference(mut self, pattern: impl Into<String>) -> Self {
         self.filters
             .entry("reference".to_string())
@@ -590,6 +616,7 @@ impl ListImagesOptions {
     }
 
     /// Filter by dangling status
+    #[must_use]
     pub fn filter_dangling(mut self, dangling: bool) -> Self {
         self.filters
             .entry("dangling".to_string())
@@ -599,6 +626,7 @@ impl ListImagesOptions {
     }
 
     /// Filter by label
+    #[must_use]
     pub fn filter_label(mut self, label: impl Into<String>) -> Self {
         self.filters
             .entry("label".to_string())
@@ -610,6 +638,7 @@ impl ListImagesOptions {
 
 /// Options for building images
 #[derive(Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct BuildOptions {
     /// Image tag to assign
     pub tag: String,
@@ -660,72 +689,85 @@ impl BuildOptions {
     }
 
     /// Set build context path
+    #[must_use]
     pub fn context_path(mut self, path: impl Into<PathBuf>) -> Self {
         self.context_path = path.into();
         self
     }
 
     /// Set Dockerfile path
+    /// Set the Dockerfile path relative to context
+    #[must_use]
     pub fn dockerfile(mut self, dockerfile: impl Into<String>) -> Self {
         self.dockerfile = Some(dockerfile.into());
         self
     }
 
-    /// Add build argument
+    /// Add a build argument
+    #[must_use]
     pub fn build_arg(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.build_args.insert(key.into(), value.into());
         self
     }
 
-    /// Add label
+    /// Add a label
+    #[must_use]
     pub fn label(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.labels.insert(key.into(), value.into());
         self
     }
 
-    /// Set target stage
+    /// Set target stage for multi-stage builds
+    #[must_use]
     pub fn target(mut self, target: impl Into<String>) -> Self {
         self.target = Some(target.into());
         self
     }
 
     /// Disable cache
+    #[must_use]
     pub fn no_cache(mut self) -> Self {
         self.no_cache = true;
         self
     }
 
-    /// Don't remove intermediate containers
+    /// Keep intermediate containers
+    #[must_use]
     pub fn keep_intermediate(mut self) -> Self {
         self.remove = false;
         self
     }
 
     /// Force remove intermediate containers
+    #[must_use]
     pub fn force_remove(mut self) -> Self {
         self.force_remove = true;
         self
     }
 
     /// Pull newer version of base image
+    #[must_use]
     pub fn pull(mut self) -> Self {
         self.pull = true;
         self
     }
 
     /// Squash layers
+    #[must_use]
     pub fn squash(mut self) -> Self {
         self.squash = true;
         self
     }
 
     /// Set platform
+    #[must_use]
     pub fn platform(mut self, platform: impl Into<String>) -> Self {
         self.platform = Some(platform.into());
         self
     }
 
     /// Set progress callback
+    #[must_use]
     pub fn progress_callback(mut self, callback: fn(&BuildProgress)) -> Self {
         self.progress_callback = Some(callback);
         self
@@ -758,17 +800,20 @@ pub struct RemoveImageOptions {
 
 impl RemoveImageOptions {
     /// Create new remove options
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Force removal
+    #[must_use]
     pub fn force(mut self) -> Self {
         self.force = true;
         self
     }
 
     /// Don't delete untagged parent images
+    #[must_use]
     pub fn no_prune(mut self) -> Self {
         self.no_prune = true;
         self
@@ -793,6 +838,7 @@ pub struct ImageManager<'a> {
 
 impl<'a> ImageManager<'a> {
     /// Create a new image manager
+    #[must_use]
     pub fn new(client: &'a DockerClient) -> Self {
         Self { client }
     }
@@ -828,8 +874,9 @@ impl<'a> ImageManager<'a> {
             .await?;
 
         if !output.success {
+            let args_str = args.join(" ");
             return Err(DockerError::CommandFailed {
-                command: format!("docker {}", args.join(" ")),
+                command: format!("docker {args_str}"),
                 exit_code: output.exit_code,
                 stdout: output.stdout.clone(),
                 stderr: output.stderr.clone(),
@@ -859,12 +906,12 @@ impl<'a> ImageManager<'a> {
 
         for (key, value) in &options.build_args {
             args.push("--build-arg".to_string());
-            args.push(format!("{}={}", key, value));
+            args.push(format!("{key}={value}"));
         }
 
         for (key, value) in &options.labels {
             args.push("--label".to_string());
-            args.push(format!("{}={}", key, value));
+            args.push(format!("{key}={value}"));
         }
 
         if let Some(target) = &options.target {
@@ -906,8 +953,9 @@ impl<'a> ImageManager<'a> {
             .await?;
 
         if !output.success {
+            let args_str = args.join(" ");
             return Err(DockerError::CommandFailed {
-                command: format!("docker {}", args.join(" ")),
+                command: format!("docker {args_str}"),
                 exit_code: output.exit_code,
                 stdout: output.stdout.clone(),
                 stderr: output.stderr.clone(),
@@ -951,7 +999,7 @@ impl<'a> ImageManager<'a> {
         for (key, values) in &options.filters {
             for value in values {
                 args.push("--filter".to_string());
-                args.push(format!("{}={}", key, value));
+                args.push(format!("{key}={value}"));
             }
         }
 
@@ -962,8 +1010,9 @@ impl<'a> ImageManager<'a> {
             .await?;
 
         if !output.success {
+            let args_str = args.join(" ");
             return Err(DockerError::CommandFailed {
-                command: format!("docker {}", args.join(" ")),
+                command: format!("docker {args_str}"),
                 exit_code: output.exit_code,
                 stdout: output.stdout.clone(),
                 stderr: output.stderr.clone(),
@@ -1018,7 +1067,7 @@ impl<'a> ImageManager<'a> {
                     }
                 }
                 Err(e) => {
-                    log::warn!("Failed to parse image JSON: {} - {}", e, line);
+                    log::warn!("Failed to parse image JSON: {e} - {line}");
                 }
             }
         }
@@ -1042,8 +1091,9 @@ impl<'a> ImageManager<'a> {
             .await?;
 
         if !output.success {
+            let args_str = args.join(" ");
             return Err(DockerError::CommandFailed {
-                command: format!("docker {}", args.join(" ")),
+                command: format!("docker {args_str}"),
                 exit_code: output.exit_code,
                 stdout: output.stdout.clone(),
                 stderr: output.stderr.clone(),
@@ -1051,14 +1101,14 @@ impl<'a> ImageManager<'a> {
         }
 
         let stdout = &output.stdout;
-        let inspects: Vec<ImageInspect> = serde_json::from_str(&stdout)
-            .map_err(|e| DockerError::ParseError(format!("Invalid inspect JSON: {}", e)))?;
+        let inspects: Vec<ImageInspect> = serde_json::from_str(stdout)
+            .map_err(|e| DockerError::ParseError(format!("Invalid inspect JSON: {e}")))?;
 
         inspects
             .into_iter()
             .next()
             .ok_or_else(|| DockerError::NotFound {
-                message: format!("Image not found: {}", image_ref),
+                message: format!("Image not found: {image_ref}"),
             })
     }
 
@@ -1073,8 +1123,9 @@ impl<'a> ImageManager<'a> {
             .await?;
 
         if !output.success {
+            let args_str = args.join(" ");
             return Err(DockerError::CommandFailed {
-                command: format!("docker {}", args.join(" ")),
+                command: format!("docker {args_str}"),
                 exit_code: output.exit_code,
                 stdout: output.stdout.clone(),
                 stderr: output.stderr.clone(),
@@ -1109,8 +1160,9 @@ impl<'a> ImageManager<'a> {
             .await?;
 
         if !output.success {
+            let args_str = args.join(" ");
             return Err(DockerError::CommandFailed {
-                command: format!("docker {}", args.join(" ")),
+                command: format!("docker {args_str}"),
                 exit_code: output.exit_code,
                 stdout: output.stdout.clone(),
                 stderr: output.stderr.clone(),
@@ -1123,7 +1175,7 @@ impl<'a> ImageManager<'a> {
         }
 
         // Try to parse as JSON array
-        match serde_json::from_str::<Vec<RemoveImageResult>>(&stdout) {
+        match serde_json::from_str::<Vec<RemoveImageResult>>(stdout) {
             Ok(results) => Ok(results),
             Err(_) => {
                 // Fallback: create a simple result based on output
@@ -1150,8 +1202,9 @@ impl<'a> ImageManager<'a> {
             .await?;
 
         if !output.success {
+            let args_str = args.join(" ");
             return Err(DockerError::CommandFailed {
-                command: format!("docker {}", args.join(" ")),
+                command: format!("docker {args_str}"),
                 exit_code: output.exit_code,
                 stdout: output.stdout.clone(),
                 stderr: output.stderr.clone(),
@@ -1180,8 +1233,9 @@ impl<'a> ImageManager<'a> {
             .await?;
 
         if !output.success {
+            let args_str = args.join(" ");
             return Err(DockerError::CommandFailed {
-                command: format!("docker {}", args.join(" ")),
+                command: format!("docker {args_str}"),
                 exit_code: output.exit_code,
                 stdout: output.stdout.clone(),
                 stderr: output.stderr.clone(),
@@ -1196,10 +1250,14 @@ impl<'a> ImageManager<'a> {
             if line.contains("Total reclaimed space:") {
                 // Extract the number from lines like "Total reclaimed space: 1.23GB"
                 if let Some(space_str) = line.split(':').nth(1) {
-                    if let Some(num_str) = space_str.trim().split_whitespace().next() {
+                    if let Some(num_str) = space_str.split_whitespace().next() {
                         if let Ok(num) = num_str.parse::<f64>() {
                             // Convert to bytes (rough approximation)
-                            reclaimed_space = (num * 1_000_000_000.0) as u64;
+                            #[allow(clippy::cast_possible_truncation)]
+                            #[allow(clippy::cast_sign_loss)]
+                            {
+                                reclaimed_space = (num * 1_000_000_000.0) as u64;
+                            }
                         }
                     }
                 }
@@ -1225,7 +1283,7 @@ impl<'a> ImageManager<'a> {
 
         if let Some(repo) = repository {
             let image_name = if let Some(t) = tag {
-                format!("{}:{}", repo, t)
+                format!("{repo}:{t}")
             } else {
                 repo
             };
@@ -1239,8 +1297,9 @@ impl<'a> ImageManager<'a> {
             .await?;
 
         if !output.success {
+            let args_str = args.join(" ");
             return Err(DockerError::CommandFailed {
-                command: format!("docker {}", args.join(" ")),
+                command: format!("docker {args_str}"),
                 exit_code: output.exit_code,
                 stdout: output.stdout.clone(),
                 stderr: output.stderr.clone(),
@@ -1271,8 +1330,9 @@ impl<'a> ImageManager<'a> {
             .await?;
 
         if !output.success {
+            let args_str = args.join(" ");
             return Err(DockerError::CommandFailed {
-                command: format!("docker {}", args.join(" ")),
+                command: format!("docker {args_str}"),
                 exit_code: output.exit_code,
                 stdout: output.stdout.clone(),
                 stderr: output.stderr.clone(),
@@ -1299,8 +1359,9 @@ impl<'a> ImageManager<'a> {
             .await?;
 
         if !output.success {
+            let args_str = args.join(" ");
             return Err(DockerError::CommandFailed {
-                command: format!("docker {}", args.join(" ")),
+                command: format!("docker {args_str}"),
                 exit_code: output.exit_code,
                 stdout: output.stdout.clone(),
                 stderr: output.stderr.clone(),
@@ -1318,7 +1379,7 @@ impl<'a> ImageManager<'a> {
             match serde_json::from_str::<ImageHistoryCliItem>(line) {
                 Ok(cli_item) => history.push(cli_item.into()),
                 Err(e) => {
-                    log::warn!("Failed to parse history JSON: {} - {}", e, line);
+                    log::warn!("Failed to parse history JSON: {e} - {line}");
                 }
             }
         }
@@ -1414,6 +1475,9 @@ fn parse_size_string(size_str: &str) -> u64 {
                 "TIB" => 1_024_u64 * 1_024_u64 * 1_024_u64 * 1_024_u64,
                 _ => 1_u64,
             };
+            #[allow(clippy::cast_possible_truncation)]
+            #[allow(clippy::cast_sign_loss)]
+            #[allow(clippy::cast_precision_loss)]
             return (number * multiplier as f64) as u64;
         }
     }

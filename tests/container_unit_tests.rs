@@ -329,10 +329,10 @@ fn test_exec_config() {
         Some(&"test_value".to_string())
     );
     assert_eq!(config.user, Some("root".to_string()));
-    assert!(config.tty);
-    assert!(config.privileged);
-    assert!(config.interactive);
-    assert!(config.attach_stdin); // Should be true when interactive is set
+    assert!(config.execution.tty);
+    assert!(config.execution.privileged);
+    assert!(config.execution.interactive);
+    assert!(config.attachment.stdin); // Should be true when interactive is set
 }
 
 #[test]

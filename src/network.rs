@@ -161,16 +161,19 @@ impl DockerNetwork {
     }
 
     /// Check if network is user-defined
+    #[must_use]
     pub fn is_user_defined(&self) -> bool {
         !matches!(self.name.as_str(), "bridge" | "host" | "none")
     }
 
     /// Get connected container count
+    #[must_use]
     pub fn container_count(&self) -> usize {
         self.containers.as_ref().map_or(0, |c| c.len())
     }
 
     /// Check if container is connected
+    #[must_use]
     pub fn has_container(&self, container_id: &ContainerId) -> bool {
         self.containers.as_ref().map_or(false, |containers| {
             containers.contains_key(container_id.as_str())
@@ -254,6 +257,7 @@ pub struct NetworkConfig {
 
 impl NetworkConfig {
     /// Create a new network configuration
+    #[must_use]
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -269,36 +273,42 @@ impl NetworkConfig {
     }
 
     /// Set network driver
+    #[must_use]
     pub fn driver(mut self, driver: NetworkDriver) -> Self {
         self.driver = driver;
         self
     }
 
     /// Enable IPv6
+    #[must_use]
     pub fn enable_ipv6(mut self) -> Self {
         self.enable_ipv6 = true;
         self
     }
 
     /// Make network internal
+    #[must_use]
     pub fn internal(mut self) -> Self {
         self.internal = true;
         self
     }
 
     /// Make network attachable
+    #[must_use]
     pub fn attachable(mut self) -> Self {
         self.attachable = true;
         self
     }
 
     /// Make network ingress
+    #[must_use]
     pub fn ingress(mut self) -> Self {
         self.ingress = true;
         self
     }
 
     /// Set subnet
+    #[must_use]
     pub fn subnet(mut self, subnet: impl Into<String>) -> Self {
         let ipam = self.ipam_config.get_or_insert_with(IPAMConfig::new);
         ipam.subnet = Some(subnet.into());
@@ -306,6 +316,7 @@ impl NetworkConfig {
     }
 
     /// Set gateway
+    #[must_use]
     pub fn gateway(mut self, gateway: impl Into<String>) -> Self {
         let ipam = self.ipam_config.get_or_insert_with(IPAMConfig::new);
         ipam.gateway = Some(gateway.into());
@@ -313,6 +324,7 @@ impl NetworkConfig {
     }
 
     /// Set IP range
+    #[must_use]
     pub fn ip_range(mut self, ip_range: impl Into<String>) -> Self {
         let ipam = self.ipam_config.get_or_insert_with(IPAMConfig::new);
         ipam.ip_range = Some(ip_range.into());
@@ -320,12 +332,14 @@ impl NetworkConfig {
     }
 
     /// Add driver option
+    #[must_use]
     pub fn option(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.options.insert(key.into(), value.into());
         self
     }
 
     /// Add label
+    #[must_use]
     pub fn label(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.labels.insert(key.into(), value.into());
         self
@@ -349,6 +363,7 @@ pub struct IPAMConfig {
 
 impl IPAMConfig {
     /// Create new IPAM configuration
+    #[must_use]
     pub fn new() -> Self {
         Self {
             driver: "default".to_string(),
@@ -360,6 +375,7 @@ impl IPAMConfig {
     }
 
     /// Set driver
+    #[must_use]
     pub fn driver(mut self, driver: impl Into<String>) -> Self {
         self.driver = driver.into();
         self
@@ -403,6 +419,7 @@ pub enum NetworkDriver {
 
 impl NetworkDriver {
     /// Get driver name as string
+    #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
             Self::Bridge => "bridge",
@@ -437,11 +454,13 @@ pub struct ListNetworksOptions {
 
 impl ListNetworksOptions {
     /// Create new list options
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Filter by name pattern
+    #[must_use]
     pub fn filter_name(mut self, pattern: impl Into<String>) -> Self {
         self.filters
             .entry("name".to_string())
@@ -451,6 +470,7 @@ impl ListNetworksOptions {
     }
 
     /// Filter by driver
+    #[must_use]
     pub fn filter_driver(mut self, driver: &NetworkDriver) -> Self {
         self.filters
             .entry("driver".to_string())
@@ -460,6 +480,7 @@ impl ListNetworksOptions {
     }
 
     /// Filter by type
+    #[must_use]
     pub fn filter_type(mut self, network_type: impl Into<String>) -> Self {
         self.filters
             .entry("type".to_string())
@@ -469,6 +490,7 @@ impl ListNetworksOptions {
     }
 
     /// Filter by label
+    #[must_use]
     pub fn filter_label(mut self, label: impl Into<String>) -> Self {
         self.filters
             .entry("label".to_string())
@@ -478,6 +500,7 @@ impl ListNetworksOptions {
     }
 
     /// Filter by scope
+    #[must_use]
     pub fn filter_scope(mut self, scope: impl Into<String>) -> Self {
         self.filters
             .entry("scope".to_string())
@@ -504,17 +527,20 @@ pub struct ConnectOptions {
 
 impl ConnectOptions {
     /// Create new connect options
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Add alias
+    #[must_use]
     pub fn alias(mut self, alias: impl Into<String>) -> Self {
         self.aliases.push(alias.into());
         self
     }
 
     /// Add link
+    #[must_use]
     pub fn link(mut self, link: impl Into<String>) -> Self {
         self.links.push(link.into());
         self

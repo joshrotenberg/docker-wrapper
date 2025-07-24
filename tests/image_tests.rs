@@ -9,7 +9,6 @@
 //! These tests require a running Docker daemon and will pull/create real images.
 
 use docker_wrapper::*;
-use std::time::Duration;
 
 // Test configuration
 const TEST_IMAGE: &str = "alpine:3.18";

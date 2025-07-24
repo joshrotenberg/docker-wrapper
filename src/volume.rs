@@ -214,6 +214,7 @@ pub struct VolumeConfig {
 
 impl VolumeConfig {
     /// Create a new volume configuration
+    #[must_use]
     pub fn new(name: impl Into<String>) -> Self {
         Self {
             name: name.into(),
@@ -224,24 +225,28 @@ impl VolumeConfig {
     }
 
     /// Set driver
+    #[must_use]
     pub fn driver(mut self, driver: impl Into<String>) -> Self {
         self.driver = driver.into();
         self
     }
 
     /// Add driver option
+    #[must_use]
     pub fn option(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.driver_opts.insert(key.into(), value.into());
         self
     }
 
     /// Add label
+    #[must_use]
     pub fn label(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.labels.insert(key.into(), value.into());
         self
     }
 
     /// Set as tmpfs volume
+    #[must_use]
     pub fn tmpfs(mut self) -> Self {
         self.driver_opts
             .insert("type".to_string(), "tmpfs".to_string());
@@ -251,6 +256,7 @@ impl VolumeConfig {
     }
 
     /// Set as bind mount
+    #[must_use]
     pub fn bind_mount(mut self, host_path: impl Into<String>) -> Self {
         self.driver_opts
             .insert("type".to_string(), "none".to_string());
@@ -261,6 +267,7 @@ impl VolumeConfig {
     }
 
     /// Set NFS mount
+    #[must_use]
     pub fn nfs(mut self, server: impl Into<String>, path: impl Into<String>) -> Self {
         self.driver_opts
             .insert("type".to_string(), "nfs".to_string());
@@ -287,21 +294,25 @@ pub enum VolumeSource {
 
 impl VolumeSource {
     /// Create a named volume source
+    #[must_use]
     pub fn named(name: impl Into<String>) -> Self {
         Self::Named(name.into())
     }
 
     /// Create a host path bind mount
+    #[must_use]
     pub fn host_path(path: impl Into<PathBuf>) -> Self {
         Self::HostPath(path.into())
     }
 
     /// Create an anonymous volume
+    #[must_use]
     pub fn anonymous() -> Self {
         Self::Anonymous
     }
 
     /// Create a tmpfs mount
+    #[must_use]
     pub fn tmpfs() -> Self {
         Self::Tmpfs
     }
@@ -348,6 +359,7 @@ pub struct VolumeMount {
 
 impl VolumeMount {
     /// Create a new volume mount
+    #[must_use]
     pub fn new(source: VolumeSource, target: impl Into<String>) -> Self {
         Self {
             source,
@@ -358,12 +370,14 @@ impl VolumeMount {
     }
 
     /// Make mount read-only
+    #[must_use]
     pub fn read_only(mut self) -> Self {
         self.read_only = true;
         self
     }
 
     /// Add mount option
+    #[must_use]
     pub fn option(mut self, option: impl Into<String>) -> Self {
         self.options.push(option.into());
         self
@@ -401,35 +415,41 @@ pub struct ListVolumesOptions {
 
 impl ListVolumesOptions {
     /// Create new list options
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Show only dangling volumes
+    #[must_use]
     pub fn dangling_only(mut self) -> Self {
         self.dangling = Some(true);
         self
     }
 
     /// Show only non-dangling volumes
+    #[must_use]
     pub fn non_dangling_only(mut self) -> Self {
         self.dangling = Some(false);
         self
     }
 
     /// Filter by driver
+    #[must_use]
     pub fn driver(mut self, driver: impl Into<String>) -> Self {
         self.driver = Some(driver.into());
         self
     }
 
     /// Filter by label
+    #[must_use]
     pub fn label(mut self, label: impl Into<String>) -> Self {
         self.labels.push(label.into());
         self
     }
 
     /// Filter by name pattern
+    #[must_use]
     pub fn name_pattern(mut self, pattern: impl Into<String>) -> Self {
         self.name = Some(pattern.into());
         self
@@ -445,11 +465,13 @@ pub struct RemoveVolumeOptions {
 
 impl RemoveVolumeOptions {
     /// Create new remove options
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Force removal
+    #[must_use]
     pub fn force(mut self) -> Self {
         self.force = true;
         self

@@ -60,6 +60,7 @@ pub struct CommandOutput {
 
 impl CommandOutput {
     /// Create a new command output
+    #[must_use]
     pub fn new(exit_code: i32, stdout: String, stderr: String) -> Self {
         Self {
             exit_code,
@@ -70,6 +71,7 @@ impl CommandOutput {
     }
 
     /// Get the combined output (stdout + stderr)
+    #[must_use]
     pub fn combined_output(&self) -> String {
         if self.stderr.is_empty() {
             self.stdout.clone()
@@ -102,6 +104,7 @@ pub struct ProcessExecutor {
 
 impl ProcessExecutor {
     /// Create a new process executor with the given Docker binary path
+    #[must_use]
     pub fn new(docker_path: std::path::PathBuf) -> Self {
         Self {
             docker_path,
@@ -110,6 +113,7 @@ impl ProcessExecutor {
     }
 
     /// Set the default timeout for all commands
+    #[must_use]
     pub fn with_default_timeout(mut self, timeout: Duration) -> Self {
         self.default_config.timeout = Some(timeout);
         self

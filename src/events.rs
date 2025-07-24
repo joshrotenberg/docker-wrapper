@@ -81,6 +81,7 @@ pub enum EventType {
 
 impl EventType {
     /// Get event type as string
+    #[must_use]
     pub fn as_str(&self) -> &str {
         match self {
             Self::Container => "container",
@@ -128,65 +129,76 @@ pub struct EventFilter {
 
 impl EventFilter {
     /// Create a new event filter
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Filter by event type
+    #[must_use]
     pub fn event_type(mut self, event_type: EventType) -> Self {
         self.event_types.push(event_type);
         self
     }
 
     /// Filter by multiple event types
+    #[must_use]
     pub fn event_types(mut self, types: Vec<EventType>) -> Self {
         self.event_types.extend(types);
         self
     }
 
     /// Filter by container ID or name
+    #[must_use]
     pub fn container(mut self, container: impl Into<String>) -> Self {
         self.containers.push(container.into());
         self
     }
 
     /// Filter by image name
+    #[must_use]
     pub fn image(mut self, image: impl Into<String>) -> Self {
         self.images.push(image.into());
         self
     }
 
     /// Filter by network ID or name
+    #[must_use]
     pub fn network(mut self, network: impl Into<String>) -> Self {
         self.networks.push(network.into());
         self
     }
 
     /// Filter by volume name
+    #[must_use]
     pub fn volume(mut self, volume: impl Into<String>) -> Self {
         self.volumes.push(volume.into());
         self
     }
 
     /// Filter by event action
+    #[must_use]
     pub fn action(mut self, action: impl Into<String>) -> Self {
         self.actions.push(action.into());
         self
     }
 
     /// Filter by label key only
+    #[must_use]
     pub fn label_key(mut self, key: impl Into<String>) -> Self {
         self.labels.insert(key.into(), None);
         self
     }
 
     /// Filter by label key-value pair
+    #[must_use]
     pub fn label(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.labels.insert(key.into(), Some(value.into()));
         self
     }
 
     /// Set start time for events
+    #[must_use]
     pub fn since(mut self, timestamp: SystemTime) -> Self {
         self.since = Some(
             timestamp
@@ -198,6 +210,7 @@ impl EventFilter {
     }
 
     /// Set end time for events
+    #[must_use]
     pub fn until(mut self, timestamp: SystemTime) -> Self {
         self.until = Some(
             timestamp
@@ -209,6 +222,7 @@ impl EventFilter {
     }
 
     /// Set relative start time (e.g., last 5 minutes)
+    #[must_use]
     pub fn since_duration(mut self, duration: std::time::Duration) -> Self {
         let now = SystemTime::now();
         if let Some(start_time) = now.checked_sub(duration) {
@@ -439,7 +453,7 @@ impl DockerEvent {
     /// Parse raw event JSON into typed event
     pub fn parse(json: &str) -> DockerResult<Self> {
         let base: BaseEvent = serde_json::from_str(json)
-            .map_err(|e| DockerError::ParseError(format!("Invalid event JSON: {}", e)))?;
+            .map_err(|e| DockerError::ParseError(format!("Invalid event JSON: {e}")))?;
 
         match base.event_type.as_str() {
             "container" => Ok(Self::Container(ContainerEvent { base })),
@@ -523,6 +537,7 @@ pub struct EventStats {
 
 impl EventStats {
     /// Create new event statistics
+    #[must_use]
     pub fn new() -> Self {
         Self {
             start_time: Some(SystemTime::now()),
@@ -577,46 +592,46 @@ impl<'a> EventManager<'a> {
         // Add event type filters
         for event_type in &filter.event_types {
             args.push("--filter".to_string());
-            args.push(format!("type={}", event_type.as_str()));
+            args.push(format!("type={event_type}"));
         }
 
         // Add container filters
         for container in &filter.containers {
             args.push("--filter".to_string());
-            args.push(format!("container={}", container));
+            args.push(format!("container={container}"));
         }
 
         // Add image filters
         for image in &filter.images {
             args.push("--filter".to_string());
-            args.push(format!("image={}", image));
+            args.push(format!("image={image}"));
         }
 
         // Add network filters
         for network in &filter.networks {
             args.push("--filter".to_string());
-            args.push(format!("network={}", network));
+            args.push(format!("network={network}"));
         }
 
         // Add volume filters
         for volume in &filter.volumes {
             args.push("--filter".to_string());
-            args.push(format!("volume={}", volume));
+            args.push(format!("volume={volume}"));
         }
 
         // Add action filters
         for action in &filter.actions {
             args.push("--filter".to_string());
-            args.push(format!("event={}", action));
+            args.push(format!("event={action}"));
         }
 
         // Add label filters
         for (key, value) in &filter.labels {
             args.push("--filter".to_string());
             if let Some(val) = value {
-                args.push(format!("label={}={}", key, val));
+                args.push(format!("label={key}={val}"));
             } else {
-                args.push(format!("label={}", key));
+                args.push(format!("label={key}"));
             }
         }
 
@@ -690,7 +705,7 @@ impl<'a> EventManager<'a> {
                     }
                 }
                 Err(e) => {
-                    log::warn!("Event parsing error: {}", e);
+                    log::warn!("Event parsing error: {e}");
                 }
             }
         }
@@ -708,7 +723,7 @@ impl<'a> EventManager<'a> {
             while let Some(event_result) = stream.next().await {
                 match event_result {
                     Ok(event) => events.push(event),
-                    Err(e) => log::warn!("Event parsing error: {}", e),
+                    Err(e) => log::warn!("Event parsing error: {e}"),
                 }
             }
         });
@@ -773,7 +788,7 @@ impl<'a> EventManager<'a> {
                 }
             }
             Err(DockerError::Timeout {
-                message: format!("Timeout waiting for {} event", action),
+                message: format!("Timeout waiting for {action} event"),
             })
         })
         .await;

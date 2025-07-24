@@ -192,6 +192,7 @@ pub struct PortMapping {
 
 impl PortMapping {
     /// Create a new port mapping
+    #[must_use]
     pub fn new(container_port: u16) -> Self {
         Self {
             host_ip: None,
@@ -217,18 +218,21 @@ impl PortMapping {
     /// // Dynamic port mapping: random host port -> container 80
     /// let mapping = PortMapping::new(80).host_port(0);
     /// ```
+    #[must_use]
     pub fn host_port(mut self, port: u16) -> Self {
         self.host_port = if port == 0 { None } else { Some(port) };
         self
     }
 
     /// Set the host IP
+    #[must_use]
     pub fn host_ip(mut self, ip: IpAddr) -> Self {
         self.host_ip = Some(ip);
         self
     }
 
     /// Set the protocol
+    #[must_use]
     pub fn protocol(mut self, protocol: Protocol) -> Self {
         self.protocol = protocol;
         self
@@ -266,6 +270,7 @@ pub struct VolumeMount {
 
 impl VolumeMount {
     /// Create a new volume mount
+    #[must_use]
     pub fn new(source: VolumeSource, target: impl Into<PathBuf>) -> Self {
         Self {
             source,
@@ -275,6 +280,7 @@ impl VolumeMount {
     }
 
     /// Set the mount as read-only
+    #[must_use]
     pub fn read_only(mut self) -> Self {
         self.mode = MountMode::ReadOnly;
         self
@@ -331,16 +337,19 @@ impl fmt::Display for VolumeSource {
 
 impl VolumeSource {
     /// Create a named volume source
+    #[must_use]
     pub fn named(name: impl Into<String>) -> Self {
         Self::Named(name.into())
     }
 
     /// Create a host path volume source
+    #[must_use]
     pub fn host_path(path: impl Into<PathBuf>) -> Self {
         Self::HostPath(path.into())
     }
 
     /// Create an anonymous volume source
+    #[must_use]
     pub fn anonymous() -> Self {
         Self::Anonymous
     }
@@ -466,17 +475,20 @@ pub struct PortMappings(Vec<PortMapping>);
 
 impl PortMappings {
     /// Create a new empty port mappings collection
+    #[must_use]
     pub fn new() -> Self {
         Self(Vec::new())
     }
 
     /// Add a port mapping
+    #[must_use]
     pub fn add(mut self, mapping: PortMapping) -> Self {
         self.0.push(mapping);
         self
     }
 
     /// Add a simple port mapping (container port -> dynamic host port)
+    #[must_use]
     pub fn add_port(self, container_port: u16) -> Self {
         self.add(PortMapping::new(container_port))
     }
@@ -495,6 +507,7 @@ impl PortMappings {
     /// // Maps host port 8080 to container port 80
     /// let mappings = PortMappings::new().add_port_binding(8080, 80);
     /// ```
+    #[must_use]
     pub fn add_port_binding(self, host_port: u16, container_port: u16) -> Self {
         self.add(PortMapping::new(container_port).host_port(host_port))
     }

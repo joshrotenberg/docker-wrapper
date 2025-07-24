@@ -509,16 +509,17 @@ impl DockerError {
     }
 
     /// Check if this error is recoverable (can be retried)
+    #[must_use]
     pub fn is_recoverable(&self) -> bool {
         match self {
             // Network and temporary errors are usually recoverable
-            Self::DaemonNotAccessible { .. } => true,
-            Self::CommandTimeout { .. } => true,
-            Self::CommandInterrupted { .. } => true,
-            Self::ImagePullFailed { .. } => true,
-            Self::ContainerStartFailed { .. } => true,
-            Self::NetworkConnectionFailed { .. } => true,
-            Self::Io { .. } => true,
+            Self::DaemonNotAccessible { .. }
+            | Self::CommandTimeout { .. }
+            | Self::CommandInterrupted { .. }
+            | Self::ImagePullFailed { .. }
+            | Self::ContainerStartFailed { .. }
+            | Self::NetworkConnectionFailed { .. }
+            | Self::Io { .. } => true,
 
             // Configuration and not found errors are usually not recoverable
             Self::DockerNotFound { .. } => false,
@@ -544,6 +545,7 @@ impl DockerError {
     }
 
     /// Get the error category for grouping and handling
+    #[must_use]
     pub fn category(&self) -> &'static str {
         match self {
             Self::DockerNotFound { .. } | Self::DaemonNotAccessible { .. } => "docker",

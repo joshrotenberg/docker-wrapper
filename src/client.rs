@@ -468,29 +468,32 @@ impl CommandBuilder {
     }
 
     /// Add a flag (argument starting with -)
+    #[must_use]
     pub fn flag(mut self, flag: impl Into<String>) -> Self {
         let flag = flag.into();
-        if !flag.starts_with('-') {
-            self.args.push(format!("--{}", flag));
-        } else {
+        if flag.starts_with('-') {
             self.args.push(flag);
+        } else {
+            self.args.push(format!("--{flag}"));
         }
         self
     }
 
     /// Add a key-value option (--key value)
+    #[must_use]
     pub fn option(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         let key = key.into();
-        if !key.starts_with('-') {
-            self.args.push(format!("--{}", key));
-        } else {
+        if key.starts_with('-') {
             self.args.push(key);
+        } else {
+            self.args.push(format!("--{key}"));
         }
         self.args.push(value.into());
         self
     }
 
     /// Build the final command arguments
+    #[must_use]
     pub fn build(mut self) -> Vec<String> {
         let mut command = vec![self.subcommand];
         command.append(&mut self.args);
@@ -498,8 +501,10 @@ impl CommandBuilder {
     }
 
     /// Get the command as a string for debugging
-    pub fn to_string(&self) -> String {
-        let mut parts = vec![format!("docker {}", self.subcommand)];
+    #[must_use]
+    pub fn debug_command(&self) -> String {
+        let subcommand = &self.subcommand;
+        let mut parts = vec![format!("docker {subcommand}")];
         parts.extend(self.args.iter().cloned());
         parts.join(" ")
     }
@@ -544,7 +549,7 @@ mod tests {
             .flag("all")
             .option("format", "table");
 
-        assert_eq!(builder.to_string(), "docker ps --all --format table");
+        assert_eq!(builder.debug_command(), "docker ps --all --format table");
     }
 
     #[test]
@@ -552,7 +557,7 @@ mod tests {
         let client_config = ClientConfig::default();
         let docker_path = PathBuf::from("/usr/bin/docker");
         let executor = ProcessExecutor::new(docker_path);
-        let _client = DockerClient {
+        let client = DockerClient {
             executor,
             config: client_config,
             version_info: None,
@@ -580,10 +585,7 @@ mod tests {
                 println!("Docker path: {:?}", client.docker_path());
             }
             Err(e) => {
-                println!(
-                    "Docker client creation failed (expected if Docker not available): {}",
-                    e
-                );
+                println!("Docker client creation failed (expected if Docker not available): {e}");
             }
         }
     }
@@ -593,10 +595,10 @@ mod tests {
         match DockerClient::new().await {
             Ok(client) => match client.ping().await {
                 Ok(()) => println!("Docker daemon ping successful"),
-                Err(e) => println!("Docker daemon ping failed: {}", e),
+                Err(e) => println!("Docker daemon ping failed: {e}"),
             },
             Err(e) => {
-                println!("Could not create Docker client: {}", e);
+                println!("Could not create Docker client: {e}");
             }
         }
     }
@@ -608,13 +610,13 @@ mod tests {
                 Ok(version) => {
                     println!("Docker client version: {}", version.client);
                     if let Some(server) = &version.server {
-                        println!("Docker server version: {}", server);
+                        println!("Docker server version: {server}");
                     }
                 }
-                Err(e) => println!("Failed to get Docker version: {}", e),
+                Err(e) => println!("Failed to get Docker version: {e}"),
             },
             Err(e) => {
-                println!("Could not create Docker client: {}", e);
+                println!("Could not create Docker client: {e}");
             }
         }
     }

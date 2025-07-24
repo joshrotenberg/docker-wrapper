@@ -16,6 +16,7 @@ use tracing::{debug, info, warn};
 
 /// Options for retrieving container logs
 #[derive(Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct LogOptions {
     /// Follow log output (stream logs)
     pub follow: bool,
@@ -52,41 +53,48 @@ impl Default for LogOptions {
 
 impl LogOptions {
     /// Create new log options with default values
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Enable following (streaming) logs
+    #[must_use]
     pub fn follow(mut self) -> Self {
         self.follow = true;
         self
     }
 
     /// Enable timestamps in log output
+    #[must_use]
     pub fn timestamps(mut self) -> Self {
         self.timestamps = true;
         self
     }
 
     /// Set number of lines to show from the end
+    #[must_use]
     pub fn tail(mut self, lines: u64) -> Self {
         self.tail = Some(lines);
         self
     }
 
     /// Show logs since the specified timestamp
+    #[must_use]
     pub fn since(mut self, timestamp: DateTime<Utc>) -> Self {
         self.since = Some(timestamp);
         self
     }
 
     /// Show logs until the specified timestamp
+    #[must_use]
     pub fn until(mut self, timestamp: DateTime<Utc>) -> Self {
         self.until = Some(timestamp);
         self
     }
 
     /// Show only stdout logs
+    #[must_use]
     pub fn stdout_only(mut self) -> Self {
         self.stdout = true;
         self.stderr = false;
@@ -94,6 +102,7 @@ impl LogOptions {
     }
 
     /// Show only stderr logs
+    #[must_use]
     pub fn stderr_only(mut self) -> Self {
         self.stdout = false;
         self.stderr = true;
@@ -101,6 +110,7 @@ impl LogOptions {
     }
 
     /// Enable log details
+    #[must_use]
     pub fn details(mut self) -> Self {
         self.details = true;
         self
@@ -154,6 +164,7 @@ pub struct LogManager<'a> {
 
 impl<'a> LogManager<'a> {
     /// Create a new log manager
+    #[must_use]
     pub fn new(client: &'a DockerClient) -> Self {
         Self { client }
     }
@@ -166,7 +177,7 @@ impl<'a> LogManager<'a> {
     ) -> DockerResult<String> {
         debug!("Getting logs for container: {}", container_id);
 
-        let args = self.build_logs_args(container_id, &options)?;
+        let args = Self::build_logs_args(container_id, &options);
         let output = self.client.execute_command_stdout(&args).await?;
 
         info!(
@@ -190,10 +201,10 @@ impl<'a> LogManager<'a> {
         options.timestamps = true;
         options.details = true;
 
-        let args = self.build_logs_args(container_id, &options)?;
+        let args = Self::build_logs_args(container_id, &options);
         let output = self.client.execute_command_stdout(&args).await?;
 
-        let entries = self.parse_log_output(&output)?;
+        let entries = Self::parse_log_output(&output);
 
         info!(
             "Parsed {} log entries for container {}",
@@ -205,6 +216,11 @@ impl<'a> LogManager<'a> {
     }
 
     /// Stream container logs with a callback function
+    ///
+    /// # Panics
+    ///
+    /// Panics if the spawned Docker process doesn't have stdout or stderr streams available.
+    /// This should not happen under normal circumstances when executing Docker commands.
     pub async fn stream_logs<F>(
         &self,
         container_id: &ContainerId,
@@ -220,7 +236,7 @@ impl<'a> LogManager<'a> {
         options.follow = true;
         options.timestamps = true;
 
-        let args = self.build_logs_args(container_id, &options)?;
+        let args = Self::build_logs_args(container_id, &options);
 
         // Create the command
         let mut cmd = Command::new(self.client.docker_path());
@@ -229,9 +245,9 @@ impl<'a> LogManager<'a> {
         cmd.stderr(std::process::Stdio::piped());
 
         // Spawn the process
-        let mut child = cmd.spawn().map_err(|e| {
-            DockerError::process_spawn(format!("Failed to spawn docker logs: {}", e))
-        })?;
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| DockerError::process_spawn(format!("Failed to spawn docker logs: {e}")))?;
 
         let stdout = child.stdout.take().unwrap();
         let stderr = child.stderr.take().unwrap();
@@ -348,7 +364,7 @@ impl<'a> LogManager<'a> {
 
         let mut collected_logs = Vec::new();
         let pattern_regex = regex::Regex::new(pattern)
-            .map_err(|e| DockerError::invalid_config(format!("Invalid regex pattern: {}", e)))?;
+            .map_err(|e| DockerError::invalid_config(format!("Invalid regex pattern: {e}")))?;
 
         let start_time = std::time::Instant::now();
         let options = LogOptions::new().follow();
@@ -396,11 +412,11 @@ impl<'a> LogManager<'a> {
                         None => break, // Channel closed
                     }
                 }
-                _ = tokio::time::sleep(Duration::from_millis(100)) => {
+                () = tokio::time::sleep(Duration::from_millis(100)) => {
                     if let Some(timeout_duration) = timeout {
                         if start_time.elapsed() > timeout_duration {
                             return Err(DockerError::timeout(
-                                format!("Pattern '{}' not found within timeout", pattern)
+                                format!("Pattern '{pattern}' not found within timeout")
                             ));
                         }
                     }
@@ -420,11 +436,7 @@ impl<'a> LogManager<'a> {
     }
 
     /// Build docker logs command arguments
-    fn build_logs_args(
-        &self,
-        container_id: &ContainerId,
-        options: &LogOptions,
-    ) -> DockerResult<Vec<String>> {
+    fn build_logs_args(container_id: &ContainerId, options: &LogOptions) -> Vec<String> {
         let mut args = vec!["logs".to_string()];
 
         // Follow option
@@ -463,11 +475,11 @@ impl<'a> LogManager<'a> {
         // Add container ID
         args.push(container_id.to_string());
 
-        Ok(args)
+        args
     }
 
     /// Parse log output into structured log entries
-    fn parse_log_output(&self, output: &str) -> DockerResult<Vec<LogEntry>> {
+    fn parse_log_output(output: &str) -> Vec<LogEntry> {
         let mut entries = Vec::new();
 
         for line in output.lines() {
@@ -475,15 +487,15 @@ impl<'a> LogManager<'a> {
                 continue;
             }
 
-            let entry = self.parse_log_line(line)?;
+            let entry = Self::parse_log_line(line);
             entries.push(entry);
         }
 
-        Ok(entries)
+        entries
     }
 
-    /// Parse a single log line into a LogEntry
-    fn parse_log_line(&self, line: &str) -> DockerResult<LogEntry> {
+    /// Parse a single log line into a `LogEntry`
+    fn parse_log_line(line: &str) -> LogEntry {
         // Try to parse timestamp if present
         // Docker log format: "2023-01-01T12:00:00.000000000Z message"
         let (timestamp, message) = if line.len() > 30 && line.chars().nth(4) == Some('-') {
@@ -504,12 +516,12 @@ impl<'a> LogManager<'a> {
             (None, line.to_string())
         };
 
-        Ok(LogEntry {
+        LogEntry {
             message,
             timestamp,
             source: LogSource::Stdout, // Default to stdout
             details: None,
-        })
+        }
     }
 }
 

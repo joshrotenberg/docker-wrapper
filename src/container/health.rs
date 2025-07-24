@@ -37,30 +37,35 @@ impl Default for HealthCheckConfig {
 }
 
 impl HealthCheckConfig {
-    /// Create a new health check configuration
+    /// Create a new health configuration
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Set the overall timeout
+    #[must_use]
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
         self
     }
 
     /// Set the interval between attempts
+    #[must_use]
     pub fn interval(mut self, interval: Duration) -> Self {
         self.interval = interval;
         self
     }
 
     /// Set the number of required consecutive successes
+    #[must_use]
     pub fn retries(mut self, retries: u32) -> Self {
         self.retries = retries;
         self
     }
 
     /// Set the initial delay before starting checks
+    #[must_use]
     pub fn start_period(mut self, start_period: Duration) -> Self {
         self.start_period = start_period;
         self
@@ -136,11 +141,13 @@ pub enum HealthCheck {
 
 impl HealthCheck {
     /// Create a port health check
+    #[must_use]
     pub fn port(port: u16) -> Self {
         Self::Port { port, host: None }
     }
 
     /// Create a port health check with specific host
+    #[must_use]
     pub fn port_on_host(port: u16, host: IpAddr) -> Self {
         Self::Port {
             port,
@@ -167,6 +174,7 @@ impl HealthCheck {
     }
 
     /// Create a command health check
+    #[must_use]
     pub fn command(command: Vec<String>) -> Self {
         Self::Command {
             command,
@@ -175,6 +183,7 @@ impl HealthCheck {
     }
 
     /// Create a command health check with custom exit code
+    #[must_use]
     pub fn command_with_exit_code(command: Vec<String>, expected_exit_code: i32) -> Self {
         Self::Command {
             command,
@@ -183,11 +192,13 @@ impl HealthCheck {
     }
 
     /// Create a composite check requiring all to pass
+    #[must_use]
     pub fn all(checks: Vec<HealthCheck>) -> Self {
         Self::All(checks)
     }
 
     /// Create a composite check requiring any to pass
+    #[must_use]
     pub fn any(checks: Vec<HealthCheck>) -> Self {
         Self::Any(checks)
     }
@@ -200,6 +211,7 @@ pub struct HealthChecker<'a> {
 
 impl<'a> HealthChecker<'a> {
     /// Create a new health checker
+    #[must_use]
     pub fn new(client: &'a DockerClient) -> Self {
         Self { client }
     }
@@ -297,27 +309,25 @@ impl<'a> HealthChecker<'a> {
     }
 
     /// Check if a port is available on the container
+    ///
+    /// # Panics
+    ///
+    /// Panics if "127.0.0.1" cannot be parsed as an IP address.
+    /// This should never happen under normal circumstances.
     pub async fn check_port(
         &self,
         container_id: &ContainerId,
         container_port: u16,
         timeout_duration: Duration,
     ) -> DockerResult<bool> {
-        debug!(
-            "Checking port {} for container {}",
-            container_port, container_id
-        );
+        debug!("Checking port {container_port} for container {container_id}");
 
         // Get the mapped host port
         let container_manager = crate::container::ContainerManager::new(self.client);
-        let host_port = match container_manager.port(container_id, container_port).await? {
-            Some(port) => port,
-            None => {
-                return Err(DockerError::not_found(format!(
-                    "Port {} is not mapped for container {}",
-                    container_port, container_id
-                )));
-            }
+        let Some(host_port) = container_manager.port(container_id, container_port).await? else {
+            return Err(DockerError::not_found(format!(
+                "Port {container_port} is not mapped for container {container_id}"
+            )));
         };
 
         // Check if the port accepts connections
@@ -363,7 +373,7 @@ impl<'a> HealthChecker<'a> {
         let client = reqwest::Client::builder()
             .timeout(request_timeout)
             .build()
-            .map_err(|e| DockerError::network(format!("Failed to create HTTP client: {}", e)))?;
+            .map_err(|e| DockerError::network(format!("Failed to create HTTP client: {e}")))?;
 
         match client.get(url).send().await {
             Ok(response) => {
@@ -433,7 +443,7 @@ impl<'a> HealthChecker<'a> {
         health_check: &HealthCheck,
     ) -> DockerResult<()> {
         // Flatten composite checks to avoid recursion
-        let flattened_checks = self.flatten_health_check(health_check);
+        let flattened_checks = Self::flatten_health_check(health_check);
 
         match health_check {
             HealthCheck::All(_) => {
@@ -468,16 +478,16 @@ impl<'a> HealthChecker<'a> {
     }
 
     /// Flatten composite health checks into a list of single checks
-    fn flatten_health_check(&self, health_check: &HealthCheck) -> Vec<HealthCheck> {
+    fn flatten_health_check(health_check: &HealthCheck) -> Vec<HealthCheck> {
         match health_check {
             HealthCheck::All(checks) | HealthCheck::Any(checks) => {
                 let mut flattened = Vec::new();
                 for check in checks {
-                    flattened.extend(self.flatten_health_check(check));
+                    flattened.extend(Self::flatten_health_check(check));
                 }
                 flattened
             }
-            check => vec![check.clone()],
+            _ => vec![health_check.clone()],
         }
     }
 
@@ -510,8 +520,7 @@ impl<'a> HealthChecker<'a> {
                     Ok(())
                 } else {
                     Err(DockerError::health_check(format!(
-                        "Port {}:{} is not accepting connections",
-                        host_addr, port_to_check
+                        "Port {host_addr}:{port_to_check} is not accepting connections"
                     )))
                 }
             }
@@ -528,8 +537,7 @@ impl<'a> HealthChecker<'a> {
                     Ok(())
                 } else {
                     Err(DockerError::health_check(format!(
-                        "HTTP endpoint {} is not healthy",
-                        url
+                        "HTTP endpoint {url} is not healthy"
                     )))
                 }
             }
@@ -545,8 +553,7 @@ impl<'a> HealthChecker<'a> {
                     Ok(())
                 } else {
                     Err(DockerError::health_check(format!(
-                        "Health check command failed: {:?}",
-                        command
+                        "Health check command failed: {command:?}"
                     )))
                 }
             }
@@ -788,10 +795,10 @@ mod tests {
 
     #[test]
     fn test_health_check_composite_any() {
-        let check1 = HealthCheck::port(8080);
-        let check2 = HealthCheck::port(8081);
+        let port_check1 = HealthCheck::port(8080);
+        let port_check2 = HealthCheck::port(8081);
 
-        let any_check = HealthCheck::any(vec![check1, check2]);
+        let any_check = HealthCheck::any(vec![port_check1, port_check2]);
 
         match any_check {
             HealthCheck::Any(checks) => {
