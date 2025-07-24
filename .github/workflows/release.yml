@@ -3,11 +3,11 @@ name: Release
 on:
   push:
     tags:
-      - 'v*'
+      - "v*"
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to release (e.g., 0.1.1)'
+        description: "Version to release (e.g., 0.1.1)"
         required: true
         type: string
 
@@ -106,14 +106,10 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ubuntu-release-${{ hashFiles('**/Cargo.lock') }}
+          shared-key: "release-validate"
 
       - name: Start Docker
         run: |
@@ -252,7 +248,8 @@ jobs:
   notify-success:
     name: Notify Release Success
     runs-on: ubuntu-latest
-    needs: [validate, publish-crates-io, create-github-release, update-documentation]
+    needs:
+      [validate, publish-crates-io, create-github-release, update-documentation]
     if: success()
 
     steps:
@@ -270,7 +267,15 @@ jobs:
   notify-failure:
     name: Notify Release Failure
     runs-on: ubuntu-latest
-    needs: [validate, test-release, docker-integration, security-audit, publish-crates-io, create-github-release]
+    needs:
+      [
+        validate,
+        test-release,
+        docker-integration,
+        security-audit,
+        publish-crates-io,
+        create-github-release,
+      ]
     if: failure()
 
     steps:

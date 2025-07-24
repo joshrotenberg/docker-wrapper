@@ -35,16 +35,10 @@ jobs:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, clippy
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-cargo-
+          shared-key: "ci"
 
       - name: Check formatting
         run: cargo fmt -- --check
@@ -74,14 +68,10 @@ jobs:
         with:
           components: rustfmt, clippy
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ubuntu-cargo-${{ hashFiles('**/Cargo.lock') }}
+          shared-key: "security"
 
       - name: Start Docker
         run: |
@@ -115,14 +105,10 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ubuntu-audit-${{ hashFiles('**/Cargo.lock') }}
+          shared-key: "integration"
 
       - name: Install cargo-audit
         run: cargo install cargo-audit
@@ -141,14 +127,10 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ubuntu-coverage-${{ hashFiles('**/Cargo.lock') }}
+          shared-key: "coverage"
 
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
@@ -178,14 +160,10 @@ jobs:
       - name: Install Rust 1.70.0
         uses: dtolnay/rust-toolchain@1.70.0
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ubuntu-msrv-${{ hashFiles('**/Cargo.lock') }}
+          shared-key: "msrv"
 
       - name: Build with MSRV
         run: cargo build --verbose --all-features
@@ -204,14 +182,10 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ubuntu-docs-${{ hashFiles('**/Cargo.lock') }}
+          shared-key: "docs"
 
       - name: Build documentation
         run: cargo doc --verbose --all-features --no-deps
@@ -230,14 +204,10 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache dependencies
-        uses: actions/cache@v4
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
         with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-            target
-          key: ubuntu-bench-${{ hashFiles('**/Cargo.lock') }}
+          shared-key: "benchmarks"
 
       - name: Start Docker
         run: |

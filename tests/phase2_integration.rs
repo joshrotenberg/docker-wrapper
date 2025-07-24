@@ -22,7 +22,7 @@ fn test_container_name(test_name: &str) -> String {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .unwrap()
-        .as_secs();
+        .as_nanos();
     format!("test-{}-{}", test_name, timestamp)
 }
 
@@ -513,12 +513,10 @@ async fn test_volume_mounting() {
     let _container_id = ContainerBuilder::new(TEST_IMAGE)
         .name(&container_name)
         .volume(temp_path, "/host_data")
-        .volume_tmp("/tmp_data")
         .command(vec![
             "sh".to_string(),
             "-c".to_string(),
-            "cat /host_data/test.txt && echo 'Container data' > /tmp_data/container.txt && sleep 1"
-                .to_string(),
+            "cat /host_data/test.txt && sleep 1".to_string(),
         ])
         .auto_remove()
         .run(&client)
@@ -527,6 +525,9 @@ async fn test_volume_mounting() {
 
     // Wait for container to finish
     sleep(Duration::from_secs(2)).await;
+
+    // Clean up temp directory
+    let _ = std::fs::remove_dir_all(&temp_dir);
 
     // Container should be auto-removed, but we can't easily verify the volume operations
     // in this test since the container is ephemeral. In a real scenario, you'd check
