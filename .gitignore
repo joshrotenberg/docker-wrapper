@@ -1,0 +1,58 @@
+# Rust/Cargo
+/target/
+/Cargo.lock
+**/*.rs.bk
+*.pdb
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Testing
+/tmp/
+/test-output/
+
+# Documentation
+/book/
+/docs/_build/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Coverage
+tarpaulin-report.html
+cobertura.xml
+lcov.info
+
+# Benchmarks
+criterion/
+
+# Examples temp files
+examples/tmp/
+examples/output/
+
+# Docker test artifacts
+.docker-test-*
+docker-test-*
+
+# Temporary files
+*.tmp
+*.temp
