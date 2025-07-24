@@ -192,6 +192,22 @@ impl ContainerBuilder {
     }
 
     /// Add a port mapping with a specific host port
+    ///
+    /// Maps host_port on the host to container_port inside the container.
+    /// This follows Docker's `-p host_port:container_port` format.
+    ///
+    /// # Arguments
+    /// * `host_port` - Port on the host machine (external port)
+    /// * `container_port` - Port inside the container (internal port)
+    ///
+    /// # Example
+    /// ```
+    /// // Maps host port 8080 to container port 80
+    /// // Equivalent to: docker run -p 8080:80 nginx
+    /// let config = ContainerBuilder::new("nginx")
+    ///     .port(8080, 80)
+    ///     .build();
+    /// ```
     pub fn port(mut self, host_port: u16, container_port: u16) -> Self {
         self.config.ports.push(PortMapping {
             host_ip: None,
@@ -214,6 +230,22 @@ impl ContainerBuilder {
     }
 
     /// Add a UDP port mapping
+    ///
+    /// Maps host_port on the host to container_port inside the container using UDP protocol.
+    /// This follows Docker's `-p host_port:container_port/udp` format.
+    ///
+    /// # Arguments
+    /// * `host_port` - UDP port on the host machine (external port)
+    /// * `container_port` - UDP port inside the container (internal port)
+    ///
+    /// # Example
+    /// ```
+    /// // Maps host UDP port 5353 to container UDP port 53 (DNS)
+    /// // Equivalent to: docker run -p 5353:53/udp image
+    /// let config = ContainerBuilder::new("dns-server")
+    ///     .port_udp(5353, 53)
+    ///     .build();
+    /// ```
     pub fn port_udp(mut self, host_port: u16, container_port: u16) -> Self {
         self.config.ports.push(PortMapping {
             host_ip: None,
@@ -595,6 +627,22 @@ impl<'a> ContainerManager<'a> {
     }
 
     /// Get the mapped host port for a container port
+    ///
+    /// Given a container's internal port, returns the host port it's mapped to.
+    /// This is equivalent to running `docker port <container> <container_port>`.
+    ///
+    /// # Arguments
+    /// * `container_id` - The container to query
+    /// * `container_port` - The internal container port to look up
+    ///
+    /// # Returns
+    /// The host port that maps to the given container port, or None if no mapping exists.
+    ///
+    /// # Example
+    /// ```
+    /// // If container was created with .port(8080, 80)
+    /// let host_port = manager.port(&container_id, 80).await?; // Returns Some(8080)
+    /// ```
     pub async fn port(
         &self,
         container_id: &ContainerId,

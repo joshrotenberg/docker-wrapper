@@ -165,7 +165,20 @@ impl fmt::Display for NetworkDriver {
 }
 
 /// Port mapping configuration
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+///
+/// Represents a mapping between a host port and a container port.
+/// This follows Docker's port mapping format: `host_port:container_port`
+///
+/// # Example
+/// ```
+/// use docker_wrapper::types::{PortMapping, Protocol};
+///
+/// // Map host port 8080 to container port 80 (HTTP)
+/// let mapping = PortMapping::new(80).host_port(8080);
+/// assert_eq!(mapping.host_port, Some(8080));
+/// assert_eq!(mapping.container_port, 80);
+/// ```
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct PortMapping {
     /// Host IP address to bind to (None for all interfaces)
     pub host_ip: Option<IpAddr>,
@@ -189,6 +202,21 @@ impl PortMapping {
     }
 
     /// Set the host port (0 for dynamic allocation)
+    ///
+    /// Sets the host machine port that will map to the container port.
+    /// Use 0 or None for dynamic port allocation by Docker.
+    ///
+    /// # Arguments
+    /// * `port` - Host port number (0 for dynamic allocation)
+    ///
+    /// # Example
+    /// ```
+    /// // Static port mapping: host 8080 -> container 80
+    /// let mapping = PortMapping::new(80).host_port(8080);
+    ///
+    /// // Dynamic port mapping: random host port -> container 80
+    /// let mapping = PortMapping::new(80).host_port(0);
+    /// ```
     pub fn host_port(mut self, port: u16) -> Self {
         self.host_port = if port == 0 { None } else { Some(port) };
         self
@@ -208,7 +236,7 @@ impl PortMapping {
 }
 
 /// Network protocol
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Protocol {
     /// TCP protocol
     Tcp,
@@ -454,6 +482,19 @@ impl PortMappings {
     }
 
     /// Add a port mapping with specific host port
+    ///
+    /// Maps host_port on the host to container_port inside the container.
+    /// This follows Docker's `-p host_port:container_port` format.
+    ///
+    /// # Arguments
+    /// * `host_port` - Port on the host machine (external port)
+    /// * `container_port` - Port inside the container (internal port)
+    ///
+    /// # Example
+    /// ```
+    /// // Maps host port 8080 to container port 80
+    /// let mappings = PortMappings::new().add_port_binding(8080, 80);
+    /// ```
     pub fn add_port_binding(self, host_port: u16, container_port: u16) -> Self {
         self.add(PortMapping::new(container_port).host_port(host_port))
     }
