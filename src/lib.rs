@@ -137,8 +137,25 @@ mod tests {
 
     #[test]
     fn test_version_info() {
-        assert!(!VERSION.is_empty());
-        assert!(!MIN_DOCKER_VERSION.is_empty());
+        // Test that VERSION follows semantic versioning pattern
+        assert!(
+            VERSION.contains('.'),
+            "VERSION should contain dots: {VERSION}"
+        );
+        assert!(
+            VERSION.chars().any(|c| c.is_ascii_digit()),
+            "VERSION should contain digits: {VERSION}"
+        );
+
+        // Test that MIN_DOCKER_VERSION is a valid version string
+        assert!(
+            MIN_DOCKER_VERSION.contains('.'),
+            "MIN_DOCKER_VERSION should contain dots: {MIN_DOCKER_VERSION}"
+        );
+        assert!(
+            MIN_DOCKER_VERSION.starts_with(|c: char| c.is_ascii_digit()),
+            "MIN_DOCKER_VERSION should start with digit: {MIN_DOCKER_VERSION}"
+        );
     }
 
     #[test]
