@@ -878,11 +878,13 @@ mod tests {
 
         let nfs_config = VolumeConfig::new("nfs-vol").nfs("nfs.example.com", "/export/data");
         assert_eq!(nfs_config.driver_opts.get("type"), Some(&"nfs".to_string()));
-        assert!(nfs_config
-            .driver_opts
-            .get("o")
-            .unwrap()
-            .contains("nfs.example.com"));
+        assert!(
+            nfs_config
+                .driver_opts
+                .get("o")
+                .unwrap()
+                .contains("nfs.example.com")
+        );
     }
 
     #[test]

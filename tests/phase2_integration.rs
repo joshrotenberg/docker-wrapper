@@ -510,7 +510,7 @@ async fn test_volume_mounting() {
     let test_file = temp_path.join("test.txt");
     std::fs::write(&test_file, "Hello from host!").expect("Should write test file");
 
-    let container_id = ContainerBuilder::new(TEST_IMAGE)
+    let _container_id = ContainerBuilder::new(TEST_IMAGE)
         .name(&container_name)
         .volume(temp_path, "/host_data")
         .volume_tmp("/tmp_data")

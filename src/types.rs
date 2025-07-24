@@ -338,6 +338,33 @@ impl VolumeMount {
         self.mode = MountMode::ReadOnly;
         self
     }
+
+    /// Convert to CLI argument format (e.g., "volume:/path:ro")
+    pub fn to_cli_arg(&self) -> String {
+        match &self.source {
+            VolumeSource::Named(name) => {
+                if self.mode == MountMode::ReadOnly {
+                    format!("{}:{}:ro", name, self.target.display())
+                } else {
+                    format!("{}:{}", name, self.target.display())
+                }
+            }
+            VolumeSource::HostPath(path) => {
+                if self.mode == MountMode::ReadOnly {
+                    format!("{}:{}:ro", path.display(), self.target.display())
+                } else {
+                    format!("{}:{}", path.display(), self.target.display())
+                }
+            }
+            VolumeSource::Anonymous => {
+                if self.mode == MountMode::ReadOnly {
+                    format!("{}:ro", self.target.display())
+                } else {
+                    self.target.to_string_lossy().to_string()
+                }
+            }
+        }
+    }
 }
 
 /// Volume source types
@@ -358,6 +385,23 @@ impl fmt::Display for VolumeSource {
             Self::HostPath(path) => write!(f, "{}", path.display()),
             Self::Anonymous => write!(f, "<anonymous>"),
         }
+    }
+}
+
+impl VolumeSource {
+    /// Create a named volume source
+    pub fn named(name: impl Into<String>) -> Self {
+        Self::Named(name.into())
+    }
+
+    /// Create a host path volume source
+    pub fn host_path(path: impl Into<PathBuf>) -> Self {
+        Self::HostPath(path.into())
+    }
+
+    /// Create an anonymous volume source
+    pub fn anonymous() -> Self {
+        Self::Anonymous
     }
 }
 

@@ -1147,7 +1147,7 @@ fn parse_memory_string(memory_str: &str) -> Result<u64, DockerError> {
             return Err(DockerError::parsing(format!(
                 "Unknown memory unit: {}",
                 unit_part
-            )))
+            )));
         }
     };
 

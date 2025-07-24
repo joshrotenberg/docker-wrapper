@@ -50,7 +50,7 @@ use std::time::{Duration, SystemTime};
 
 use tokio::process::Child;
 use tokio::sync::mpsc;
-use tokio_stream::{wrappers::ReceiverStream, Stream};
+use tokio_stream::{Stream, wrappers::ReceiverStream};
 
 /// Container resource statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]

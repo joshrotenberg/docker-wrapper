@@ -3,13 +3,13 @@
 [package]
 name = "docker-wrapper"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 authors = ["Docker Wrapper Contributors"]
 description = "A comprehensive, production-ready Docker management library for Rust with real-time monitoring, complete ecosystem control, and an intuitive API"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/docker-wrapper/docker-wrapper"
+repository = "https://github.com/joshrotenberg/docker-wrapper"
 documentation = "https://docs.rs/docker-wrapper"
-homepage = "https://github.com/docker-wrapper/docker-wrapper"
+homepage = "https://github.com/joshrotenberg/docker-wrapper"
 keywords = ["docker", "containers", "monitoring", "management", "devops"]
 categories = ["development-tools", "api-bindings", "command-line-utilities"]
 readme = "README.md"

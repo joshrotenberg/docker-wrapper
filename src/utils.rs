@@ -33,7 +33,7 @@ pub fn parse_duration(s: &str) -> DockerResult<Duration> {
             return Err(DockerError::invalid_config(format!(
                 "Unknown duration unit: {}",
                 unit
-            )))
+            )));
         }
     };
 
@@ -79,7 +79,7 @@ pub fn validate_container_name(name: &str) -> DockerResult<()> {
     for c in name.chars().skip(1) {
         if !c.is_ascii_alphanumeric() && c != '_' && c != '.' && c != '-' {
             return Err(DockerError::invalid_config(
-                "Container name can only contain alphanumeric characters, underscore, period, and hyphen"
+                "Container name can only contain alphanumeric characters, underscore, period, and hyphen",
             ));
         }
     }

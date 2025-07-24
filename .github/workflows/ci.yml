@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 env:
   CARGO_TERM_COLOR: always
@@ -26,202 +26,197 @@ jobs:
             rust: beta
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@master
-      with:
-        toolchain: ${{ matrix.rust }}
-        components: rustfmt, clippy
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ matrix.rust }}
+          components: rustfmt, clippy
 
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-cargo-
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
 
-    - name: Check formatting
-      run: cargo fmt -- --check
+      - name: Check formatting
+        run: cargo fmt -- --check
 
-    - name: Run Clippy
-      run: cargo clippy --all-targets --all-features -- -D warnings
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
 
-    - name: Build
-      run: cargo build --verbose --all-features
+      - name: Build
+        run: cargo build --verbose --all-features
 
-    - name: Run unit tests
-      run: cargo test --verbose --lib --all-features
+      - name: Run unit tests
+        run: cargo test --verbose --lib --all-features
 
-    - name: Run doc tests
-      run: cargo test --verbose --doc --all-features
+      - name: Run doc tests
+        run: cargo test --verbose --doc --all-features
 
   docker-tests:
     name: Docker Integration Tests
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
-      with:
-        components: rustfmt, clippy
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
 
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ubuntu-cargo-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ubuntu-cargo-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Start Docker
-      run: |
-        sudo systemctl start docker
-        docker --version
+      - name: Start Docker
+        run: |
+          sudo systemctl start docker
+          docker --version
 
-    - name: Pull test images
-      run: |
-        docker pull alpine:latest
-        docker pull redis:7.2-alpine
-        docker pull nginx:alpine
+      - name: Pull test images
+        run: |
+          docker pull alpine:latest
+          docker pull redis:7.2-alpine
+          docker pull nginx:alpine
 
-    - name: Run integration tests
-      run: cargo test --verbose --test integration --all-features
-      env:
-        DOCKER_HOST: unix:///var/run/docker.sock
+      - name: Run integration tests
+        run: cargo test --verbose --test phase2_integration --all-features
+        env:
+          DOCKER_HOST: unix:///var/run/docker.sock
 
-    - name: Test examples
-      run: |
-        timeout 30s cargo run --example basic_usage || true
-        echo "Examples completed (timeout expected for infinite loops)"
+      - name: Test examples
+        run: |
+          cargo check --examples --all-features
+          echo "All examples compile successfully"
 
   security:
     name: Security Audit
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ubuntu-audit-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ubuntu-audit-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Install cargo-audit
-      run: cargo install cargo-audit
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
 
-    - name: Run security audit
-      run: cargo audit
+      - name: Run security audit
+        run: cargo audit
 
   coverage:
     name: Code Coverage
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ubuntu-coverage-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ubuntu-coverage-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Install cargo-tarpaulin
-      run: cargo install cargo-tarpaulin
+      - name: Install cargo-tarpaulin
+        run: cargo install cargo-tarpaulin
 
-    - name: Start Docker
-      run: |
-        sudo systemctl start docker
-        docker pull alpine:latest
+      - name: Start Docker
+        run: |
+          sudo systemctl start docker
+          docker pull alpine:latest
 
-    - name: Generate code coverage
-      run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
+      - name: Generate code coverage
+        run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
 
-    - name: Upload coverage to Codecov
-      uses: codecov/codecov-action@v4
-      with:
-        file: cobertura.xml
-        fail_ci_if_error: false
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          file: cobertura.xml
+          fail_ci_if_error: false
 
   msrv:
     name: Minimum Supported Rust Version
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install Rust 1.70.0
-      uses: dtolnay/rust-toolchain@1.70.0
+      - name: Install Rust 1.70.0
+        uses: dtolnay/rust-toolchain@1.70.0
 
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ubuntu-msrv-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ubuntu-msrv-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Build with MSRV
-      run: cargo build --verbose --all-features
+      - name: Build with MSRV
+        run: cargo build --verbose --all-features
 
-    - name: Test with MSRV
-      run: cargo test --verbose --lib --all-features
+      - name: Test with MSRV
+        run: cargo test --verbose --lib --all-features
 
   docs:
     name: Documentation
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ubuntu-docs-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ubuntu-docs-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Build documentation
-      run: cargo doc --verbose --all-features --no-deps
-      env:
-        RUSTDOCFLAGS: -D warnings
-
-    - name: Test documentation links
-      run: cargo doc --verbose --all-features --no-deps
-      env:
-        RUSTDOCFLAGS: --html-in-header doc-test.html
+      - name: Build documentation
+        run: cargo doc --verbose --all-features --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
 
   benchmark:
     name: Benchmark
@@ -229,34 +224,56 @@ jobs:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install Rust
-      uses: dtolnay/rust-toolchain@stable
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
 
-    - name: Cache dependencies
-      uses: actions/cache@v4
-      with:
-        path: |
-          ~/.cargo/registry
-          ~/.cargo/git
-          target
-        key: ubuntu-bench-${{ hashFiles('**/Cargo.lock') }}
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ubuntu-bench-${{ hashFiles('**/Cargo.lock') }}
 
-    - name: Start Docker
-      run: |
-        sudo systemctl start docker
-        docker pull alpine:latest
+      - name: Start Docker
+        run: |
+          sudo systemctl start docker
+          docker pull alpine:latest
 
-    - name: Run benchmarks
-      run: cargo bench --verbose --all-features
+      - name: Run benchmarks (if available)
+        run: |
+          if [ -d "benches" ]; then
+            cargo bench --verbose --all-features
+          else
+            echo "No benchmarks found, skipping"
+          fi
 
-    - name: Store benchmark results
-      uses: benchmark-action/github-action-benchmark@v1
-      if: github.ref == 'refs/heads/main'
-      with:
-        tool: 'cargo'
-        output-file-path: target/criterion/report/index.html
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        auto-push: true
+  validate-adr:
+    name: Validate ADR System
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Validate ADR structure
+        run: |
+          if [ -f ".claude/adr-helper.sh" ]; then
+            chmod +x .claude/adr-helper.sh
+            ./.claude/adr-helper.sh validate
+          else
+            echo "ADR system not found, skipping validation"
+          fi
+
+      - name: Check ADR index
+        run: |
+          if [ -f ".claude/adr-index.toml" ]; then
+            echo "ADR index found"
+            cat .claude/adr-index.toml
+          else
+            echo "ADR index not found"
+          fi

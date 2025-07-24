@@ -11,7 +11,7 @@ use std::time::Duration;
 use tracing::{debug, info, warn};
 
 use crate::errors::{DockerError, DockerResult};
-use crate::executor::{find_docker_binary, ExecutionConfig, ProcessExecutor};
+use crate::executor::{ExecutionConfig, ProcessExecutor, find_docker_binary};
 
 /// Docker version information
 #[derive(Debug, Clone, Serialize, Deserialize)]

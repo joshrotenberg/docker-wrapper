@@ -10,7 +10,7 @@
 
 use docker_wrapper::*;
 
-use tokio::time::{sleep, Duration};
+use tokio::time::{Duration, sleep};
 
 #[tokio::main]
 async fn main() -> Result<(), DockerError> {
@@ -203,9 +203,8 @@ async fn demonstrate_volume_management(client: &DockerClient) -> Result<String, 
 
     // 6. Demonstrate volume mount specifications
     println!("6. Creating volume mount specifications...");
-    let data_mount = VolumeMount::new(VolumeSource::named("phase3-data"), "/app/data");
-    let cache_mount =
-        VolumeMount::new(VolumeSource::named("phase3-cache"), "/tmp/cache").read_only();
+    let data_mount = VolumeMount::new(types::VolumeSource::named("phase3-data"), "/app/data");
+    let cache_mount = VolumeMount::new(types::VolumeSource::named("phase3-cache"), "/tmp/cache");
     println!("   ✅ Data mount: {}", data_mount.to_cli_arg());
     println!("   ✅ Cache mount: {}", cache_mount.to_cli_arg());
 
@@ -226,11 +225,11 @@ async fn demonstrate_complete_integration(
 
     // Create a Redis container with custom network and persistent storage
     println!("2. Creating Redis container with network and volume...");
-    let container_id = ContainerBuilder::new(redis_ref)
+    let container_id = ContainerBuilder::new(redis_ref.to_string())
         .name("phase3-redis")
         .port(6379, 6379)
         .env("REDIS_PASSWORD", "phase3demo")
-        .volume_mount(VolumeMount::new(VolumeSource::named(volume_name), "/data"))
+        .volume_named(volume_name, "/data")
         .command(vec![
             "redis-server".to_string(),
             "--requirepass".to_string(),
@@ -262,7 +261,7 @@ async fn demonstrate_complete_integration(
     // Check container health and network connectivity
     println!("5. Verifying container status...");
     let inspect = client.containers().inspect(&container_id).await?;
-    println!("   ✅ Container state: {:?}", inspect.state.status);
+    println!("   ✅ Container state: {:?}", inspect.status);
 
     // Show network connections
     let network_inspect = client.networks().inspect(network_id).await?;
@@ -280,7 +279,8 @@ async fn demonstrate_complete_integration(
         "success".to_string(),
     ]);
 
-    let exec_result = client.containers().exec(&container_id, exec_config).await?;
+    let executor = ContainerExecutor::new(&client);
+    let exec_result = executor.exec(&container_id, exec_config).await?;
     if exec_result.exit_code == 0 {
         println!("   ✅ Data written to persistent volume");
     }
@@ -293,7 +293,7 @@ async fn demonstrate_complete_integration(
         .pull(&alpine_ref, PullOptions::default())
         .await?;
 
-    let test_container_id = ContainerBuilder::new(alpine_ref)
+    let test_container_id = ContainerBuilder::new(alpine_ref.to_string())
         .name("phase3-client")
         .command(vec!["sleep".to_string(), "30".to_string()])
         .run(client)
@@ -313,10 +313,8 @@ async fn demonstrate_complete_integration(
         "redis-server".to_string(),
     ]);
 
-    let ping_result = client
-        .containers()
-        .exec(&test_container_id, ping_config)
-        .await?;
+    let executor = ContainerExecutor::new(&client);
+    let ping_result = executor.exec(&test_container_id, ping_config).await?;
     if ping_result.exit_code == 0 {
         println!("   ✅ Network communication working (ping successful)");
     }

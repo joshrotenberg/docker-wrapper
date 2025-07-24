@@ -92,7 +92,7 @@ pub use network::{
 pub use stats::{
     ContainerStats, StatsAggregator, StatsManager, StatsOptions, StatsStream, SystemStats,
 };
-pub use types::{ContainerId, ContainerStatus, ImageRef, NetworkId, PortMapping, VolumeMount};
+pub use types::{ContainerId, ContainerStatus, NetworkId, PortMapping, VolumeMount};
 pub use volume::{
     DockerVolume, ListVolumesOptions, RemoveVolumeOptions, VolumeConfig, VolumeInspect,
     VolumeManager, VolumePruneResult, VolumeSource, VolumeUsageData, VolumeUsageStats,

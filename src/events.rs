@@ -51,7 +51,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 
 use tokio::process::Child;
 use tokio::sync::mpsc;
-use tokio_stream::{wrappers::ReceiverStream, Stream};
+use tokio_stream::{Stream, wrappers::ReceiverStream};
 
 /// Docker event types
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
