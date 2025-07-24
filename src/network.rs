@@ -94,6 +94,64 @@ pub struct DockerNetwork {
     pub labels: Option<HashMap<String, String>>,
 }
 
+/// Temporary struct to parse Docker CLI network ls format
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct NetworkCliEntry {
+    /// Network ID
+    #[serde(rename = "ID")]
+    pub id: String,
+    /// Network name
+    #[serde(rename = "Name")]
+    pub name: String,
+    /// Creation timestamp
+    #[serde(rename = "CreatedAt")]
+    pub created_at: String,
+    /// Scope (local, global, swarm)
+    #[serde(rename = "Scope")]
+    pub scope: String,
+    /// Driver name
+    #[serde(rename = "Driver")]
+    pub driver: String,
+    /// IPv4 enabled
+    #[serde(rename = "IPv4")]
+    pub ipv4: String,
+    /// IPv6 enabled
+    #[serde(rename = "IPv6")]
+    pub ipv6: String,
+    /// Internal network
+    #[serde(rename = "Internal")]
+    pub internal: String,
+    /// Labels (as string)
+    #[serde(rename = "Labels")]
+    pub labels: String,
+}
+
+impl From<NetworkCliEntry> for DockerNetwork {
+    fn from(cli_entry: NetworkCliEntry) -> Self {
+        DockerNetwork {
+            id: NetworkId::new(&cli_entry.id)
+                .unwrap_or_else(|_| NetworkId::new("unknown").unwrap()),
+            name: cli_entry.name,
+            created: cli_entry.created_at,
+            scope: cli_entry.scope,
+            driver: cli_entry.driver,
+            enable_ipv6: cli_entry.ipv6 == "true",
+            ipam: None, // CLI format doesn't provide IPAM details
+            internal: cli_entry.internal == "true",
+            attachable: false,                // CLI format doesn't provide this
+            ingress: false,                   // CLI format doesn't provide this
+            containers: Some(HashMap::new()), // CLI format doesn't provide container details
+            options: Some(HashMap::new()),    // CLI format doesn't provide options
+            labels: if cli_entry.labels.is_empty() {
+                None
+            } else {
+                // Parse simple comma-separated labels if needed
+                Some(HashMap::new())
+            },
+        }
+    }
+}
+
 impl DockerNetwork {
     /// Get the created time as SystemTime
     pub fn created_time(&self) -> DockerResult<SystemTime> {
@@ -689,8 +747,8 @@ impl<'a> NetworkManager<'a> {
                 continue;
             }
 
-            match serde_json::from_str::<DockerNetwork>(line) {
-                Ok(network) => networks.push(network),
+            match serde_json::from_str::<NetworkCliEntry>(line) {
+                Ok(cli_entry) => networks.push(cli_entry.into()),
                 Err(e) => {
                     log::warn!("Failed to parse network JSON: {} - {}", e, line);
                 }

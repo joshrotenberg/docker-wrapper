@@ -426,7 +426,22 @@ async fn test_network_get_by_name() {
 
     let found_network = found_network.unwrap();
     assert_eq!(found_network.name, network_name);
-    assert_eq!(found_network.id, network_id);
+    // Compare IDs - CLI returns shortened IDs while creation returns full IDs
+    assert!(
+        found_network.id.to_string().starts_with(
+            network_id
+                .to_string()
+                .chars()
+                .take(12)
+                .collect::<String>()
+                .as_str()
+        ) || network_id
+            .to_string()
+            .starts_with(&found_network.id.to_string()),
+        "Network IDs should match (found: {}, created: {})",
+        found_network.id,
+        network_id
+    );
 
     // Test non-existent network
     let not_found = network_manager
