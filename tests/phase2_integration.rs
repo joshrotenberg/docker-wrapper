@@ -3,9 +3,9 @@
 //! These tests are designed to run during the release process
 //! and validate core functionality with real Docker commands.
 
-use docker_wrapper::DockerCommand;
 use docker_wrapper::prerequisites::ensure_docker;
 use docker_wrapper::run::RunCommand;
+use docker_wrapper::DockerCommand;
 
 /// Helper to check if Docker is available, skip test if not
 async fn ensure_docker_or_skip() {
@@ -13,7 +13,6 @@ async fn ensure_docker_or_skip() {
         Ok(_) => {}
         Err(_) => {
             println!("Docker not available - skipping phase 2 integration test");
-            return;
         }
     }
 }
@@ -29,11 +28,12 @@ async fn test_phase2_docker_run_basic() {
 
     match run_cmd.execute().await {
         Ok(container_id) => {
-            println!("Phase 2: Basic run test passed - {}", container_id.short());
+            let short_id = container_id.short();
+            println!("Phase 2: Basic run test passed - {short_id}");
             assert!(!container_id.0.is_empty());
         }
         Err(e) => {
-            println!("Phase 2: Basic run test failed (may be expected): {}", e);
+            println!("Phase 2: Basic run test failed (may be expected): {e}");
         }
     }
 }
@@ -56,11 +56,12 @@ async fn test_phase2_docker_run_with_options() {
 
     match run_cmd.execute().await {
         Ok(container_id) => {
-            println!("Phase 2: Options test passed - {}", container_id.short());
+            let short_id = container_id.short();
+            println!("Phase 2: Options test passed - {short_id}");
             assert!(!container_id.0.is_empty());
         }
         Err(e) => {
-            println!("Phase 2: Options test failed (may be expected): {}", e);
+            println!("Phase 2: Options test failed (may be expected): {e}");
         }
     }
 }
@@ -70,14 +71,12 @@ async fn test_phase2_prerequisites_validation() {
     // Always run this test - it should handle Docker unavailability gracefully
     match ensure_docker().await {
         Ok(info) => {
-            println!(
-                "Phase 2: Prerequisites OK - Docker {}",
-                info.version.version
-            );
+            let version = &info.version.version;
+            println!("Phase 2: Prerequisites OK - Docker {version}");
             assert!(!info.version.version.is_empty());
         }
         Err(e) => {
-            println!("Phase 2: Prerequisites failed (expected in some CI): {}", e);
+            println!("Phase 2: Prerequisites failed (expected in some CI): {e}");
             // Don't fail - this is expected when Docker isn't available
         }
     }

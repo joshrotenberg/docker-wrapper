@@ -3,9 +3,9 @@
 //! These tests require Docker to be installed and running.
 //! They will be skipped if Docker is not available.
 
-use docker_wrapper::DockerCommand;
 use docker_wrapper::prerequisites::ensure_docker;
 use docker_wrapper::run::RunCommand;
+use docker_wrapper::DockerCommand;
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -15,7 +15,6 @@ async fn ensure_docker_or_skip() {
         Ok(_) => {}
         Err(_) => {
             println!("Docker not available - skipping integration test");
-            return;
         }
     }
 }
@@ -37,10 +36,7 @@ async fn test_run_simple_container() {
             // If this fails, it might be because Docker isn't available
             // or the alpine image isn't pulled. Let's not fail the test
             // but log the issue for debugging.
-            println!(
-                "Integration test failed (this may be expected in CI): {}",
-                e
-            );
+            println!("Integration test failed (this may be expected in CI): {e}");
         }
     }
 }
@@ -66,10 +62,7 @@ async fn test_run_detached_container() {
             // We can't easily check status without implementing ps command yet
         }
         Err(e) => {
-            println!(
-                "Detached container test failed (this may be expected in CI): {}",
-                e
-            );
+            println!("Detached container test failed (this may be expected in CI): {e}");
         }
     }
 }
@@ -93,10 +86,7 @@ async fn test_run_with_environment() {
             assert!(!container_id.0.is_empty());
         }
         Err(e) => {
-            println!(
-                "Environment test failed (this may be expected in CI): {}",
-                e
-            );
+            println!("Environment test failed (this may be expected in CI): {e}");
         }
     }
 }
@@ -132,7 +122,7 @@ async fn test_docker_prerequisites() {
             assert!(!info.version.version.is_empty());
         }
         Err(e) => {
-            println!("Docker prerequisites check failed: {}", e);
+            println!("Docker prerequisites check failed: {e}");
             // Don't fail the test - Docker might not be available in CI
         }
     }

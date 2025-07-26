@@ -5,12 +5,14 @@
 //! any unimplemented options via raw arguments.
 
 use crate::error::{Error, Result};
+use async_trait::async_trait;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::process::Stdio;
 use tokio::process::Command as TokioCommand;
 
 /// Base trait for all Docker commands
+#[async_trait]
 pub trait DockerCommand {
     /// The output type this command produces
     type Output;
@@ -22,7 +24,7 @@ pub trait DockerCommand {
     fn build_args(&self) -> Vec<String>;
 
     /// Execute the command and return the typed output
-    fn execute(&self) -> impl std::future::Future<Output = Result<Self::Output>> + Send;
+    async fn execute(&self) -> Result<Self::Output>;
 
     /// Add a raw argument to the command (escape hatch)
     fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self;

@@ -5,6 +5,7 @@
 
 use crate::command::{CommandExecutor, DockerCommand, EnvironmentBuilder, PortBuilder};
 use crate::error::{Error, Result};
+use async_trait::async_trait;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 
@@ -246,6 +247,7 @@ impl RunCommand {
     }
 }
 
+#[async_trait]
 impl DockerCommand for RunCommand {
     type Output = ContainerId;
 
@@ -311,25 +313,22 @@ impl DockerCommand for RunCommand {
         args
     }
 
-    #[allow(clippy::manual_async_fn)]
-    fn execute(&self) -> impl std::future::Future<Output = Result<Self::Output>> + Send {
-        async move {
-            let args = self.build_args();
-            let output = self
-                .executor
-                .execute_command(self.command_name(), args)
-                .await?;
+    async fn execute(&self) -> Result<Self::Output> {
+        let args = self.build_args();
+        let output = self
+            .executor
+            .execute_command(self.command_name(), args)
+            .await?;
 
-            // Parse container ID from output
-            let container_id = output.stdout.trim().to_string();
-            if container_id.is_empty() {
-                return Err(Error::parse_error(
-                    "No container ID returned from docker run",
-                ));
-            }
-
-            Ok(ContainerId(container_id))
+        // Parse container ID from output
+        let container_id = output.stdout.trim().to_string();
+        if container_id.is_empty() {
+            return Err(Error::parse_error(
+                "No container ID returned from docker run",
+            ));
         }
+
+        Ok(ContainerId(container_id))
     }
 
     fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
