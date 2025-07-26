@@ -16,6 +16,7 @@ pub mod error;
 pub mod exec;
 pub mod prerequisites;
 pub mod ps;
+pub mod pull;
 pub mod run;
 
 pub use bake::BakeCommand;
@@ -28,6 +29,7 @@ pub use error::{Error, Result};
 pub use exec::{ExecCommand, ExecOutput};
 pub use prerequisites::{ensure_docker, DockerInfo, DockerPrerequisites};
 pub use ps::{ContainerInfo, PsCommand, PsFormat, PsOutput};
+pub use pull::PullCommand;
 pub use run::{ContainerId, MountType, RunCommand, VolumeMount};
 
 /// The version of this crate
