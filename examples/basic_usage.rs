@@ -3,7 +3,7 @@
 //! This example demonstrates how to check Docker prerequisites
 //! and handle various scenarios.
 
-use docker_wrapper::{ensure_docker, DockerPrerequisites, PrerequisitesError};
+use docker_wrapper::{ensure_docker, DockerPrerequisites, Error};
 
 #[tokio::main]
 async fn main() {
@@ -59,7 +59,7 @@ async fn main() {
         Err(e) => {
             println!("❌ Docker version check failed: {}", e);
             match &e {
-                PrerequisitesError::UnsupportedVersion { found, minimum } => {
+                Error::UnsupportedVersion { found, minimum } => {
                     println!("   Found: {}, Required: {}", found, minimum);
                 }
                 _ => handle_prerequisites_error(&e),
@@ -98,24 +98,27 @@ async fn main() {
 }
 
 /// Handle different types of prerequisites errors with helpful messages
-fn handle_prerequisites_error(error: &PrerequisitesError) {
+fn handle_prerequisites_error(error: &Error) {
     match error {
-        PrerequisitesError::DockerNotFound => {
+        Error::DockerNotFound => {
             println!("   💡 Install Docker from: https://docs.docker.com/get-docker/");
         }
-        PrerequisitesError::DaemonNotRunning => {
+        Error::DaemonNotRunning => {
             println!("   💡 Start Docker daemon with: sudo systemctl start docker");
             println!("   💡 Or start Docker Desktop application");
         }
-        PrerequisitesError::UnsupportedVersion { found, minimum } => {
+        Error::UnsupportedVersion { found, minimum } => {
             println!("   💡 Update Docker to version {} or higher", minimum);
             println!("   💡 Current version: {}", found);
         }
-        PrerequisitesError::CommandFailed { message } => {
-            println!("   💡 Command execution failed: {}", message);
+        Error::CommandFailed { command, .. } => {
+            println!("   💡 Command execution failed: {}", command);
         }
-        PrerequisitesError::ParseError { message } => {
+        Error::ParseError { message } => {
             println!("   💡 Parse error: {}", message);
+        }
+        _ => {
+            println!("   💡 Unexpected error: {}", error);
         }
     }
 }

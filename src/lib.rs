@@ -9,11 +9,11 @@
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 
+pub mod error;
 pub mod prerequisites;
 
-pub use prerequisites::{
-    ensure_docker, DockerInfo, DockerPrerequisites, PrerequisitesError, PrerequisitesResult,
-};
+pub use error::{Error, Result};
+pub use prerequisites::{ensure_docker, DockerInfo, DockerPrerequisites};
 
 /// The version of this crate
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

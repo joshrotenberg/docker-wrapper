@@ -3,49 +3,11 @@
 //! This module provides functionality to detect Docker installation,
 //! validate version compatibility, and ensure the Docker daemon is running.
 
+use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::process::Stdio;
-use thiserror::Error;
 use tokio::process::Command;
 use tracing::{debug, info, warn};
-
-/// Errors that can occur during Docker prerequisites checking
-#[derive(Error, Debug)]
-pub enum PrerequisitesError {
-    /// Docker binary not found in PATH
-    #[error("Docker binary not found in PATH")]
-    DockerNotFound,
-
-    /// Docker daemon is not running
-    #[error("Docker daemon is not running")]
-    DaemonNotRunning,
-
-    /// Docker version is not supported
-    #[error("Docker version {found} is not supported (minimum: {minimum})")]
-    UnsupportedVersion {
-        /// The Docker version that was found
-        found: String,
-        /// The minimum required version
-        minimum: String,
-    },
-
-    /// Failed to execute Docker command
-    #[error("Failed to execute Docker command: {message}")]
-    CommandFailed {
-        /// Error message describing the failure
-        message: String,
-    },
-
-    /// Failed to parse Docker output
-    #[error("Failed to parse Docker output: {message}")]
-    ParseError {
-        /// Error message describing the parse failure
-        message: String,
-    },
-}
-
-/// Result type for prerequisites operations
-pub type PrerequisitesResult<T> = Result<T, PrerequisitesError>;
 
 /// Docker version information
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -64,34 +26,28 @@ impl DockerVersion {
     /// Parse a Docker version string
     ///
     /// # Errors
-    /// Returns `PrerequisitesError::ParseError` if the version string is invalid
-    pub fn parse(version_str: &str) -> PrerequisitesResult<Self> {
+    /// Returns `Error::ParseError` if the version string is invalid
+    pub fn parse(version_str: &str) -> Result<Self> {
         let clean_version = version_str.trim().trim_start_matches('v');
         let parts: Vec<&str> = clean_version.split('.').collect();
 
         if parts.len() < 3 {
-            return Err(PrerequisitesError::ParseError {
-                message: format!("Invalid version format: {version_str}"),
-            });
+            return Err(Error::parse_error(format!(
+                "Invalid version format: {version_str}"
+            )));
         }
 
         let major = parts[0]
             .parse()
-            .map_err(|_| PrerequisitesError::ParseError {
-                message: format!("Invalid major version: {}", parts[0]),
-            })?;
+            .map_err(|_| Error::parse_error(format!("Invalid major version: {}", parts[0])))?;
 
         let minor = parts[1]
             .parse()
-            .map_err(|_| PrerequisitesError::ParseError {
-                message: format!("Invalid minor version: {}", parts[1]),
-            })?;
+            .map_err(|_| Error::parse_error(format!("Invalid minor version: {}", parts[1])))?;
 
         let patch = parts[2]
             .parse()
-            .map_err(|_| PrerequisitesError::ParseError {
-                message: format!("Invalid patch version: {}", parts[2]),
-            })?;
+            .map_err(|_| Error::parse_error(format!("Invalid patch version: {}", parts[2])))?;
 
         Ok(Self {
             version: clean_version.to_string(),
@@ -165,9 +121,9 @@ impl DockerPrerequisites {
     /// Check all Docker prerequisites
     ///
     /// # Errors
-    /// Returns various `PrerequisitesError` variants if Docker is not found,
+    /// Returns various `Error` variants if Docker is not found,
     /// daemon is not running, or version requirements are not met
-    pub async fn check(&self) -> PrerequisitesResult<DockerInfo> {
+    pub async fn check(&self) -> Result<DockerInfo> {
         info!("Checking Docker prerequisites...");
 
         // Find Docker binary
@@ -180,7 +136,7 @@ impl DockerPrerequisites {
 
         // Check version compatibility
         if !version.meets_minimum(&self.minimum_version) {
-            return Err(PrerequisitesError::UnsupportedVersion {
+            return Err(Error::UnsupportedVersion {
                 found: version.version.clone(),
                 minimum: self.minimum_version.version.clone(),
             });
@@ -209,48 +165,44 @@ impl DockerPrerequisites {
     }
 
     /// Find Docker binary in PATH
-    async fn find_docker_binary(&self) -> PrerequisitesResult<String> {
+    async fn find_docker_binary(&self) -> Result<String> {
         let output = Command::new("which")
             .arg("docker")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
             .await
-            .map_err(|e| PrerequisitesError::CommandFailed {
-                message: format!("Failed to run 'which docker': {e}"),
-            })?;
+            .map_err(|e| Error::custom(format!("Failed to run 'which docker': {e}")))?;
 
         if !output.status.success() {
-            return Err(PrerequisitesError::DockerNotFound);
+            return Err(Error::DockerNotFound);
         }
 
         let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
         if path.is_empty() {
-            return Err(PrerequisitesError::DockerNotFound);
+            return Err(Error::DockerNotFound);
         }
 
         Ok(path)
     }
 
     /// Get Docker client version
-    async fn get_docker_version(&self, binary_path: &str) -> PrerequisitesResult<DockerVersion> {
+    async fn get_docker_version(&self, binary_path: &str) -> Result<DockerVersion> {
         let output = Command::new(binary_path)
             .args(["--version"])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
             .await
-            .map_err(|e| PrerequisitesError::CommandFailed {
-                message: format!("Failed to run 'docker --version': {e}"),
-            })?;
+            .map_err(|e| Error::custom(format!("Failed to run 'docker --version': {e}")))?;
 
         if !output.status.success() {
-            return Err(PrerequisitesError::CommandFailed {
-                message: format!(
-                    "docker --version failed: {}",
-                    String::from_utf8_lossy(&output.stderr)
-                ),
-            });
+            return Err(Error::command_failed(
+                "docker --version",
+                output.status.code().unwrap_or(-1),
+                String::from_utf8_lossy(&output.stdout).to_string(),
+                String::from_utf8_lossy(&output.stderr).to_string(),
+            ));
         }
 
         let version_output = String::from_utf8_lossy(&output.stdout);
@@ -261,8 +213,8 @@ impl DockerPrerequisites {
             .split_whitespace()
             .nth(2)
             .and_then(|v| v.split(',').next())
-            .ok_or_else(|| PrerequisitesError::ParseError {
-                message: format!("Could not parse version from: {version_output}"),
+            .ok_or_else(|| {
+                Error::parse_error(format!("Could not parse version from: {version_output}"))
             })?;
 
         DockerVersion::parse(version_str)
@@ -304,9 +256,9 @@ impl DockerPrerequisites {
 /// Convenience function to check Docker prerequisites with default settings
 ///
 /// # Errors
-/// Returns various `PrerequisitesError` variants if Docker is not available
+/// Returns various `Error` variants if Docker is not available
 /// or does not meet minimum requirements
-pub async fn ensure_docker() -> PrerequisitesResult<DockerInfo> {
+pub async fn ensure_docker() -> Result<DockerInfo> {
     let checker = DockerPrerequisites::default();
     checker.check().await
 }
@@ -404,7 +356,7 @@ mod tests {
                     println!("Docker daemon is not running");
                 }
             }
-            Err(PrerequisitesError::DockerNotFound) => {
+            Err(Error::DockerNotFound) => {
                 println!("Docker not found - skipping integration test");
             }
             Err(e) => {
