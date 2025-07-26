@@ -62,13 +62,16 @@ pub struct DockerVersion {
 
 impl DockerVersion {
     /// Parse a Docker version string
+    ///
+    /// # Errors
+    /// Returns `PrerequisitesError::ParseError` if the version string is invalid
     pub fn parse(version_str: &str) -> PrerequisitesResult<Self> {
         let clean_version = version_str.trim().trim_start_matches('v');
         let parts: Vec<&str> = clean_version.split('.').collect();
 
         if parts.len() < 3 {
             return Err(PrerequisitesError::ParseError {
-                message: format!("Invalid version format: {}", version_str),
+                message: format!("Invalid version format: {version_str}"),
             });
         }
 
@@ -99,6 +102,7 @@ impl DockerVersion {
     }
 
     /// Check if this version meets the minimum requirement
+    #[must_use]
     pub fn meets_minimum(&self, minimum: &DockerVersion) -> bool {
         if self.major > minimum.major {
             return true;
@@ -153,11 +157,16 @@ impl Default for DockerPrerequisites {
 
 impl DockerPrerequisites {
     /// Create a new prerequisites checker with custom minimum version
+    #[must_use]
     pub fn new(minimum_version: DockerVersion) -> Self {
         Self { minimum_version }
     }
 
     /// Check all Docker prerequisites
+    ///
+    /// # Errors
+    /// Returns various `PrerequisitesError` variants if Docker is not found,
+    /// daemon is not running, or version requirements are not met
     pub async fn check(&self) -> PrerequisitesResult<DockerInfo> {
         info!("Checking Docker prerequisites...");
 
@@ -187,7 +196,7 @@ impl DockerPrerequisites {
         }
 
         // Get system info
-        let (os, architecture) = self.get_system_info().await;
+        let (os, architecture) = Self::get_system_info();
 
         Ok(DockerInfo {
             version,
@@ -208,7 +217,7 @@ impl DockerPrerequisites {
             .output()
             .await
             .map_err(|e| PrerequisitesError::CommandFailed {
-                message: format!("Failed to run 'which docker': {}", e),
+                message: format!("Failed to run 'which docker': {e}"),
             })?;
 
         if !output.status.success() {
@@ -232,7 +241,7 @@ impl DockerPrerequisites {
             .output()
             .await
             .map_err(|e| PrerequisitesError::CommandFailed {
-                message: format!("Failed to run 'docker --version': {}", e),
+                message: format!("Failed to run 'docker --version': {e}"),
             })?;
 
         if !output.status.success() {
@@ -253,7 +262,7 @@ impl DockerPrerequisites {
             .nth(2)
             .and_then(|v| v.split(',').next())
             .ok_or_else(|| PrerequisitesError::ParseError {
-                message: format!("Could not parse version from: {}", version_output),
+                message: format!("Could not parse version from: {version_output}"),
             })?;
 
         DockerVersion::parse(version_str)
@@ -271,13 +280,13 @@ impl DockerPrerequisites {
         match output {
             Ok(output) if output.status.success() => {
                 let server_version_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                if !server_version_str.is_empty() {
+                if server_version_str.is_empty() {
+                    (false, None)
+                } else {
                     match DockerVersion::parse(&server_version_str) {
                         Ok(version) => (true, Some(version)),
                         Err(_) => (true, None),
                     }
-                } else {
-                    (false, None)
                 }
             }
             _ => (false, None),
@@ -285,7 +294,7 @@ impl DockerPrerequisites {
     }
 
     /// Get system information
-    async fn get_system_info(&self) -> (String, String) {
+    fn get_system_info() -> (String, String) {
         let os = std::env::consts::OS.to_string();
         let arch = std::env::consts::ARCH.to_string();
         (os, arch)
@@ -293,6 +302,10 @@ impl DockerPrerequisites {
 }
 
 /// Convenience function to check Docker prerequisites with default settings
+///
+/// # Errors
+/// Returns various `PrerequisitesError` variants if Docker is not available
+/// or does not meet minimum requirements
 pub async fn ensure_docker() -> PrerequisitesResult<DockerInfo> {
     let checker = DockerPrerequisites::default();
     checker.check().await
