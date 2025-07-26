@@ -153,6 +153,7 @@ impl Error {
     }
 
     /// Create a new timeout error
+    #[must_use]
     pub fn timeout(timeout_seconds: u64) -> Self {
         Self::Timeout { timeout_seconds }
     }
@@ -165,6 +166,7 @@ impl Error {
     }
 
     /// Get the error category for logging and metrics
+    #[must_use]
     pub fn category(&self) -> &'static str {
         match self {
             Self::DockerNotFound | Self::DaemonNotRunning | Self::UnsupportedVersion { .. } => {
@@ -181,6 +183,7 @@ impl Error {
     }
 
     /// Check if this error is retryable
+    #[must_use]
     pub fn is_retryable(&self) -> bool {
         matches!(
             self,
