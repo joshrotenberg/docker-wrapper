@@ -9,11 +9,18 @@
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 
+pub mod command;
 pub mod error;
 pub mod prerequisites;
+pub mod run;
 
+pub use command::{
+    CommandExecutor, CommandOutput, DockerCommand, EnvironmentBuilder, PortBuilder, PortMapping,
+    Protocol,
+};
 pub use error::{Error, Result};
 pub use prerequisites::{ensure_docker, DockerInfo, DockerPrerequisites};
+pub use run::{ContainerId, MountType, RunCommand, VolumeMount};
 
 /// The version of this crate
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
