@@ -10,6 +10,7 @@ use std::path::PathBuf;
 
 /// Docker run command builder with fluent API
 #[derive(Debug, Clone)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct RunCommand {
     /// The Docker image to run
     image: String,
@@ -76,11 +77,13 @@ pub struct ContainerId(pub String);
 
 impl ContainerId {
     /// Get the container ID as a string
+    #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
     }
 
     /// Get the short form of the container ID (first 12 characters)
+    #[must_use]
     pub fn short(&self) -> &str {
         if self.0.len() >= 12 {
             &self.0[..12]
@@ -117,42 +120,49 @@ impl RunCommand {
     }
 
     /// Set the container name
+    #[must_use]
     pub fn name(mut self, name: impl Into<String>) -> Self {
         self.name = Some(name.into());
         self
     }
 
     /// Run in detached mode (background)
+    #[must_use]
     pub fn detach(mut self) -> Self {
         self.detach = true;
         self
     }
 
     /// Add an environment variable
+    #[must_use]
     pub fn env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.environment = self.environment.var(key, value);
         self
     }
 
     /// Add multiple environment variables
+    #[must_use]
     pub fn envs(mut self, vars: std::collections::HashMap<String, String>) -> Self {
         self.environment = self.environment.vars(vars);
         self
     }
 
     /// Add a port mapping
+    #[must_use]
     pub fn port(mut self, host_port: u16, container_port: u16) -> Self {
         self.ports = self.ports.port(host_port, container_port);
         self
     }
 
     /// Add a dynamic port mapping (Docker assigns host port)
+    #[must_use]
     pub fn dynamic_port(mut self, container_port: u16) -> Self {
         self.ports = self.ports.dynamic_port(container_port);
         self
     }
 
     /// Add a volume mount
+    #[must_use]
     pub fn volume(mut self, source: impl Into<String>, target: impl Into<String>) -> Self {
         self.volumes.push(VolumeMount {
             source: source.into(),
@@ -164,6 +174,7 @@ impl RunCommand {
     }
 
     /// Add a bind mount
+    #[must_use]
     pub fn bind(mut self, source: impl Into<String>, target: impl Into<String>) -> Self {
         self.volumes.push(VolumeMount {
             source: source.into(),
@@ -175,6 +186,7 @@ impl RunCommand {
     }
 
     /// Add a read-only volume mount
+    #[must_use]
     pub fn volume_ro(mut self, source: impl Into<String>, target: impl Into<String>) -> Self {
         self.volumes.push(VolumeMount {
             source: source.into(),
@@ -186,42 +198,49 @@ impl RunCommand {
     }
 
     /// Set working directory
+    #[must_use]
     pub fn workdir(mut self, workdir: impl Into<PathBuf>) -> Self {
         self.workdir = Some(workdir.into());
         self
     }
 
     /// Override entrypoint
+    #[must_use]
     pub fn entrypoint(mut self, entrypoint: impl Into<String>) -> Self {
         self.entrypoint = Some(entrypoint.into());
         self
     }
 
     /// Set command to run in container
+    #[must_use]
     pub fn cmd(mut self, command: Vec<String>) -> Self {
         self.command = Some(command);
         self
     }
 
     /// Enable interactive mode
+    #[must_use]
     pub fn interactive(mut self) -> Self {
         self.interactive = true;
         self
     }
 
     /// Allocate a TTY
+    #[must_use]
     pub fn tty(mut self) -> Self {
         self.tty = true;
         self
     }
 
     /// Remove container automatically when it exits
+    #[must_use]
     pub fn remove(mut self) -> Self {
         self.remove = true;
         self
     }
 
     /// Convenience method for interactive TTY mode
+    #[must_use]
     pub fn it(self) -> Self {
         self.interactive().tty()
     }

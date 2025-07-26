@@ -49,6 +49,7 @@ pub struct CommandExecutor {
 
 impl CommandExecutor {
     /// Create a new command executor
+    #[must_use]
     pub fn new() -> Self {
         Self {
             raw_args: Vec::new(),
@@ -56,6 +57,9 @@ impl CommandExecutor {
     }
 
     /// Execute a Docker command with the given arguments
+    ///
+    /// # Errors
+    /// Returns an error if the Docker command fails to execute or returns a non-zero exit code
     pub async fn execute_command(
         &self,
         command_name: &str,
@@ -74,9 +78,7 @@ impl CommandExecutor {
             .stderr(Stdio::piped())
             .output()
             .await
-            .map_err(|e| {
-                Error::custom(format!("Failed to execute docker {}: {}", command_name, e))
-            })?;
+            .map_err(|e| Error::custom(format!("Failed to execute docker {command_name}: {e}")))?;
 
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -122,9 +124,9 @@ impl CommandExecutor {
         let flag_arg = if flag.starts_with('-') {
             flag.to_string()
         } else if flag.len() == 1 {
-            format!("-{}", flag)
+            format!("-{flag}")
         } else {
-            format!("--{}", flag)
+            format!("--{flag}")
         };
         self.raw_args.push(flag_arg);
     }
@@ -134,9 +136,9 @@ impl CommandExecutor {
         let key_arg = if key.starts_with('-') {
             key.to_string()
         } else if key.len() == 1 {
-            format!("-{}", key)
+            format!("-{key}")
         } else {
-            format!("--{}", key)
+            format!("--{key}")
         };
         self.raw_args.push(key_arg);
         self.raw_args.push(value.to_string());
@@ -164,21 +166,25 @@ pub struct CommandOutput {
 
 impl CommandOutput {
     /// Get stdout lines as a vector
+    #[must_use]
     pub fn stdout_lines(&self) -> Vec<&str> {
         self.stdout.lines().collect()
     }
 
     /// Get stderr lines as a vector
+    #[must_use]
     pub fn stderr_lines(&self) -> Vec<&str> {
         self.stderr.lines().collect()
     }
 
     /// Check if stdout is empty
+    #[must_use]
     pub fn stdout_is_empty(&self) -> bool {
         self.stdout.trim().is_empty()
     }
 
     /// Check if stderr is empty
+    #[must_use]
     pub fn stderr_is_empty(&self) -> bool {
         self.stderr.trim().is_empty()
     }
@@ -192,33 +198,38 @@ pub struct EnvironmentBuilder {
 
 impl EnvironmentBuilder {
     /// Create a new environment builder
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Add an environment variable
+    #[must_use]
     pub fn var(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.vars.insert(key.into(), value.into());
         self
     }
 
-    /// Add multiple environment variables from a HashMap
+    /// Add multiple environment variables from a `HashMap`
+    #[must_use]
     pub fn vars(mut self, vars: HashMap<String, String>) -> Self {
         self.vars.extend(vars);
         self
     }
 
     /// Build the environment arguments for Docker
+    #[must_use]
     pub fn build_args(&self) -> Vec<String> {
         let mut args = Vec::new();
         for (key, value) in &self.vars {
             args.push("--env".to_string());
-            args.push(format!("{}={}", key, value));
+            args.push(format!("{key}={value}"));
         }
         args
     }
 
-    /// Get the environment variables as a HashMap
+    /// Get the environment variables as a `HashMap`
+    #[must_use]
     pub fn as_map(&self) -> &HashMap<String, String> {
         &self.vars
     }
@@ -232,11 +243,13 @@ pub struct PortBuilder {
 
 impl PortBuilder {
     /// Create a new port builder
+    #[must_use]
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Add a port mapping
+    #[must_use]
     pub fn port(mut self, host_port: u16, container_port: u16) -> Self {
         self.mappings.push(PortMapping {
             host_port: Some(host_port),
@@ -248,6 +261,7 @@ impl PortBuilder {
     }
 
     /// Add a port mapping with protocol
+    #[must_use]
     pub fn port_with_protocol(
         mut self,
         host_port: u16,
@@ -264,6 +278,7 @@ impl PortBuilder {
     }
 
     /// Add a dynamic port mapping (Docker assigns host port)
+    #[must_use]
     pub fn dynamic_port(mut self, container_port: u16) -> Self {
         self.mappings.push(PortMapping {
             host_port: None,
@@ -275,6 +290,7 @@ impl PortBuilder {
     }
 
     /// Build the port arguments for Docker
+    #[must_use]
     pub fn build_args(&self) -> Vec<String> {
         let mut args = Vec::new();
         for mapping in &self.mappings {
@@ -285,6 +301,7 @@ impl PortBuilder {
     }
 
     /// Get the port mappings
+    #[must_use]
     pub fn mappings(&self) -> &[PortMapping] {
         &self.mappings
     }
