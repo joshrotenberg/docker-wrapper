@@ -1,75 +1,25 @@
-[workspace]
-
 [package]
 name = "docker-wrapper"
 version = "0.1.0"
-edition = "2024"
-authors = ["Docker Wrapper Contributors"]
-description = "A comprehensive, production-ready Docker management library for Rust with real-time monitoring, complete ecosystem control, and an intuitive API"
+edition = "2021"
+authors = ["Your Name <your.email@example.com>"]
+description = "A simple, focused Docker CLI wrapper for Rust"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/joshrotenberg/docker-wrapper"
-documentation = "https://docs.rs/docker-wrapper"
-homepage = "https://github.com/joshrotenberg/docker-wrapper"
-keywords = ["docker", "containers", "monitoring", "management", "devops"]
-categories = ["development-tools", "api-bindings", "command-line-utilities"]
+repository = "https://github.com/your-username/docker-wrapper"
 readme = "README.md"
-exclude = ["/.github/", "/examples/", "/tests/integration/"]
-
-[features]
-default = ["json"]
-json = ["serde_json"]
-cli = ["clap", "colored", "indicatif"]
+keywords = ["docker", "containers", "cli", "wrapper"]
+categories = ["development-tools", "api-bindings"]
 
 [dependencies]
 tokio = { version = "1.0", features = ["full"] }
 serde = { version = "1.0", features = ["derive"] }
-serde_json = { version = "1.0", optional = true }
+serde_json = "1.0"
 thiserror = "1.0"
-async-trait = "0.1"
-uuid = { version = "1.0", features = ["v4"] }
 tracing = "0.1"
-tracing-subscriber = "0.3"
-tokio-stream = "0.1"
-
-# CLI dependencies (optional)
-clap = { version = "4.0", optional = true, features = ["derive"] }
-colored = { version = "2.0", optional = true }
-indicatif = { version = "0.17", optional = true }
-
-# Process management and utilities
-which = "6.0"
-regex = "1.10"
-bytes = "1.5"
-chrono = { version = "0.4", features = ["serde"] }
-reqwest = { version = "0.11", features = ["json"] }
-base64 = "0.21"
-log = "0.4"
 
 [dev-dependencies]
 tokio-test = "0.4"
-tempfile = "3.8"
-
-
-[lib]
-name = "docker_wrapper"
-path = "src/lib.rs"
 
 [[example]]
-name = "container_management"
-path = "examples/container_management.rs"
-
-[[example]]
-name = "streaming_test"
-path = "examples/streaming_test.rs"
-
-[[example]]
-name = "ecosystem_management"
-path = "examples/ecosystem_management.rs"
-
-[[example]]
-name = "monitoring_and_events"
-path = "examples/monitoring_and_events.rs"
-
-[package.metadata.docs.rs]
-all-features = true
-rustdoc-args = ["--cfg", "docsrs"]
+name = "basic_usage"
+path = "examples/basic_usage.rs"
