@@ -22,7 +22,7 @@ pub trait DockerCommand {
     fn build_args(&self) -> Vec<String>;
 
     /// Execute the command and return the typed output
-    async fn execute(&self) -> Result<Self::Output>;
+    fn execute(&self) -> impl std::future::Future<Output = Result<Self::Output>> + Send;
 
     /// Add a raw argument to the command (escape hatch)
     fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self;
