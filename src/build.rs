@@ -72,6 +72,40 @@ pub struct BuildCommand {
     target: Option<String>,
     /// Ulimit options
     ulimits: Vec<String>,
+    /// Extra privileged entitlements
+    allow: Vec<String>,
+    /// Annotations to add to the image
+    annotations: Vec<String>,
+    /// Attestation parameters
+    attestations: Vec<String>,
+    /// Additional build contexts
+    build_contexts: Vec<String>,
+    /// Override the configured builder
+    builder: Option<String>,
+    /// Cache export destinations
+    cache_to: Vec<String>,
+    /// Method for evaluating build
+    call: Option<String>,
+    /// Shorthand for "--call=check"
+    check: bool,
+    /// Shorthand for "--output=type=docker"
+    load: bool,
+    /// Write build result metadata to file
+    metadata_file: Option<PathBuf>,
+    /// Do not cache specified stages
+    no_cache_filter: Vec<String>,
+    /// Type of progress output
+    progress: Option<String>,
+    /// Shorthand for "--attest=type=provenance"
+    provenance: Option<String>,
+    /// Shorthand for "--output=type=registry"
+    push: bool,
+    /// Shorthand for "--attest=type=sbom"
+    sbom: Option<String>,
+    /// Secrets to expose to the build
+    secrets: Vec<String>,
+    /// SSH agent socket or keys to expose
+    ssh: Vec<String>,
 }
 
 /// Output from docker build command
@@ -178,6 +212,23 @@ impl BuildCommand {
             tags: Vec::new(),
             target: None,
             ulimits: Vec::new(),
+            allow: Vec::new(),
+            annotations: Vec::new(),
+            attestations: Vec::new(),
+            build_contexts: Vec::new(),
+            builder: None,
+            cache_to: Vec::new(),
+            call: None,
+            check: false,
+            load: false,
+            metadata_file: None,
+            no_cache_filter: Vec::new(),
+            progress: None,
+            provenance: None,
+            push: false,
+            sbom: None,
+            secrets: Vec::new(),
+            ssh: Vec::new(),
         }
     }
 
@@ -702,6 +753,278 @@ impl BuildCommand {
         self.ulimits.push(limit.into());
         self
     }
+
+    /// Add an extra privileged entitlement
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .allow("network.host");
+    /// ```
+    #[must_use]
+    pub fn allow(mut self, entitlement: impl Into<String>) -> Self {
+        self.allow.push(entitlement.into());
+        self
+    }
+
+    /// Add an annotation to the image
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .annotation("org.opencontainers.image.title=MyApp");
+    /// ```
+    #[must_use]
+    pub fn annotation(mut self, annotation: impl Into<String>) -> Self {
+        self.annotations.push(annotation.into());
+        self
+    }
+
+    /// Add attestation parameters
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .attest("type=provenance,mode=max");
+    /// ```
+    #[must_use]
+    pub fn attest(mut self, attestation: impl Into<String>) -> Self {
+        self.attestations.push(attestation.into());
+        self
+    }
+
+    /// Add additional build context
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .build_context("mycontext=../path");
+    /// ```
+    #[must_use]
+    pub fn build_context(mut self, context: impl Into<String>) -> Self {
+        self.build_contexts.push(context.into());
+        self
+    }
+
+    /// Override the configured builder
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .builder("mybuilder");
+    /// ```
+    #[must_use]
+    pub fn builder(mut self, builder: impl Into<String>) -> Self {
+        self.builder = Some(builder.into());
+        self
+    }
+
+    /// Add cache export destination
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .cache_to("type=registry,ref=myregistry/cache");
+    /// ```
+    #[must_use]
+    pub fn cache_to(mut self, destination: impl Into<String>) -> Self {
+        self.cache_to.push(destination.into());
+        self
+    }
+
+    /// Set method for evaluating build
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .call("check");
+    /// ```
+    #[must_use]
+    pub fn call(mut self, method: impl Into<String>) -> Self {
+        self.call = Some(method.into());
+        self
+    }
+
+    /// Enable check mode (shorthand for "--call=check")
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .check();
+    /// ```
+    #[must_use]
+    pub fn check(mut self) -> Self {
+        self.check = true;
+        self
+    }
+
+    /// Enable load mode (shorthand for "--output=type=docker")
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .load();
+    /// ```
+    #[must_use]
+    pub fn load(mut self) -> Self {
+        self.load = true;
+        self
+    }
+
+    /// Write build result metadata to file
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .metadata_file("/tmp/metadata.json");
+    /// ```
+    #[must_use]
+    pub fn metadata_file(mut self, file: impl Into<PathBuf>) -> Self {
+        self.metadata_file = Some(file.into());
+        self
+    }
+
+    /// Do not cache specified stage
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .no_cache_filter("build-stage");
+    /// ```
+    #[must_use]
+    pub fn no_cache_filter(mut self, stage: impl Into<String>) -> Self {
+        self.no_cache_filter.push(stage.into());
+        self
+    }
+
+    /// Set type of progress output
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .progress("plain");
+    /// ```
+    #[must_use]
+    pub fn progress(mut self, progress_type: impl Into<String>) -> Self {
+        self.progress = Some(progress_type.into());
+        self
+    }
+
+    /// Set provenance attestation (shorthand for "--attest=type=provenance")
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .provenance("mode=max");
+    /// ```
+    #[must_use]
+    pub fn provenance(mut self, provenance: impl Into<String>) -> Self {
+        self.provenance = Some(provenance.into());
+        self
+    }
+
+    /// Enable push mode (shorthand for "--output=type=registry")
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .push();
+    /// ```
+    #[must_use]
+    pub fn push(mut self) -> Self {
+        self.push = true;
+        self
+    }
+
+    /// Set SBOM attestation (shorthand for "--attest=type=sbom")
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .sbom("generator=image");
+    /// ```
+    #[must_use]
+    pub fn sbom(mut self, sbom: impl Into<String>) -> Self {
+        self.sbom = Some(sbom.into());
+        self
+    }
+
+    /// Add secret to expose to the build
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .secret("id=mysecret,src=/local/secret");
+    /// ```
+    #[must_use]
+    pub fn secret(mut self, secret: impl Into<String>) -> Self {
+        self.secrets.push(secret.into());
+        self
+    }
+
+    /// Add SSH agent socket or keys to expose
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::build::BuildCommand;
+    ///
+    /// let build_cmd = BuildCommand::new(".")
+    ///     .ssh("default");
+    /// ```
+    #[must_use]
+    pub fn ssh(mut self, ssh: impl Into<String>) -> Self {
+        self.ssh.push(ssh.into());
+        self
+    }
 }
 
 impl Default for BuildCommand {
@@ -802,6 +1125,12 @@ impl BuildCommand {
     }
 
     fn add_advanced_args(&self, args: &mut Vec<String>) {
+        self.add_container_args(args);
+        self.add_metadata_args(args);
+        self.add_buildx_args(args);
+    }
+
+    fn add_container_args(&self, args: &mut Vec<String>) {
         if let Some(ref parent) = self.cgroup_parent {
             args.push("--cgroup-parent".to_string());
             args.push(parent.clone());
@@ -829,12 +1158,6 @@ impl BuildCommand {
             args.push(isolation.clone());
         }
 
-        // Add labels
-        for (key, value) in &self.labels {
-            args.push("--label".to_string());
-            args.push(format!("{key}={value}"));
-        }
-
         if let Some(ref network) = self.network {
             args.push("--network".to_string());
             args.push(network.clone());
@@ -859,6 +1182,98 @@ impl BuildCommand {
         for limit in &self.ulimits {
             args.push("--ulimit".to_string());
             args.push(limit.clone());
+        }
+    }
+
+    fn add_metadata_args(&self, args: &mut Vec<String>) {
+        // Add labels
+        for (key, value) in &self.labels {
+            args.push("--label".to_string());
+            args.push(format!("{key}={value}"));
+        }
+
+        for annotation in &self.annotations {
+            args.push("--annotation".to_string());
+            args.push(annotation.clone());
+        }
+
+        if let Some(ref file) = self.metadata_file {
+            args.push("--metadata-file".to_string());
+            args.push(file.to_string_lossy().to_string());
+        }
+    }
+
+    fn add_buildx_args(&self, args: &mut Vec<String>) {
+        for allow in &self.allow {
+            args.push("--allow".to_string());
+            args.push(allow.clone());
+        }
+
+        for attest in &self.attestations {
+            args.push("--attest".to_string());
+            args.push(attest.clone());
+        }
+
+        for context in &self.build_contexts {
+            args.push("--build-context".to_string());
+            args.push(context.clone());
+        }
+
+        if let Some(ref builder) = self.builder {
+            args.push("--builder".to_string());
+            args.push(builder.clone());
+        }
+
+        for cache in &self.cache_to {
+            args.push("--cache-to".to_string());
+            args.push(cache.clone());
+        }
+
+        if let Some(ref call) = self.call {
+            args.push("--call".to_string());
+            args.push(call.clone());
+        }
+
+        if self.check {
+            args.push("--check".to_string());
+        }
+
+        if self.load {
+            args.push("--load".to_string());
+        }
+
+        for filter in &self.no_cache_filter {
+            args.push("--no-cache-filter".to_string());
+            args.push(filter.clone());
+        }
+
+        if let Some(ref progress) = self.progress {
+            args.push("--progress".to_string());
+            args.push(progress.clone());
+        }
+
+        if let Some(ref provenance) = self.provenance {
+            args.push("--provenance".to_string());
+            args.push(provenance.clone());
+        }
+
+        if self.push {
+            args.push("--push".to_string());
+        }
+
+        if let Some(ref sbom) = self.sbom {
+            args.push("--sbom".to_string());
+            args.push(sbom.clone());
+        }
+
+        for secret in &self.secrets {
+            args.push("--secret".to_string());
+            args.push(secret.clone());
+        }
+
+        for ssh in &self.ssh {
+            args.push("--ssh".to_string());
+            args.push(ssh.clone());
         }
     }
 }
@@ -1135,5 +1550,61 @@ mod tests {
         let output3 = "No image ID found here";
         let id3 = BuildOutput::extract_image_id(output3);
         assert_eq!(id3, None);
+    }
+
+    #[test]
+    fn test_build_command_modern_buildx_options() {
+        let cmd = BuildCommand::new(".")
+            .allow("network.host")
+            .annotation("org.opencontainers.image.title=MyApp")
+            .attest("type=provenance,mode=max")
+            .build_context("mycontext=../path")
+            .builder("mybuilder")
+            .cache_to("type=registry,ref=myregistry/cache")
+            .call("check")
+            .check()
+            .load()
+            .metadata_file("/tmp/metadata.json")
+            .no_cache_filter("build-stage")
+            .progress("plain")
+            .provenance("mode=max")
+            .push()
+            .sbom("generator=image")
+            .secret("id=mysecret,src=/local/secret")
+            .ssh("default");
+
+        let args = cmd.build_args();
+
+        assert!(args.contains(&"--allow".to_string()));
+        assert!(args.contains(&"network.host".to_string()));
+        assert!(args.contains(&"--annotation".to_string()));
+        assert!(args.contains(&"org.opencontainers.image.title=MyApp".to_string()));
+        assert!(args.contains(&"--attest".to_string()));
+        assert!(args.contains(&"type=provenance,mode=max".to_string()));
+        assert!(args.contains(&"--build-context".to_string()));
+        assert!(args.contains(&"mycontext=../path".to_string()));
+        assert!(args.contains(&"--builder".to_string()));
+        assert!(args.contains(&"mybuilder".to_string()));
+        assert!(args.contains(&"--cache-to".to_string()));
+        assert!(args.contains(&"type=registry,ref=myregistry/cache".to_string()));
+        assert!(args.contains(&"--call".to_string()));
+        assert!(args.contains(&"check".to_string()));
+        assert!(args.contains(&"--check".to_string()));
+        assert!(args.contains(&"--load".to_string()));
+        assert!(args.contains(&"--metadata-file".to_string()));
+        assert!(args.contains(&"/tmp/metadata.json".to_string()));
+        assert!(args.contains(&"--no-cache-filter".to_string()));
+        assert!(args.contains(&"build-stage".to_string()));
+        assert!(args.contains(&"--progress".to_string()));
+        assert!(args.contains(&"plain".to_string()));
+        assert!(args.contains(&"--provenance".to_string()));
+        assert!(args.contains(&"mode=max".to_string()));
+        assert!(args.contains(&"--push".to_string()));
+        assert!(args.contains(&"--sbom".to_string()));
+        assert!(args.contains(&"generator=image".to_string()));
+        assert!(args.contains(&"--secret".to_string()));
+        assert!(args.contains(&"id=mysecret,src=/local/secret".to_string()));
+        assert!(args.contains(&"--ssh".to_string()));
+        assert!(args.contains(&"default".to_string()));
     }
 }
