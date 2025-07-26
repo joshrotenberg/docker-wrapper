@@ -198,3 +198,12 @@ Focus on the most commonly used and important options, not every possible flag.
 - **Run Command**: Multiple iterations, CI failures, learning curve
 - **Exec Command**: Single smooth implementation, no CI issues, complete success
 - **Key Factor**: Process refinement and quality gates prevent rework
+
+## Future Refactoring Notes:
+- **File Organization**: Consider moving to `src/command/` directory structure:
+  - `src/command/mod.rs` - Core command traits and utilities
+  - `src/command/run.rs` - Run command implementation
+  - `src/command/exec.rs` - Exec command implementation
+  - `src/command/ps.rs` - PS command implementation (etc.)
+  - This would provide better organization as we scale to 14+ commands
+  - **Timeline**: After completing current command push, before 1.0 release
