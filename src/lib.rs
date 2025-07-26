@@ -9,6 +9,7 @@
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 
+pub mod build;
 pub mod command;
 pub mod error;
 pub mod exec;
@@ -16,6 +17,7 @@ pub mod prerequisites;
 pub mod ps;
 pub mod run;
 
+pub use build::{BuildCommand, BuildOutput};
 pub use command::{
     CommandExecutor, CommandOutput, DockerCommand, EnvironmentBuilder, PortBuilder, PortMapping,
     Protocol,
