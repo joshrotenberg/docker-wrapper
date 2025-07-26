@@ -31,6 +31,16 @@ mod tests {
 
     #[test]
     fn test_version() {
-        assert!(!VERSION.is_empty());
+        // Verify version follows semver format (major.minor.patch)
+        let parts: Vec<&str> = VERSION.split('.').collect();
+        assert!(parts.len() >= 3, "Version should have at least 3 parts");
+
+        // Verify each part is numeric
+        for part in &parts[0..3] {
+            assert!(
+                part.chars().all(|c| c.is_ascii_digit()),
+                "Version parts should be numeric"
+            );
+        }
     }
 }

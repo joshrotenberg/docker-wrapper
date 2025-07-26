@@ -23,7 +23,7 @@ async fn main() {
             );
         }
         Err(e) => {
-            println!("Docker not available: {}", e);
+            println!("Docker not available: {e}");
             return;
         }
     }
@@ -42,7 +42,7 @@ async fn main() {
             println!("Container created: {}", container_id.short());
         }
         Err(e) => {
-            println!("Failed to run container: {}", e);
+            println!("Failed to run container: {e}");
         }
     }
 
@@ -65,7 +65,7 @@ async fn main() {
 
     match web_run.execute().await {
         Ok(container_id) => {
-            println!("Web server started: {}", container_id);
+            println!("Web server started: {container_id}");
             println!("Visit http://localhost:8080 to see it running");
 
             // Clean up - stop the container
@@ -76,11 +76,11 @@ async fn main() {
 
             match stop_output {
                 Ok(_) => println!("Container stopped"),
-                Err(e) => println!("Failed to stop container: {}", e),
+                Err(e) => println!("Failed to stop container: {e}"),
             }
         }
         Err(e) => {
-            println!("Failed to start web server: {}", e);
+            println!("Failed to start web server: {e}");
         }
     }
 
@@ -155,7 +155,7 @@ async fn main() {
     let args = demo_run.build_args();
     println!("Full argument list:");
     for (i, arg) in args.iter().enumerate() {
-        println!("  [{}]: {}", i, arg);
+        println!("  [{i}]: {arg}");
     }
 
     println!();

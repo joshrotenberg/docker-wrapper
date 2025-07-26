@@ -452,7 +452,7 @@ mod tests {
 
         let empty_output = CommandOutput {
             stdout: "   ".to_string(),
-            stderr: "".to_string(),
+            stderr: String::new(),
             exit_code: 0,
             success: true,
         };

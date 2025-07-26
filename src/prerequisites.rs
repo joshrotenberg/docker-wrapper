@@ -360,7 +360,7 @@ mod tests {
                 println!("Docker not found - skipping integration test");
             }
             Err(e) => {
-                println!("Prerequisites check failed: {}", e);
+                println!("Prerequisites check failed: {e}");
             }
         }
     }

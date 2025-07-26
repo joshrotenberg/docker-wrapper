@@ -33,7 +33,7 @@ async fn main() {
             }
         }
         Err(e) => {
-            println!("❌ Docker check failed: {}", e);
+            println!("❌ Docker check failed: {e}");
             handle_prerequisites_error(&e);
         }
     }
@@ -45,7 +45,7 @@ async fn main() {
     let custom_version = match docker_wrapper::prerequisites::DockerVersion::parse("25.0.0") {
         Ok(version) => version,
         Err(e) => {
-            println!("❌ Failed to parse version: {}", e);
+            println!("❌ Failed to parse version: {e}");
             return;
         }
     };
@@ -57,10 +57,10 @@ async fn main() {
             println!("   Version: {}", info.version.version);
         }
         Err(e) => {
-            println!("❌ Docker version check failed: {}", e);
+            println!("❌ Docker version check failed: {e}");
             match &e {
                 Error::UnsupportedVersion { found, minimum } => {
-                    println!("   Found: {}, Required: {}", found, minimum);
+                    println!("   Found: {found}, Required: {minimum}");
                 }
                 _ => handle_prerequisites_error(&e),
             }
@@ -92,7 +92,7 @@ async fn main() {
             }
         }
         Err(e) => {
-            println!("❌ Failed to get system information: {}", e);
+            println!("❌ Failed to get system information: {e}");
         }
     }
 }
@@ -108,17 +108,17 @@ fn handle_prerequisites_error(error: &Error) {
             println!("   💡 Or start Docker Desktop application");
         }
         Error::UnsupportedVersion { found, minimum } => {
-            println!("   💡 Update Docker to version {} or higher", minimum);
-            println!("   💡 Current version: {}", found);
+            println!("   💡 Update Docker to version {minimum} or higher");
+            println!("   💡 Current version: {found}");
         }
         Error::CommandFailed { command, .. } => {
-            println!("   💡 Command execution failed: {}", command);
+            println!("   💡 Command execution failed: {command}");
         }
         Error::ParseError { message } => {
-            println!("   💡 Parse error: {}", message);
+            println!("   💡 Parse error: {message}");
         }
         _ => {
-            println!("   💡 Unexpected error: {}", error);
+            println!("   💡 Unexpected error: {error}");
         }
     }
 }
