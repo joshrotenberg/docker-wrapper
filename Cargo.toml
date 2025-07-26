@@ -1,11 +1,11 @@
 [package]
 name = "docker-wrapper"
 version = "0.1.0"
-edition = "2021"
-authors = ["Your Name <your.email@example.com>"]
+edition = "2024"
+authors = ["Josh Rotenberg <joshrotenberg@gmail.com>"]
 description = "A simple, focused Docker CLI wrapper for Rust"
 license = "MIT OR Apache-2.0"
-repository = "https://github.com/your-username/docker-wrapper"
+repository = "https://github.com/joshrotenberg/docker-wrapper"
 readme = "README.md"
 keywords = ["docker", "containers", "cli", "wrapper"]
 categories = ["development-tools", "api-bindings"]
