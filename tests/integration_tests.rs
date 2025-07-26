@@ -1,5 +1,7 @@
-//! Integration tests for Docker Wrapper
+//! Main Integration Tests for Docker Wrapper
 //!
+//! This file contains cross-module integration tests and general functionality tests.
+//! Command-specific integration tests are in separate files (e.g., run_integration.rs).
 //! These tests require Docker to be installed and running.
 //! They will be skipped if Docker is not available.
 

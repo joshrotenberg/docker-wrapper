@@ -1,7 +1,7 @@
-//! Phase 2 Integration Tests for Docker Wrapper
+//! Integration Tests for Docker Run Command
 //!
-//! These tests are designed to run during the release process
-//! and validate core functionality with real Docker commands.
+//! These tests validate the docker run command implementation
+//! with real Docker commands and containers.
 
 use docker_wrapper::prerequisites::ensure_docker;
 use docker_wrapper::run::RunCommand;
@@ -12,13 +12,13 @@ async fn ensure_docker_or_skip() {
     match ensure_docker().await {
         Ok(_) => {}
         Err(_) => {
-            println!("Docker not available - skipping phase 2 integration test");
+            println!("Docker not available - skipping run integration test");
         }
     }
 }
 
 #[tokio::test]
-async fn test_phase2_docker_run_basic() {
+async fn test_run_basic_container() {
     ensure_docker_or_skip().await;
 
     // Test basic container execution
@@ -29,17 +29,17 @@ async fn test_phase2_docker_run_basic() {
     match run_cmd.execute().await {
         Ok(container_id) => {
             let short_id = container_id.short();
-            println!("Phase 2: Basic run test passed - {short_id}");
+            println!("Run: Basic container test passed - {short_id}");
             assert!(!container_id.0.is_empty());
         }
         Err(e) => {
-            println!("Phase 2: Basic run test failed (may be expected): {e}");
+            println!("Run: Basic container test failed (may be expected): {e}");
         }
     }
 }
 
 #[tokio::test]
-async fn test_phase2_docker_run_with_options() {
+async fn test_run_with_options() {
     ensure_docker_or_skip().await;
 
     // Test run with multiple options
@@ -57,33 +57,33 @@ async fn test_phase2_docker_run_with_options() {
     match run_cmd.execute().await {
         Ok(container_id) => {
             let short_id = container_id.short();
-            println!("Phase 2: Options test passed - {short_id}");
+            println!("Run: Options test passed - {short_id}");
             assert!(!container_id.0.is_empty());
         }
         Err(e) => {
-            println!("Phase 2: Options test failed (may be expected): {e}");
+            println!("Run: Options test failed (may be expected): {e}");
         }
     }
 }
 
 #[tokio::test]
-async fn test_phase2_prerequisites_validation() {
+async fn test_run_prerequisites_validation() {
     // Always run this test - it should handle Docker unavailability gracefully
     match ensure_docker().await {
         Ok(info) => {
             let version = &info.version.version;
-            println!("Phase 2: Prerequisites OK - Docker {version}");
+            println!("Run: Prerequisites OK - Docker {version}");
             assert!(!info.version.version.is_empty());
         }
         Err(e) => {
-            println!("Phase 2: Prerequisites failed (expected in some CI): {e}");
+            println!("Run: Prerequisites failed (expected in some CI): {e}");
             // Don't fail - this is expected when Docker isn't available
         }
     }
 }
 
 #[tokio::test]
-async fn test_phase2_command_builder_correctness() {
+async fn test_run_command_builder() {
     // This test doesn't require Docker - just validates command construction
     let complex_run = RunCommand::new("redis:7.2-alpine")
         .name("test-redis")
@@ -106,5 +106,5 @@ async fn test_phase2_command_builder_correctness() {
     assert!(args.contains(&"--detach".to_string()));
     assert!(args.contains(&"redis:7.2-alpine".to_string()));
 
-    println!("Phase 2: Command builder validation passed");
+    println!("Run: Command builder validation passed");
 }
