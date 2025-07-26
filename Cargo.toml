@@ -25,3 +25,7 @@ tracing-subscriber = "0.3"
 [[example]]
 name = "basic_usage"
 path = "examples/basic_usage.rs"
+
+[[example]]
+name = "exec_examples"
+path = "examples/exec_examples.rs"

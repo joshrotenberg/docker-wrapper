@@ -11,6 +11,7 @@
 
 pub mod command;
 pub mod error;
+pub mod exec;
 pub mod prerequisites;
 pub mod run;
 
@@ -19,6 +20,7 @@ pub use command::{
     Protocol,
 };
 pub use error::{Error, Result};
+pub use exec::{ExecCommand, ExecOutput};
 pub use prerequisites::{ensure_docker, DockerInfo, DockerPrerequisites};
 pub use run::{ContainerId, MountType, RunCommand, VolumeMount};
 
