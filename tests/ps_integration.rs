@@ -222,9 +222,18 @@ async fn test_ps_json_format() {
                     assert!(output.success());
 
                     if !output.stdout_is_empty() {
-                        // Output should be valid JSON
-                        let json_result = serde_json::from_str::<serde_json::Value>(&output.stdout);
-                        assert!(json_result.is_ok(), "Output should be valid JSON");
+                        let stdout = output.stdout.trim();
+                        if !stdout.is_empty() {
+                            // Each line should be valid JSON (Docker outputs one JSON object per line)
+                            for line in stdout.lines() {
+                                let json_result = serde_json::from_str::<serde_json::Value>(line);
+                                assert!(
+                                    json_result.is_ok(),
+                                    "Each line should be valid JSON: {}",
+                                    line
+                                );
+                            }
+                        }
                     }
                 }
                 Err(e) => {
