@@ -9,6 +9,7 @@ on:
 permissions:
   contents: write
   pull-requests: write
+  actions: write
 
 jobs:
   release-please:
@@ -20,11 +21,10 @@ jobs:
 
     steps:
       - name: Create Release PR or Release
-        uses: google-github-actions/release-please-action@v4
+        uses: googleapis/release-please-action@v4
         id: release
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          release-type: rust
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
