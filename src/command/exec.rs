@@ -88,7 +88,7 @@ impl ExecCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::exec::ExecCommand;
+    /// use docker_wrapper::ExecCommand;
     ///
     /// let exec_cmd = ExecCommand::new("my-container", vec!["ls".to_string(), "-la".to_string()]);
     /// ```
@@ -114,7 +114,7 @@ impl ExecCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::exec::ExecCommand;
+    /// use docker_wrapper::ExecCommand;
     ///
     /// let exec_cmd = ExecCommand::new("my-container", vec!["sleep".to_string(), "10".to_string()])
     ///     .detach();
@@ -130,7 +130,7 @@ impl ExecCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::exec::ExecCommand;
+    /// use docker_wrapper::ExecCommand;
     ///
     /// let exec_cmd = ExecCommand::new("my-container", vec!["bash".to_string()])
     ///     .detach_keys("ctrl-p,ctrl-q");
@@ -146,7 +146,7 @@ impl ExecCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::exec::ExecCommand;
+    /// use docker_wrapper::ExecCommand;
     ///
     /// let exec_cmd = ExecCommand::new("my-container", vec!["env".to_string()])
     ///     .env("DEBUG", "1")
@@ -163,7 +163,7 @@ impl ExecCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::exec::ExecCommand;
+    /// use docker_wrapper::ExecCommand;
     /// use std::collections::HashMap;
     ///
     /// let mut env_vars = HashMap::new();
@@ -184,7 +184,7 @@ impl ExecCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::exec::ExecCommand;
+    /// use docker_wrapper::ExecCommand;
     ///
     /// let exec_cmd = ExecCommand::new("my-container", vec!["env".to_string()])
     ///     .env_file("/path/to/env.file");
@@ -200,7 +200,7 @@ impl ExecCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::exec::ExecCommand;
+    /// use docker_wrapper::ExecCommand;
     ///
     /// let exec_cmd = ExecCommand::new("my-container", vec!["bash".to_string()])
     ///     .interactive();
@@ -216,7 +216,7 @@ impl ExecCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::exec::ExecCommand;
+    /// use docker_wrapper::ExecCommand;
     ///
     /// let exec_cmd = ExecCommand::new("my-container", vec!["mount".to_string()])
     ///     .privileged();
@@ -232,7 +232,7 @@ impl ExecCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::exec::ExecCommand;
+    /// use docker_wrapper::ExecCommand;
     ///
     /// let exec_cmd = ExecCommand::new("my-container", vec!["bash".to_string()])
     ///     .tty();
@@ -248,7 +248,7 @@ impl ExecCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::exec::ExecCommand;
+    /// use docker_wrapper::ExecCommand;
     ///
     /// let exec_cmd = ExecCommand::new("my-container", vec!["whoami".to_string()])
     ///     .user("root");
@@ -267,7 +267,7 @@ impl ExecCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::exec::ExecCommand;
+    /// use docker_wrapper::ExecCommand;
     ///
     /// let exec_cmd = ExecCommand::new("my-container", vec!["pwd".to_string()])
     ///     .workdir("/app");
@@ -283,7 +283,7 @@ impl ExecCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::exec::ExecCommand;
+    /// use docker_wrapper::ExecCommand;
     ///
     /// let exec_cmd = ExecCommand::new("my-container", vec!["bash".to_string()])
     ///     .it();

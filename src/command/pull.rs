@@ -8,7 +8,7 @@
 //! ## Basic Usage
 //!
 //! ```no_run
-//! use docker_wrapper::pull::PullCommand;
+//! use docker_wrapper::PullCommand;
 //! use docker_wrapper::DockerCommand;
 //!
 //! #[tokio::main]
@@ -24,7 +24,7 @@
 //! ## Advanced Usage
 //!
 //! ```no_run
-//! use docker_wrapper::pull::PullCommand;
+//! use docker_wrapper::PullCommand;
 //! use docker_wrapper::DockerCommand;
 //!
 //! #[tokio::main]
@@ -72,7 +72,7 @@ use std::ffi::OsStr;
 /// # Examples
 ///
 /// ```no_run
-/// use docker_wrapper::pull::PullCommand;
+/// use docker_wrapper::PullCommand;
 /// use docker_wrapper::DockerCommand;
 ///
 /// #[tokio::main]
@@ -112,7 +112,7 @@ impl PullCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::pull::PullCommand;
+    /// use docker_wrapper::PullCommand;
     ///
     /// let pull_cmd = PullCommand::new("nginx:latest");
     /// ```
@@ -136,7 +136,7 @@ impl PullCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::pull::PullCommand;
+    /// use docker_wrapper::PullCommand;
     ///
     /// let pull_cmd = PullCommand::new("alpine")
     ///     .all_tags();
@@ -155,7 +155,7 @@ impl PullCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::pull::PullCommand;
+    /// use docker_wrapper::PullCommand;
     ///
     /// let pull_cmd = PullCommand::new("nginx:latest")
     ///     .disable_content_trust();
@@ -180,7 +180,7 @@ impl PullCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::pull::PullCommand;
+    /// use docker_wrapper::PullCommand;
     ///
     /// let pull_cmd = PullCommand::new("nginx:latest")
     ///     .platform("linux/arm64");
@@ -198,7 +198,7 @@ impl PullCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::pull::PullCommand;
+    /// use docker_wrapper::PullCommand;
     ///
     /// let pull_cmd = PullCommand::new("nginx:latest")
     ///     .quiet();
@@ -247,7 +247,7 @@ impl PullCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::pull::PullCommand;
+    /// use docker_wrapper::PullCommand;
     ///
     /// let pull_cmd = PullCommand::new("nginx:latest");
     /// assert_eq!(pull_cmd.get_image(), "nginx:latest");
@@ -262,7 +262,7 @@ impl PullCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::pull::PullCommand;
+    /// use docker_wrapper::PullCommand;
     ///
     /// let pull_cmd = PullCommand::new("alpine").all_tags();
     /// assert!(pull_cmd.is_all_tags());
@@ -277,7 +277,7 @@ impl PullCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::pull::PullCommand;
+    /// use docker_wrapper::PullCommand;
     ///
     /// let pull_cmd = PullCommand::new("nginx").quiet();
     /// assert!(pull_cmd.is_quiet());
@@ -292,7 +292,7 @@ impl PullCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::pull::PullCommand;
+    /// use docker_wrapper::PullCommand;
     ///
     /// let pull_cmd = PullCommand::new("nginx").platform("linux/arm64");
     /// assert_eq!(pull_cmd.get_platform(), Some("linux/arm64"));
@@ -307,7 +307,7 @@ impl PullCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::pull::PullCommand;
+    /// use docker_wrapper::PullCommand;
     ///
     /// let pull_cmd = PullCommand::new("nginx").disable_content_trust();
     /// assert!(pull_cmd.is_content_trust_disabled());

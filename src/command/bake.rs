@@ -8,7 +8,7 @@
 //! ## Basic Usage
 //!
 //! ```no_run
-//! use docker_wrapper::bake::BakeCommand;
+//! use docker_wrapper::BakeCommand;
 //! use docker_wrapper::DockerCommand;
 //!
 //! #[tokio::main]
@@ -24,7 +24,7 @@
 //! ## Advanced Usage
 //!
 //! ```no_run
-//! use docker_wrapper::bake::BakeCommand;
+//! use docker_wrapper::BakeCommand;
 //! use docker_wrapper::DockerCommand;
 //!
 //! #[tokio::main]
@@ -77,7 +77,7 @@ use std::ffi::OsStr;
 /// # Examples
 ///
 /// ```no_run
-/// use docker_wrapper::bake::BakeCommand;
+/// use docker_wrapper::BakeCommand;
 /// use docker_wrapper::DockerCommand;
 ///
 /// #[tokio::main]
@@ -141,7 +141,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new();
     /// ```
@@ -178,7 +178,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .target("web")
@@ -196,7 +196,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .targets(vec!["web", "api", "worker"]);
@@ -220,7 +220,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .file("docker-compose.yml")
@@ -237,7 +237,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .files(vec!["docker-compose.yml", "override.yml"]);
@@ -260,7 +260,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .allow("network.host")
@@ -277,7 +277,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .builder("mybuilder");
@@ -295,7 +295,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .call("check"); // Validate build configuration
@@ -313,7 +313,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .check();
@@ -329,7 +329,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .debug();
@@ -345,7 +345,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .list("targets"); // List all available targets
@@ -361,7 +361,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .load();
@@ -377,7 +377,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .metadata_file("build-metadata.json");
@@ -393,7 +393,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .no_cache();
@@ -409,7 +409,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .print();
@@ -427,7 +427,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .progress("plain");
@@ -443,7 +443,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .provenance("mode=max");
@@ -459,7 +459,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .pull();
@@ -475,7 +475,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .push();
@@ -491,7 +491,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .sbom("generator=docker/buildkit");
@@ -509,7 +509,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .set("web.platform", "linux/amd64,linux/arm64")
@@ -527,7 +527,7 @@ impl BakeCommand {
     ///
     /// ```
     /// use std::collections::HashMap;
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let mut overrides = HashMap::new();
     /// overrides.insert("web.platform".to_string(), "linux/amd64".to_string());
@@ -660,7 +660,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .target("web")
@@ -678,7 +678,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .target("web")
@@ -697,7 +697,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
     ///     .file("docker-compose.yml");
@@ -715,7 +715,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new().push();
     /// assert!(bake_cmd.is_push_enabled());
@@ -730,7 +730,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new().load();
     /// assert!(bake_cmd.is_load_enabled());
@@ -745,7 +745,7 @@ impl BakeCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::bake::BakeCommand;
+    /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new().print();
     /// assert!(bake_cmd.is_dry_run());

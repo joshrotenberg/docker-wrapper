@@ -133,7 +133,7 @@ impl PsCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::ps::PsCommand;
+    /// use docker_wrapper::PsCommand;
     ///
     /// let ps_cmd = PsCommand::new();
     /// ```
@@ -157,7 +157,7 @@ impl PsCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::ps::PsCommand;
+    /// use docker_wrapper::PsCommand;
     ///
     /// let ps_cmd = PsCommand::new().all();
     /// ```
@@ -172,7 +172,7 @@ impl PsCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::ps::PsCommand;
+    /// use docker_wrapper::PsCommand;
     ///
     /// let ps_cmd = PsCommand::new()
     ///     .filter("status=running")
@@ -189,7 +189,7 @@ impl PsCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::ps::PsCommand;
+    /// use docker_wrapper::PsCommand;
     ///
     /// let filters = vec!["status=running".to_string(), "name=web".to_string()];
     /// let ps_cmd = PsCommand::new().filters(filters);
@@ -205,7 +205,7 @@ impl PsCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::ps::PsCommand;
+    /// use docker_wrapper::PsCommand;
     ///
     /// let ps_cmd = PsCommand::new().format_table();
     /// ```
@@ -220,7 +220,7 @@ impl PsCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::ps::PsCommand;
+    /// use docker_wrapper::PsCommand;
     ///
     /// let ps_cmd = PsCommand::new().format_json();
     /// ```
@@ -235,7 +235,7 @@ impl PsCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::ps::PsCommand;
+    /// use docker_wrapper::PsCommand;
     ///
     /// let ps_cmd = PsCommand::new()
     ///     .format_template("table {{.ID}}\\t{{.Names}}\\t{{.Status}}");
@@ -251,7 +251,7 @@ impl PsCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::ps::PsCommand;
+    /// use docker_wrapper::PsCommand;
     ///
     /// let ps_cmd = PsCommand::new().last(5);
     /// ```
@@ -266,7 +266,7 @@ impl PsCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::ps::PsCommand;
+    /// use docker_wrapper::PsCommand;
     ///
     /// let ps_cmd = PsCommand::new().latest();
     /// ```
@@ -281,7 +281,7 @@ impl PsCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::ps::PsCommand;
+    /// use docker_wrapper::PsCommand;
     ///
     /// let ps_cmd = PsCommand::new().no_trunc();
     /// ```
@@ -296,7 +296,7 @@ impl PsCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::ps::PsCommand;
+    /// use docker_wrapper::PsCommand;
     ///
     /// let ps_cmd = PsCommand::new().quiet();
     /// ```
@@ -311,7 +311,7 @@ impl PsCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::ps::PsCommand;
+    /// use docker_wrapper::PsCommand;
     ///
     /// let ps_cmd = PsCommand::new().size();
     /// ```

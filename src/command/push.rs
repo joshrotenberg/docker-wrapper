@@ -8,7 +8,7 @@
 //! ## Basic Usage
 //!
 //! ```no_run
-//! use docker_wrapper::push::PushCommand;
+//! use docker_wrapper::PushCommand;
 //! use docker_wrapper::DockerCommand;
 //!
 //! #[tokio::main]
@@ -24,7 +24,7 @@
 //! ## Advanced Usage
 //!
 //! ```no_run
-//! use docker_wrapper::push::PushCommand;
+//! use docker_wrapper::PushCommand;
 //! use docker_wrapper::DockerCommand;
 //!
 //! #[tokio::main]
@@ -77,7 +77,7 @@ use std::ffi::OsStr;
 /// # Examples
 ///
 /// ```no_run
-/// use docker_wrapper::push::PushCommand;
+/// use docker_wrapper::PushCommand;
 /// use docker_wrapper::DockerCommand;
 ///
 /// #[tokio::main]
@@ -117,7 +117,7 @@ impl PushCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::push::PushCommand;
+    /// use docker_wrapper::PushCommand;
     ///
     /// let push_cmd = PushCommand::new("myapp:latest");
     /// ```
@@ -141,7 +141,7 @@ impl PushCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::push::PushCommand;
+    /// use docker_wrapper::PushCommand;
     ///
     /// let push_cmd = PushCommand::new("myregistry.com/myapp")
     ///     .all_tags();
@@ -160,7 +160,7 @@ impl PushCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::push::PushCommand;
+    /// use docker_wrapper::PushCommand;
     ///
     /// let push_cmd = PushCommand::new("myapp:latest")
     ///     .disable_content_trust();
@@ -188,7 +188,7 @@ impl PushCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::push::PushCommand;
+    /// use docker_wrapper::PushCommand;
     ///
     /// let push_cmd = PushCommand::new("myapp:latest")
     ///     .platform("linux/amd64");
@@ -206,7 +206,7 @@ impl PushCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::push::PushCommand;
+    /// use docker_wrapper::PushCommand;
     ///
     /// let push_cmd = PushCommand::new("myapp:latest")
     ///     .quiet();
@@ -255,7 +255,7 @@ impl PushCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::push::PushCommand;
+    /// use docker_wrapper::PushCommand;
     ///
     /// let push_cmd = PushCommand::new("myapp:latest");
     /// assert_eq!(push_cmd.get_image(), "myapp:latest");
@@ -270,7 +270,7 @@ impl PushCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::push::PushCommand;
+    /// use docker_wrapper::PushCommand;
     ///
     /// let push_cmd = PushCommand::new("myapp").all_tags();
     /// assert!(push_cmd.is_all_tags());
@@ -285,7 +285,7 @@ impl PushCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::push::PushCommand;
+    /// use docker_wrapper::PushCommand;
     ///
     /// let push_cmd = PushCommand::new("myapp").quiet();
     /// assert!(push_cmd.is_quiet());
@@ -300,7 +300,7 @@ impl PushCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::push::PushCommand;
+    /// use docker_wrapper::PushCommand;
     ///
     /// let push_cmd = PushCommand::new("myapp").platform("linux/arm64");
     /// assert_eq!(push_cmd.get_platform(), Some("linux/arm64"));
@@ -315,7 +315,7 @@ impl PushCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::push::PushCommand;
+    /// use docker_wrapper::PushCommand;
     ///
     /// let push_cmd = PushCommand::new("myapp").disable_content_trust();
     /// assert!(push_cmd.is_content_trust_disabled());

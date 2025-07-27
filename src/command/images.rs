@@ -8,7 +8,7 @@
 //! ## Basic Usage
 //!
 //! ```no_run
-//! use docker_wrapper::images::ImagesCommand;
+//! use docker_wrapper::ImagesCommand;
 //! use docker_wrapper::DockerCommand;
 //!
 //! #[tokio::main]
@@ -24,7 +24,7 @@
 //! ## Advanced Usage
 //!
 //! ```no_run
-//! use docker_wrapper::images::ImagesCommand;
+//! use docker_wrapper::ImagesCommand;
 //! use docker_wrapper::DockerCommand;
 //!
 //! #[tokio::main]
@@ -77,7 +77,7 @@ use std::ffi::OsStr;
 /// # Examples
 ///
 /// ```no_run
-/// use docker_wrapper::images::ImagesCommand;
+/// use docker_wrapper::ImagesCommand;
 /// use docker_wrapper::DockerCommand;
 ///
 /// #[tokio::main]
@@ -147,7 +147,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new();
     /// ```
@@ -175,7 +175,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new()
     ///     .repository("nginx:alpine");
@@ -193,7 +193,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new()
     ///     .all();
@@ -211,7 +211,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new()
     ///     .digests();
@@ -234,7 +234,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new()
     ///     .filter("dangling=true")
@@ -251,7 +251,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new()
     ///     .filters(vec!["dangling=false", "label=version=latest"]);
@@ -272,7 +272,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new()
     ///     .format("table {{.Repository}}:{{.Tag}}\t{{.Size}}");
@@ -288,7 +288,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new()
     ///     .format_table();
@@ -304,7 +304,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new()
     ///     .format_json();
@@ -322,7 +322,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new()
     ///     .no_trunc();
@@ -340,7 +340,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new()
     ///     .quiet();
@@ -358,7 +358,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new()
     ///     .tree();
@@ -565,7 +565,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new().repository("nginx");
     /// assert_eq!(images_cmd.get_repository(), Some("nginx"));
@@ -580,7 +580,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new().all();
     /// assert!(images_cmd.is_all());
@@ -595,7 +595,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new().digests();
     /// assert!(images_cmd.is_digests());
@@ -610,7 +610,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new().quiet();
     /// assert!(images_cmd.is_quiet());
@@ -625,7 +625,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new().no_trunc();
     /// assert!(images_cmd.is_no_trunc());
@@ -640,7 +640,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new().tree();
     /// assert!(images_cmd.is_tree());
@@ -655,7 +655,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new()
     ///     .filter("dangling=true");
@@ -671,7 +671,7 @@ impl ImagesCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::images::ImagesCommand;
+    /// use docker_wrapper::ImagesCommand;
     ///
     /// let images_cmd = ImagesCommand::new().format_json();
     /// assert_eq!(images_cmd.get_format(), Some("json"));
@@ -694,7 +694,7 @@ impl ImagesOutput {
     /// # Examples
     ///
     /// ```no_run
-    /// # use docker_wrapper::images::ImagesCommand;
+    /// # use docker_wrapper::ImagesCommand;
     /// # use docker_wrapper::DockerCommand;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let output = ImagesCommand::new().execute().await?;
@@ -714,7 +714,7 @@ impl ImagesOutput {
     /// # Examples
     ///
     /// ```no_run
-    /// # use docker_wrapper::images::ImagesCommand;
+    /// # use docker_wrapper::ImagesCommand;
     /// # use docker_wrapper::DockerCommand;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let output = ImagesCommand::new().execute().await?;
@@ -732,7 +732,7 @@ impl ImagesOutput {
     /// # Examples
     ///
     /// ```no_run
-    /// # use docker_wrapper::images::ImagesCommand;
+    /// # use docker_wrapper::ImagesCommand;
     /// # use docker_wrapper::DockerCommand;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let output = ImagesCommand::new().execute().await?;
@@ -754,7 +754,7 @@ impl ImagesOutput {
     /// # Examples
     ///
     /// ```no_run
-    /// # use docker_wrapper::images::ImagesCommand;
+    /// # use docker_wrapper::ImagesCommand;
     /// # use docker_wrapper::DockerCommand;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let output = ImagesCommand::new().execute().await?;
@@ -776,7 +776,7 @@ impl ImagesOutput {
     /// # Examples
     ///
     /// ```no_run
-    /// # use docker_wrapper::images::ImagesCommand;
+    /// # use docker_wrapper::ImagesCommand;
     /// # use docker_wrapper::DockerCommand;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let output = ImagesCommand::new().execute().await?;

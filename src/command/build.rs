@@ -175,7 +175,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".");
     /// ```
@@ -237,7 +237,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .add_host("myhost:192.168.1.100");
@@ -253,7 +253,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .build_arg("VERSION", "1.0.0")
@@ -270,7 +270,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     /// use std::collections::HashMap;
     ///
     /// let mut args = HashMap::new();
@@ -290,7 +290,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .cache_from("myapp:cache");
@@ -306,7 +306,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .cgroup_parent("/docker");
@@ -322,7 +322,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".").compress();
     /// ```
@@ -337,7 +337,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .cpu_period(100000);
@@ -353,7 +353,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .cpu_quota(50000);
@@ -369,7 +369,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .cpu_shares(512);
@@ -385,7 +385,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .cpuset_cpus("0-3");
@@ -401,7 +401,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .cpuset_mems("0-1");
@@ -417,7 +417,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .disable_content_trust();
@@ -433,7 +433,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .file("Dockerfile.prod");
@@ -449,7 +449,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .force_rm();
@@ -465,7 +465,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .iidfile("/tmp/image_id.txt");
@@ -481,7 +481,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .isolation("hyperv");
@@ -497,7 +497,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .label("version", "1.0.0")
@@ -514,7 +514,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     /// use std::collections::HashMap;
     ///
     /// let mut labels = HashMap::new();
@@ -534,7 +534,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .memory("1g");
@@ -550,7 +550,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .memory_swap("2g");
@@ -566,7 +566,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .network("host");
@@ -582,7 +582,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .no_cache();
@@ -598,7 +598,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .platform("linux/amd64");
@@ -614,7 +614,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .pull();
@@ -630,7 +630,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .quiet();
@@ -646,7 +646,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .no_rm(); // Don't remove intermediate containers
@@ -662,7 +662,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .security_opt("seccomp=unconfined");
@@ -678,7 +678,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .shm_size("128m");
@@ -694,7 +694,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .tag("myapp:latest")
@@ -711,7 +711,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let tags = vec!["myapp:latest".to_string(), "myapp:1.0.0".to_string()];
     /// let build_cmd = BuildCommand::new(".").tags(tags);
@@ -727,7 +727,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .target("production");
@@ -743,7 +743,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .ulimit("nofile=65536:65536");
@@ -759,7 +759,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .allow("network.host");
@@ -775,7 +775,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .annotation("org.opencontainers.image.title=MyApp");
@@ -791,7 +791,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .attest("type=provenance,mode=max");
@@ -807,7 +807,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .build_context("mycontext=../path");
@@ -823,7 +823,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .builder("mybuilder");
@@ -839,7 +839,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .cache_to("type=registry,ref=myregistry/cache");
@@ -855,7 +855,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .call("check");
@@ -871,7 +871,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .check();
@@ -887,7 +887,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .load();
@@ -903,7 +903,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .metadata_file("/tmp/metadata.json");
@@ -919,7 +919,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .no_cache_filter("build-stage");
@@ -935,7 +935,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .progress("plain");
@@ -951,7 +951,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .provenance("mode=max");
@@ -967,7 +967,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .push();
@@ -983,7 +983,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .sbom("generator=image");
@@ -999,7 +999,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .secret("id=mysecret,src=/local/secret");
@@ -1015,7 +1015,7 @@ impl BuildCommand {
     /// # Examples
     ///
     /// ```
-    /// use docker_wrapper::build::BuildCommand;
+    /// use docker_wrapper::BuildCommand;
     ///
     /// let build_cmd = BuildCommand::new(".")
     ///     .ssh("default");
