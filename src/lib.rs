@@ -22,6 +22,7 @@ pub mod ps;
 pub mod pull;
 pub mod push;
 pub mod run;
+pub mod search;
 
 pub use bake::BakeCommand;
 pub use build::{BuildCommand, BuildOutput};
@@ -39,6 +40,7 @@ pub use ps::{ContainerInfo, PsCommand, PsFormat, PsOutput};
 pub use pull::PullCommand;
 pub use push::PushCommand;
 pub use run::{ContainerId, MountType, RunCommand, VolumeMount};
+pub use search::{RepositoryInfo, SearchCommand, SearchOutput};
 
 /// The version of this crate
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
