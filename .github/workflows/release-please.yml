@@ -63,7 +63,7 @@ jobs:
           cargo package --verbose
           cargo publish --verbose
         env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
   update-docs:
     name: Update Documentation

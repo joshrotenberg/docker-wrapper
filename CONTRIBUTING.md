@@ -2,51 +2,36 @@
 
 Thanks for your interest in contributing to docker-wrapper.
 
-## Development Setup
+## Quick Start
 
-**Prerequisites:**
-- Rust 1.78+
-- Docker 20.10+
+**Prerequisites:** Rust 1.78+ and Docker 20.10+
 
-**Setup:**
 ```bash
 git clone https://github.com/your-username/docker-wrapper.git
 cd docker-wrapper
 cargo test  # Verify everything works
 ```
 
-## Making Changes
+## Development
 
-1. **Create a branch:** `git checkout -b your-feature`
+1. **Create branch:** `git checkout -b your-feature`
 2. **Make changes** and add tests
 3. **Run checks:** `cargo test && cargo clippy && cargo fmt`
-4. **Commit:** Use conventional commits (`feat:`, `fix:`, `docs:`, etc.)
+4. **Commit:** Use conventional commits (`feat:`, `fix:`, `docs:`)
 5. **Push and create PR**
 
-## Code Standards
+## Standards
 
-- Follow `cargo fmt` and `cargo clippy`
-- Add tests for new functionality
-- Document public APIs
-- Handle errors with our `Result` type
+- All tests must pass (256+ tests)
+- Zero clippy warnings required
+- Document public APIs with rustdoc
+- Add integration tests for new commands
+- Follow existing code patterns
 
-## Running Tests
+## Current Status
 
-```bash
-cargo test                    # Unit tests
-cargo test --all-targets      # All tests (requires Docker)
-```
+- **Phase 2 Complete**: All 14 commands implemented with comprehensive tests
+- **Decision Point**: Complete run command vs release preparation
+- **Quality**: Production-ready with 0 warnings
 
-## Areas to Contribute
-
-- **Bug fixes** - Issues labeled `bug`
-- **Documentation** - Examples and guides  
-- **Tests** - Improve coverage
-- **New features** - Additional Docker commands
-
-## Getting Help
-
-- **GitHub Issues** - Bug reports and feature requests
-- **GitHub Discussions** - Questions and ideas
-
-By contributing, you agree your contributions will be licensed under MIT OR Apache-2.0.
+See `.claude/CONTEXT.md` for detailed development context.
