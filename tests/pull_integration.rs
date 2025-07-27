@@ -4,8 +4,7 @@
 //! and gracefully handle cases where Docker is not available.
 
 use docker_wrapper::prerequisites::ensure_docker;
-use docker_wrapper::pull::PullCommand;
-use docker_wrapper::DockerCommand;
+use docker_wrapper::{DockerCommand, PullCommand};
 
 /// Helper to check if Docker is available, skip test if not
 async fn ensure_docker_or_skip() {

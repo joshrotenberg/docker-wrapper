@@ -6,8 +6,8 @@
 //! They will be skipped if Docker is not available.
 
 use docker_wrapper::prerequisites::ensure_docker;
-use docker_wrapper::run::RunCommand;
 use docker_wrapper::DockerCommand;
+use docker_wrapper::RunCommand;
 use std::time::Duration;
 use tokio::time::sleep;
 

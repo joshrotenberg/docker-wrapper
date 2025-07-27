@@ -3,7 +3,7 @@
 //! This module provides a comprehensive implementation of the `docker exec` command
 //! with support for all native options and an extensible architecture for any additional options.
 
-use crate::command::{CommandExecutor, DockerCommand, EnvironmentBuilder};
+use super::{CommandExecutor, DockerCommand, EnvironmentBuilder};
 use crate::error::Result;
 use async_trait::async_trait;
 use std::ffi::OsStr;

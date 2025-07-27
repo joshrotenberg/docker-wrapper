@@ -3,7 +3,7 @@
 //! This module provides a comprehensive implementation of the `docker run` command
 //! with support for common options and an extensible architecture for any additional options.
 
-use crate::command::{CommandExecutor, DockerCommand, EnvironmentBuilder, PortBuilder};
+use super::{CommandExecutor, DockerCommand, EnvironmentBuilder, PortBuilder};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
 use std::ffi::OsStr;

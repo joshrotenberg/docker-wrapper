@@ -3,9 +3,8 @@
 //! These tests validate the BakeCommand implementation with real Docker commands
 //! and gracefully handle cases where Docker is not available.
 
-use docker_wrapper::bake::BakeCommand;
 use docker_wrapper::prerequisites::ensure_docker;
-use docker_wrapper::DockerCommand;
+use docker_wrapper::{BakeCommand, DockerCommand};
 use std::fs;
 use tempfile::TempDir;
 

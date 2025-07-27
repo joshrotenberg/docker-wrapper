@@ -3,7 +3,7 @@
 //! This module provides functionality to retrieve Docker system information,
 //! including daemon configuration, storage details, and runtime information.
 
-use crate::command::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
 use std::ffi::OsStr;

@@ -3,7 +3,7 @@
 //! This module provides functionality to search for Docker images on Docker Hub.
 //! It supports filtering, limiting results, and extracting detailed information about repositories.
 
-use crate::command::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
 use std::ffi::OsStr;

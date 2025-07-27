@@ -44,9 +44,8 @@
 //! }
 //! ```
 
-use crate::command::{CommandExecutor, CommandOutput};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
-use crate::DockerCommand;
 use async_trait::async_trait;
 use serde_json::Value;
 

@@ -3,7 +3,7 @@
 //! This module provides functionality to retrieve Docker version information,
 //! including client and server versions, API versions, and build details.
 
-use crate::command::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
 use std::ffi::OsStr;

@@ -3,7 +3,7 @@
 //! This module provides a comprehensive implementation of the `docker ps` command
 //! with support for all native options and an extensible architecture for any additional options.
 
-use crate::command::{CommandExecutor, DockerCommand};
+use super::{CommandExecutor, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};

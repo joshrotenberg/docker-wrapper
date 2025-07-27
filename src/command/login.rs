@@ -3,7 +3,7 @@
 //! This module provides functionality to authenticate with Docker registries.
 //! It supports both Docker Hub and private registries with various authentication methods.
 
-use crate::command::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use std::ffi::OsStr;

@@ -9,42 +9,29 @@
 #![warn(clippy::all)]
 #![warn(clippy::pedantic)]
 
-pub mod bake;
-pub mod build;
 pub mod command;
 pub mod error;
-pub mod exec;
-pub mod images;
-pub mod info;
-pub mod login;
-pub mod logout;
 pub mod prerequisites;
-pub mod ps;
-pub mod pull;
-pub mod push;
-pub mod run;
-pub mod search;
-pub mod version;
 
-pub use bake::BakeCommand;
-pub use build::{BuildCommand, BuildOutput};
 pub use command::{
+    bake::BakeCommand,
+    build::{BuildCommand, BuildOutput},
+    exec::{ExecCommand, ExecOutput},
+    images::{ImageInfo, ImagesCommand, ImagesOutput},
+    info::{DockerInfo as SystemDockerInfo, InfoCommand, InfoOutput, SystemInfo},
+    login::{LoginCommand, LoginOutput},
+    logout::{LogoutCommand, LogoutOutput},
+    ps::{ContainerInfo, PsCommand, PsFormat, PsOutput},
+    pull::PullCommand,
+    push::PushCommand,
+    run::{ContainerId, MountType, RunCommand, VolumeMount},
+    search::{RepositoryInfo, SearchCommand, SearchOutput},
+    version::{ClientVersion, ServerVersion, VersionCommand, VersionInfo, VersionOutput},
     CommandExecutor, CommandOutput, DockerCommand, EnvironmentBuilder, PortBuilder, PortMapping,
     Protocol,
 };
 pub use error::{Error, Result};
-pub use exec::{ExecCommand, ExecOutput};
-pub use images::{ImageInfo, ImagesCommand, ImagesOutput};
-pub use info::{DockerInfo as SystemDockerInfo, InfoCommand, InfoOutput, SystemInfo};
-pub use login::{LoginCommand, LoginOutput};
-pub use logout::{LogoutCommand, LogoutOutput};
 pub use prerequisites::{ensure_docker, DockerInfo, DockerPrerequisites};
-pub use ps::{ContainerInfo, PsCommand, PsFormat, PsOutput};
-pub use pull::PullCommand;
-pub use push::PushCommand;
-pub use run::{ContainerId, MountType, RunCommand, VolumeMount};
-pub use search::{RepositoryInfo, SearchCommand, SearchOutput};
-pub use version::{ClientVersion, ServerVersion, VersionCommand, VersionInfo, VersionOutput};
 
 /// The version of this crate
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

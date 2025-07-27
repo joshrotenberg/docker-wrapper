@@ -4,8 +4,7 @@
 //! with real Docker commands and containers.
 
 use docker_wrapper::prerequisites::ensure_docker;
-use docker_wrapper::run::RunCommand;
-use docker_wrapper::DockerCommand;
+use docker_wrapper::{DockerCommand, RunCommand};
 
 /// Helper to check if Docker is available, skip test if not
 async fn ensure_docker_or_skip() {

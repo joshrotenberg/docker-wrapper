@@ -11,6 +11,21 @@ use std::ffi::OsStr;
 use std::process::Stdio;
 use tokio::process::Command as TokioCommand;
 
+// Re-export all command modules
+pub mod bake;
+pub mod build;
+pub mod exec;
+pub mod images;
+pub mod info;
+pub mod login;
+pub mod logout;
+pub mod ps;
+pub mod pull;
+pub mod push;
+pub mod run;
+pub mod search;
+pub mod version;
+
 /// Base trait for all Docker commands
 #[async_trait]
 pub trait DockerCommand {

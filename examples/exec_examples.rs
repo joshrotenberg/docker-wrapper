@@ -3,10 +3,8 @@
 //! This example shows various ways to use the exec command to execute
 //! commands in running containers.
 
-use docker_wrapper::exec::ExecCommand;
 use docker_wrapper::prerequisites::ensure_docker;
-use docker_wrapper::run::RunCommand;
-use docker_wrapper::DockerCommand;
+use docker_wrapper::{DockerCommand, ExecCommand, RunCommand};
 use std::collections::HashMap;
 use tokio::time::{sleep, Duration};
 
