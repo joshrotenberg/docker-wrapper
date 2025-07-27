@@ -236,16 +236,19 @@ impl InfoCommand {
             logging_driver: parsed["LoggingDriver"].as_str().unwrap_or("").to_string(),
             cgroup_driver: parsed["CgroupDriver"].as_str().unwrap_or("").to_string(),
             cgroup_version: parsed["CgroupVersion"].as_str().unwrap_or("").to_string(),
-            containers: parsed["Containers"].as_u64().unwrap_or(0) as u32,
-            containers_running: parsed["ContainersRunning"].as_u64().unwrap_or(0) as u32,
-            containers_paused: parsed["ContainersPaused"].as_u64().unwrap_or(0) as u32,
-            containers_stopped: parsed["ContainersStopped"].as_u64().unwrap_or(0) as u32,
-            images: parsed["Images"].as_u64().unwrap_or(0) as u32,
+            containers: u32::try_from(parsed["Containers"].as_u64().unwrap_or(0)).unwrap_or(0),
+            containers_running: u32::try_from(parsed["ContainersRunning"].as_u64().unwrap_or(0))
+                .unwrap_or(0),
+            containers_paused: u32::try_from(parsed["ContainersPaused"].as_u64().unwrap_or(0))
+                .unwrap_or(0),
+            containers_stopped: u32::try_from(parsed["ContainersStopped"].as_u64().unwrap_or(0))
+                .unwrap_or(0),
+            images: u32::try_from(parsed["Images"].as_u64().unwrap_or(0)).unwrap_or(0),
             docker_root_dir: parsed["DockerRootDir"].as_str().unwrap_or("").to_string(),
             debug: parsed["Debug"].as_bool().unwrap_or(false),
             experimental: parsed["ExperimentalBuild"].as_bool().unwrap_or(false),
             mem_total: parsed["MemTotal"].as_u64().unwrap_or(0),
-            ncpu: parsed["NCPU"].as_u64().unwrap_or(0) as u32,
+            ncpu: u32::try_from(parsed["NCPU"].as_u64().unwrap_or(0)).unwrap_or(0),
             operating_system: parsed["OperatingSystem"].as_str().unwrap_or("").to_string(),
             os_type: parsed["OSType"].as_str().unwrap_or("").to_string(),
             architecture: parsed["Architecture"].as_str().unwrap_or("").to_string(),
@@ -440,8 +443,7 @@ impl InfoOutput {
     pub fn container_count(&self) -> u32 {
         self.docker_info
             .as_ref()
-            .map(|info| info.system.containers)
-            .unwrap_or(0)
+            .map_or(0, |info| info.system.containers)
     }
 
     /// Gets the number of running containers
@@ -449,8 +451,7 @@ impl InfoOutput {
     pub fn running_containers(&self) -> u32 {
         self.docker_info
             .as_ref()
-            .map(|info| info.system.containers_running)
-            .unwrap_or(0)
+            .map_or(0, |info| info.system.containers_running)
     }
 
     /// Gets the number of images
@@ -458,8 +459,7 @@ impl InfoOutput {
     pub fn image_count(&self) -> u32 {
         self.docker_info
             .as_ref()
-            .map(|info| info.system.images)
-            .unwrap_or(0)
+            .map_or(0, |info| info.system.images)
     }
 
     /// Returns true if debug mode is enabled
@@ -467,8 +467,7 @@ impl InfoOutput {
     pub fn is_debug(&self) -> bool {
         self.docker_info
             .as_ref()
-            .map(|info| info.system.debug)
-            .unwrap_or(false)
+            .is_some_and(|info| info.system.debug)
     }
 
     /// Returns true if experimental features are enabled
@@ -476,8 +475,7 @@ impl InfoOutput {
     pub fn is_experimental(&self) -> bool {
         self.docker_info
             .as_ref()
-            .map(|info| info.system.experimental)
-            .unwrap_or(false)
+            .is_some_and(|info| info.system.experimental)
     }
 
     /// Gets the operating system
