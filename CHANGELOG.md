@@ -5,6 +5,43 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0](https://github.com/joshrotenberg/docker-wrapper/compare/v0.1.0...v0.2.0) (2025-07-27)
+
+
+### ⚠ BREAKING CHANGES
+
+* Initial public release
+* Initial public release
+* None - pure test additions
+* Remove 'phase' terminology throughout codebase
+* Remove volume_tmp method reference from tests
+* Context system now uses structured ADRs instead of bespoke markdown files
+* Remove competitive analysis from public documentation
+
+### Features
+
+* add comprehensive ContainerManager tests - major coverage improvement ([53f653c](https://github.com/joshrotenberg/docker-wrapper/commit/53f653c421cf41d79a58c84ca069e7a5a385dee1))
+* add comprehensive image operations testing infrastructure ([180d553](https://github.com/joshrotenberg/docker-wrapper/commit/180d553569e12e64079081a680cb20f0b8ba586c))
+* add dependency management, fix tests, and improve CI caching ([219090a](https://github.com/joshrotenberg/docker-wrapper/commit/219090a18671d45d9922b2b7fdeabb0f18874b6f))
+* add release-please automation and refactor context system ([d2e911f](https://github.com/joshrotenberg/docker-wrapper/commit/d2e911fc095ee6ff27b9948810ccd97aca7a896f))
+* fix all image operations and enable comprehensive testing ✅ ([e7ab93a](https://github.com/joshrotenberg/docker-wrapper/commit/e7ab93ab83d97defa77653d5c8a66d37686cd0e9))
+* significantly improve test coverage and remove phase naming ([a5e0325](https://github.com/joshrotenberg/docker-wrapper/commit/a5e0325b17607837c6b15b7866e78892c4d2af21))
+
+
+### Bug Fixes
+
+* remove duplicate ImageRef from types.rs to fix compilation ([78beff5](https://github.com/joshrotenberg/docker-wrapper/commit/78beff5bb79dac03e5a688510f290d0a544436c6))
+* update Cargo.toml example names and fix unused variable warning ([5023ce7](https://github.com/joshrotenberg/docker-wrapper/commit/5023ce761ea5aa4be838eba2547008dcff49f53e))
+* Update release-please changelog type ([#29](https://github.com/joshrotenberg/docker-wrapper/issues/29)) ([9ec4185](https://github.com/joshrotenberg/docker-wrapper/commit/9ec418514f93e386fea006709785277331207dc7))
+* Update release-please workflow ([#28](https://github.com/joshrotenberg/docker-wrapper/issues/28)) ([345ff3b](https://github.com/joshrotenberg/docker-wrapper/commit/345ff3b475f7b33a13881a526872bfdcd5b65db2))
+
+
+### Documentation
+
+* add comprehensive Docker feature and test coverage matrix ([26e8d2e](https://github.com/joshrotenberg/docker-wrapper/commit/26e8d2e3fcff606d31accb84058c12b724620e4a))
+* create focused test-redis command implementation matrix ([040bb85](https://github.com/joshrotenberg/docker-wrapper/commit/040bb85f824e400ce4e64ea76c5c3b7b22fd639a))
+* prepare for 0.1.0 release - update dates, remove competitive analysis, reduce emoji usage ([6758490](https://github.com/joshrotenberg/docker-wrapper/commit/6758490abfdb35241d3224a8d2e35347f9565e53))
+
 ## [Unreleased]
 
 ### Added
