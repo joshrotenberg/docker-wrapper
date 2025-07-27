@@ -121,7 +121,7 @@ async fn test_login_command_display() -> Result<(), Box<dyn std::error::Error>> 
 
     let login = LoginCommand::new("testuser", "testpass").registry("example.com");
 
-    let display = format!("{}", login);
+    let display = format!("{login}");
     assert!(display.contains("docker login"));
     assert!(display.contains("example.com"));
     assert!(display.contains("--username testuser"));
@@ -138,7 +138,7 @@ async fn test_login_command_display_stdin() -> Result<(), Box<dyn std::error::Er
 
     let login = LoginCommand::new("testuser", "").password_stdin();
 
-    let display = format!("{}", login);
+    let display = format!("{login}");
     assert!(display.contains("--password-stdin"));
     assert!(!display.contains("[HIDDEN]"));
 
@@ -183,7 +183,7 @@ async fn test_login_command_security_considerations() -> Result<(), Box<dyn std:
 
     // Test that sensitive information is handled properly
     let login_with_password = LoginCommand::new("user", "supersecret");
-    let display = format!("{}", login_with_password);
+    let display = format!("{login_with_password}");
 
     // Ensure password is not exposed in string representation
     assert!(!display.contains("supersecret"));

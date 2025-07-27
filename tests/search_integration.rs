@@ -148,7 +148,7 @@ async fn test_search_command_display() -> Result<(), Box<dyn std::error::Error>>
         .no_trunc()
         .format("json");
 
-    let display = format!("{}", search);
+    let display = format!("{search}");
     assert!(display.contains("docker search"));
     assert!(display.contains("--limit 5"));
     assert!(display.contains("--filter stars=25"));

@@ -414,14 +414,11 @@ async fn test_images_format_variations() {
     for (format_name, images_cmd) in test_cases {
         match images_cmd.execute().await {
             Ok(output) => {
-                println!("Images: {} format test passed", format_name);
+                println!("Images: {format_name} format test passed");
                 assert!(output.success());
             }
             Err(e) => {
-                println!(
-                    "Images: {} format test failed (may be expected): {e}",
-                    format_name
-                );
+                println!("Images: {format_name} format test failed (may be expected): {e}");
             }
         }
     }

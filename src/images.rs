@@ -1018,10 +1018,10 @@ mod tests {
     #[test]
     fn test_parse_table_output() {
         let images_cmd = ImagesCommand::new();
-        let table_output = r#"REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
+        let table_output = r"REPOSITORY          TAG                 IMAGE ID            CREATED             SIZE
 nginx               alpine              abc123456789        2 days ago          16.1MB
 ubuntu              20.04               def456789012        1 day ago           72.8MB
-<none>              <none>              ghi789012345        3 hours ago         5.59MB"#;
+<none>              <none>              ghi789012345        3 hours ago         5.59MB";
 
         let images = images_cmd.parse_table_output(table_output);
 
