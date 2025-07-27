@@ -7,16 +7,16 @@ Build a simple, focused Docker CLI wrapper for Rust by implementing Docker's com
 
 | Command | Branch | Status | Core Options | Prerequisites | Tests | Docs |
 |---------|--------|---------|--------------|---------------|-------|------|
-| **prerequisites** | `prerequisites` | COMPLETE | Docker detection, version check | None | Unit | Full |
+| **prerequisites** | `prerequisites` | ✅ COMPLETE | Docker detection, version check | None | Unit | Full |
 | **run** | `feature/run` | ✅ COMPLETE | image, name, ports, env, detach | prerequisites | Unit+Integration | Full |
 | **exec** | `feature/exec` | ✅ COMPLETE | ALL native options supported | run | Unit+Integration | Full |
-| **ps** | `feature/ps` | TODO | all, quiet, format, filter | run | Unit+Integration | Full |
+| **ps** | `feature/ps` | ✅ COMPLETE | all, quiet, format, filter | run | Unit+Integration | Full |
 | **build** | `feature/build` | ✅ COMPLETE | ALL 29 native options supported | None | Unit+Integration | Full |
 | **bake** | `feature/bake` | ✅ COMPLETE | ALL 16 native options supported | build | Unit+Integration | Full |
 | **pull** | `feature/pull` | ✅ COMPLETE | ALL 4 native options supported | None | Unit+Integration | Full |
 | **push** | `feature/push` | ✅ COMPLETE | ALL 4 native options supported | pull, login | Unit+Integration | Full |
-| **images** | `feature/images` | TODO | all, quiet, format, filter | pull | Unit+Integration | Full |
-| **login** | `feature/login` | TODO | server, username, password | None | Unit+Integration | Full |
+| **images** | `feature/images` | ✅ COMPLETE | ALL 7 native options supported | pull | Unit+Integration | Full |
+| **login** | `feature/login` | ✅ COMPLETE | ALL 3 native options supported | None | Unit+Integration | Full |
 | **logout** | `feature/logout` | TODO | server | login | Unit+Integration | Full |
 | **search** | `feature/search` | TODO | term, limit, filter, format | None | Unit+Integration | Full |
 | **version** | `feature/version` | TODO | format | prerequisites | Unit | Full |
@@ -73,10 +73,10 @@ All commands derive from a base trait that allows:
 Focus on the most commonly used and important options, not every possible flag.
 
 ## Current Status
-- **Active Branch**: `feature/push` ✅ **COMPLETE - ALL 4 NATIVE OPTIONS**
-- **Next Branch**: `feature/images` or any remaining command
+- **Active Branch**: `feature/login` ✅ **COMPLETE - ALL 3 NATIVE OPTIONS**
+- **Next Branch**: `feature/logout` (branches off feature/login)
 - **Total Commands**: 14  
-- **Completed**: 8/14 (prerequisites, run, exec, ps, build, bake, pull, push)
+- **Completed**: 10/14 (prerequisites, run, exec, ps, build, bake, pull, push, images, login)
 
 ## Development Workflow
 
@@ -238,7 +238,35 @@ Focus on the most commonly used and important options, not every possible flag.
 - Error handling for nonexistent images and network failures
 - Platform-specific manifest pushing for modern container workflows
 
-**Future Commands:**
+### Images Command ✅ (COMPLETE - ALL 7 NATIVE OPTIONS SUPPORTED)
+**Resolved Decisions:**
+- Implemented ALL 7 native Docker images options with comprehensive support
+- Complete option coverage: repository filtering, --all, --digests, filters, formats, --no-trunc, --quiet, --tree
+- Smart output parsing for both table and JSON formats with ImageInfo struct
+- Advanced filtering support: dangling, labels, before/since timestamps
+- 14 comprehensive unit tests + 18 integration tests covering all scenarios
+
+**Architecture Validated:**
+- Dual-format parsing (table/JSON) with type-safe ImageInfo extraction
+- Repository filtering and pattern matching for image discovery
+- Helper methods for programmatic image analysis and filtering
+- Tree view support for hierarchical image display
+
+### Login Command ✅ (COMPLETE - ALL 3 NATIVE OPTIONS SUPPORTED)
+**Resolved Decisions:**
+- Implemented ALL 3 native Docker login options with comprehensive security focus
+- Complete option coverage: --username/-u, --password/-p, --password-stdin
+- Security-first design with password hiding in display output and logging
+- Universal registry support: Docker Hub (default), private registries, localhost
+- 14 comprehensive unit tests + 15 integration tests covering authentication scenarios
+
+**Architecture Validated:**
+- Smart authentication status detection from Docker CLI output
+- Personal Access Token (PAT) support via password field
+- Secure stdin password input for enhanced security workflows
+- Registry format validation for various authentication endpoints
+
+### Logout Command (NEXT - IN PROGRESS)
 - Questions will be added as we encounter them during implementation
 
 **Future Enhancement Ideas:**
@@ -255,8 +283,8 @@ Focus on the most commonly used and important options, not every possible flag.
 - Document open questions per command for later resolution
 
 ---
-**Current Focus**: Push command ✅ COMPLETE - All 4 native Docker push options implemented!
-**Status**: Push Command Complete - Comprehensive Image Upload Support, Ready for Next Command
+**Current Focus**: Login command ✅ COMPLETE - All 3 native Docker login options implemented!
+**Status**: Process Correction Applied - Proper One-Command-Per-Branch Development, Ready for Logout Command
 
 ## Process Improvements Validated:
 1. **Complete Native Support**: Supporting ALL options (not just common) creates revolutionary implementations
@@ -265,13 +293,15 @@ Focus on the most commonly used and important options, not every possible flag.
 4. **Test Organization**: Command-specific integration tests work excellently
 5. **Quality Standards**: Zero clippy warnings + all CI passing is the right bar
 6. **Code Organization**: Helper methods enable maintainable large implementations
+7. **One-Command-Per-Branch**: Proper sequential development prevents implementation chaos and ensures focused PRs
 
 ## Process Speed & Quality Improvement:
 - **Run Command**: Multiple iterations, CI failures, learning curve
 - **Exec Command**: Single smooth implementation, no CI issues, complete success
 - **PS Command**: Continued smooth execution, smart output parsing added
 - **Build Command**: Revolutionary 1500+ line implementation, ALL options, still smooth
-- **Key Factor**: Process refinement enables handling the most complex Docker commands
+- **Images/Login Commands**: Process correction applied - proper branching restored efficiency
+- **Key Factor**: Process refinement + proper branching enables handling the most complex Docker commands
 
 ## Future Refactoring Notes:
 - **File Organization**: Consider moving to `src/command/` directory structure:
