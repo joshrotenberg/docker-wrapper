@@ -22,8 +22,11 @@ pub mod logout;
 pub mod ps;
 pub mod pull;
 pub mod push;
+pub mod restart;
 pub mod run;
 pub mod search;
+pub mod start;
+pub mod stop;
 pub mod version;
 
 /// Base trait for all Docker commands
