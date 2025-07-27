@@ -15,6 +15,7 @@ pub mod command;
 pub mod error;
 pub mod exec;
 pub mod images;
+pub mod info;
 pub mod login;
 pub mod logout;
 pub mod prerequisites;
@@ -34,6 +35,7 @@ pub use command::{
 pub use error::{Error, Result};
 pub use exec::{ExecCommand, ExecOutput};
 pub use images::{ImageInfo, ImagesCommand, ImagesOutput};
+pub use info::{DockerInfo as SystemDockerInfo, InfoCommand, InfoOutput, SystemInfo};
 pub use login::{LoginCommand, LoginOutput};
 pub use logout::{LogoutCommand, LogoutOutput};
 pub use prerequisites::{ensure_docker, DockerInfo, DockerPrerequisites};
