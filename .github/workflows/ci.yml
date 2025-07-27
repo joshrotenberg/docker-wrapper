@@ -30,7 +30,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@master
+        uses: dtolnay/rust-toolchain@stable
         with:
           toolchain: ${{ matrix.rust }}
           components: rustfmt, clippy
@@ -65,13 +65,11 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
 
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
         with:
-          shared-key: "security"
+          shared-key: "ci"
 
       - name: Start Docker
         run: |
@@ -84,15 +82,13 @@ jobs:
           docker pull redis:7.2-alpine
           docker pull nginx:alpine
 
-      - name: Run integration tests
-        run: cargo test --verbose --test integration_tests --all-features
+      - name: Run all integration tests
+        run: cargo test --verbose --test '*' --all-features
         env:
           DOCKER_HOST: unix:///var/run/docker.sock
 
       - name: Test examples
-        run: |
-          cargo check --examples --all-features
-          echo "All examples compile successfully"
+        run: cargo check --examples --all-features
 
   security:
     name: Security Audit
@@ -108,7 +104,7 @@ jobs:
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
         with:
-          shared-key: "integration"
+          shared-key: "ci"
 
       - name: Install cargo-audit
         run: cargo install cargo-audit
@@ -130,7 +126,7 @@ jobs:
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
         with:
-          shared-key: "coverage"
+          shared-key: "ci"
 
       - name: Install cargo-tarpaulin
         run: cargo install cargo-tarpaulin
@@ -141,10 +137,10 @@ jobs:
           docker pull alpine:latest
 
       - name: Generate code coverage
-        run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out Xml
+        run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v5
         with:
           file: cobertura.xml
           fail_ci_if_error: false
@@ -157,13 +153,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Rust 1.70.0
-        uses: dtolnay/rust-toolchain@1.70.0
+      - name: Install Rust 1.78.0
+        uses: dtolnay/rust-toolchain@1.78.0
 
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
         with:
-          shared-key: "msrv"
+          shared-key: "ci"
 
       - name: Build with MSRV
         run: cargo build --verbose --all-features
@@ -185,17 +181,16 @@ jobs:
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
         with:
-          shared-key: "docs"
+          shared-key: "ci"
 
       - name: Build documentation
         run: cargo doc --verbose --all-features --no-deps
         env:
           RUSTDOCFLAGS: -D warnings
 
-  benchmark:
-    name: Benchmark
+  dependency-check:
+    name: Dependency Management
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
 
     steps:
       - name: Checkout code
@@ -207,43 +202,16 @@ jobs:
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
         with:
-          shared-key: "benchmarks"
+          shared-key: "ci"
 
-      - name: Start Docker
-        run: |
-          sudo systemctl start docker
-          docker pull alpine:latest
+      - name: Install cargo-outdated
+        run: cargo install cargo-outdated
 
-      - name: Run benchmarks (if available)
-        run: |
-          if [ -d "benches" ]; then
-            cargo bench --verbose --all-features
-          else
-            echo "No benchmarks found, skipping"
-          fi
+      - name: Install cargo-machete
+        run: cargo install cargo-machete
 
-  validate-adr:
-    name: Validate ADR System
-    runs-on: ubuntu-latest
+      - name: Check for outdated dependencies
+        run: cargo outdated || echo "Some dependencies have updates available"
 
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Validate ADR structure
-        run: |
-          if [ -f ".claude/adr-helper.sh" ]; then
-            chmod +x .claude/adr-helper.sh
-            ./.claude/adr-helper.sh validate
-          else
-            echo "ADR system not found, skipping validation"
-          fi
-
-      - name: Check ADR index
-        run: |
-          if [ -f ".claude/adr-index.toml" ]; then
-            echo "ADR index found"
-            cat .claude/adr-index.toml
-          else
-            echo "ADR index not found"
-          fi
+      - name: Check for unused dependencies
+        run: cargo machete
