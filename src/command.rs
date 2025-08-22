@@ -5,6 +5,7 @@
 //! any unimplemented options via raw arguments.
 
 use crate::error::{Error, Result};
+use crate::platform::PlatformInfo;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -92,6 +93,8 @@ pub trait DockerCommand {
 pub struct CommandExecutor {
     /// Additional raw arguments added via escape hatch
     pub raw_args: Vec<String>,
+    /// Platform information for runtime abstraction
+    pub platform_info: Option<PlatformInfo>,
 }
 
 impl CommandExecutor {
@@ -100,6 +103,36 @@ impl CommandExecutor {
     pub fn new() -> Self {
         Self {
             raw_args: Vec::new(),
+            platform_info: None,
+        }
+    }
+
+    /// Create a new command executor with platform detection
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if platform detection fails
+    pub fn with_platform() -> Result<Self> {
+        let platform_info = PlatformInfo::detect()?;
+        Ok(Self {
+            raw_args: Vec::new(),
+            platform_info: Some(platform_info),
+        })
+    }
+
+    /// Set the platform information
+    #[must_use]
+    pub fn platform(mut self, platform_info: PlatformInfo) -> Self {
+        self.platform_info = Some(platform_info);
+        self
+    }
+
+    /// Get the runtime command to use
+    fn get_runtime_command(&self) -> String {
+        if let Some(ref platform_info) = self.platform_info {
+            platform_info.runtime.command().to_string()
+        } else {
+            "docker".to_string()
         }
     }
 
@@ -119,13 +152,27 @@ impl CommandExecutor {
         // Insert the command name at the beginning
         all_args.insert(0, command_name.to_string());
 
-        let output = TokioCommand::new("docker")
+        let runtime_command = self.get_runtime_command();
+        let mut command = TokioCommand::new(&runtime_command);
+
+        // Set environment variables from platform info
+        if let Some(ref platform_info) = self.platform_info {
+            for (key, value) in platform_info.environment_vars() {
+                command.env(key, value);
+            }
+        }
+
+        let output = command
             .args(&all_args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
             .await
-            .map_err(|e| Error::custom(format!("Failed to execute docker {command_name}: {e}")))?;
+            .map_err(|e| {
+                Error::custom(format!(
+                    "Failed to execute {runtime_command} {command_name}: {e}"
+                ))
+            })?;
 
         let stdout = String::from_utf8_lossy(&output.stdout).to_string();
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
@@ -134,7 +181,7 @@ impl CommandExecutor {
 
         if !success {
             return Err(Error::command_failed(
-                format!("docker {}", all_args.join(" ")),
+                format!("{} {}", runtime_command, all_args.join(" ")),
                 exit_code,
                 stdout,
                 stderr,
