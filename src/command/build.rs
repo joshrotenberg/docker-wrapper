@@ -5,10 +5,13 @@
 
 use super::{CommandExecutor, DockerCommand};
 use crate::error::Result;
+use crate::stream::{OutputLine, StreamResult, StreamableCommand};
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::PathBuf;
+use tokio::process::Command as TokioCommand;
+use tokio::sync::mpsc;
 
 /// Docker build command builder with fluent API
 #[derive(Debug, Clone)]
@@ -1354,6 +1357,64 @@ impl DockerCommand for BuildCommand {
     fn option(&mut self, key: &str, value: &str) -> &mut Self {
         self.executor.add_option(key, value);
         self
+    }
+}
+
+// Streaming support for BuildCommand
+#[async_trait]
+impl StreamableCommand for BuildCommand {
+    async fn stream<F>(&self, handler: F) -> Result<StreamResult>
+    where
+        F: FnMut(OutputLine) + Send + 'static,
+    {
+        let mut cmd = TokioCommand::new("docker");
+        cmd.arg(self.command_name());
+
+        for arg in self.build_args() {
+            cmd.arg(arg);
+        }
+
+        crate::stream::stream_command(cmd, handler).await
+    }
+
+    async fn stream_channel(&self) -> Result<(mpsc::Receiver<OutputLine>, StreamResult)> {
+        let mut cmd = TokioCommand::new("docker");
+        cmd.arg(self.command_name());
+
+        for arg in self.build_args() {
+            cmd.arg(arg);
+        }
+
+        crate::stream::stream_command_channel(cmd).await
+    }
+}
+
+impl BuildCommand {
+    /// Run the build command with streaming output
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use docker_wrapper::BuildCommand;
+    /// use docker_wrapper::StreamHandler;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let result = BuildCommand::new(".")
+    ///     .tag("myapp:latest")
+    ///     .stream(StreamHandler::print())
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the build fails or encounters an I/O error
+    pub async fn stream<F>(&self, handler: F) -> Result<StreamResult>
+    where
+        F: FnMut(OutputLine) + Send + 'static,
+    {
+        <Self as StreamableCommand>::stream(self, handler).await
     }
 }
 
