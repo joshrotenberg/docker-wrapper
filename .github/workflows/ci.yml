@@ -5,6 +5,7 @@ on:
     branches: [main, develop]
   pull_request:
     branches: [main, develop]
+  workflow_dispatch:
 
 env:
   CARGO_TERM_COLOR: always
@@ -38,22 +39,22 @@ jobs:
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
         with:
-          shared-key: "ci"
+          shared-key: "ci-${{ matrix.os }}-${{ matrix.rust }}"
+          cache-all-crates: true
 
       - name: Check formatting
+        if: matrix.rust == 'stable' && matrix.os == 'ubuntu-latest'
         run: cargo fmt -- --check
 
       - name: Run Clippy
+        if: matrix.rust == 'stable'
         run: cargo clippy --all-targets --all-features -- -D warnings
 
       - name: Build
-        run: cargo build --verbose --all-features
+        run: cargo build --all-features
 
-      - name: Run unit tests
-        run: cargo test --verbose --lib --all-features
-
-      - name: Run doc tests
-        run: cargo test --verbose --doc --all-features
+      - name: Run tests
+        run: cargo test --lib --all-features && cargo test --doc --all-features
 
   docker-tests:
     name: Docker Integration Tests
@@ -69,21 +70,23 @@ jobs:
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
         with:
-          shared-key: "ci"
+          shared-key: "ci-docker"
+          cache-all-crates: true
 
       - name: Start Docker
         run: |
           sudo systemctl start docker
           docker --version
 
-      - name: Pull test images
+      - name: Pull test images in parallel
         run: |
-          docker pull alpine:latest
-          docker pull redis:7.2-alpine
-          docker pull nginx:alpine
+          docker pull alpine:latest &
+          docker pull redis:7.2-alpine &
+          docker pull nginx:alpine &
+          wait
 
-      - name: Run all integration tests
-        run: cargo test --verbose --test '*' --all-features
+      - name: Run integration tests
+        run: cargo test --test '*' --all-features
         env:
           DOCKER_HOST: unix:///var/run/docker.sock
 
@@ -104,10 +107,19 @@ jobs:
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
         with:
-          shared-key: "ci"
+          shared-key: "ci-security"
+          cache-all-crates: true
 
-      - name: Install cargo-audit
-        run: cargo install cargo-audit
+      - name: Cache cargo-audit
+        id: cache-cargo-audit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: cargo-audit-${{ runner.os }}
+
+      - name: Install cargo-audit if not cached
+        if: steps.cache-cargo-audit.outputs.cache-hit != 'true'
+        run: cargo install cargo-audit --locked
 
       - name: Run security audit
         run: cargo audit
@@ -126,10 +138,19 @@ jobs:
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
         with:
-          shared-key: "ci"
+          shared-key: "ci-coverage"
+          cache-all-crates: true
 
-      - name: Install cargo-tarpaulin
-        run: cargo install cargo-tarpaulin
+      - name: Cache cargo-tarpaulin
+        id: cache-cargo-tarpaulin
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-tarpaulin
+          key: cargo-tarpaulin-${{ runner.os }}
+
+      - name: Install cargo-tarpaulin if not cached
+        if: steps.cache-cargo-tarpaulin.outputs.cache-hit != 'true'
+        run: cargo install cargo-tarpaulin --locked
 
       - name: Start Docker
         run: |
@@ -137,7 +158,7 @@ jobs:
           docker pull alpine:latest
 
       - name: Generate code coverage
-        run: cargo tarpaulin --verbose --all-features --workspace --timeout 120 --out xml
+        run: cargo tarpaulin --all-features --workspace --timeout 120 --out xml --skip-clean
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v5
@@ -159,13 +180,14 @@ jobs:
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
         with:
-          shared-key: "ci"
+          shared-key: "ci-msrv"
+          cache-all-crates: true
 
       - name: Build with MSRV
-        run: cargo build --verbose --all-features
+        run: cargo build --all-features
 
       - name: Test with MSRV
-        run: cargo test --verbose --lib --all-features
+        run: cargo test --lib --all-features
 
   docs:
     name: Documentation
@@ -181,10 +203,11 @@ jobs:
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
         with:
-          shared-key: "ci"
+          shared-key: "ci-docs"
+          cache-all-crates: true
 
       - name: Build documentation
-        run: cargo doc --verbose --all-features --no-deps
+        run: cargo doc --all-features --no-deps
         env:
           RUSTDOCFLAGS: -D warnings
 
@@ -199,19 +222,25 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Rust dependencies
+      - name: Cache Rust dependencies and tools
         uses: swatinem/rust-cache@v2
         with:
-          shared-key: "ci"
+          shared-key: "ci-deps"
+          cache-all-crates: true
+          cache-directories: |
+            ~/.cargo/bin/
 
-      - name: Install cargo-outdated
-        run: cargo install cargo-outdated
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
 
-      - name: Install cargo-machete
-        run: cargo install cargo-machete
-
-      - name: Check for outdated dependencies
-        run: cargo outdated || echo "Some dependencies have updates available"
+      - name: Install dependency tools with binstall
+        run: |
+          cargo binstall cargo-machete cargo-outdated --no-confirm --locked
 
       - name: Check for unused dependencies
         run: cargo machete
+        continue-on-error: true
+
+      - name: Check for outdated dependencies
+        run: cargo outdated --exit-code 1 || true
+        continue-on-error: true

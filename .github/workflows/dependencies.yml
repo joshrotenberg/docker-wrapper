@@ -1,0 +1,88 @@
+name: Dependencies
+
+on:
+  schedule:
+    # Run weekly on Monday at 3 AM UTC
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'Cargo.toml'
+      - 'Cargo.lock'
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  check-deps:
+    name: Check Dependencies
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          shared-key: "deps"
+
+      - name: Install cargo-binstall
+        uses: cargo-bins/cargo-binstall@main
+
+      - name: Install dependency tools
+        run: |
+          cargo binstall cargo-machete cargo-outdated cargo-audit --no-confirm --locked
+
+      - name: Check for unused dependencies
+        run: cargo machete
+
+      - name: Security audit
+        run: cargo audit
+
+      - name: Check outdated dependencies (informational)
+        run: |
+          echo "::group::Outdated Dependencies"
+          cargo outdated || true
+          echo "::endgroup::"
+        continue-on-error: true
+
+  update-check:
+    name: Update Check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
+        with:
+          shared-key: "deps"
+
+      - name: Try updating dependencies
+        run: |
+          cargo update --dry-run 2>&1 | tee update-report.txt
+          
+      - name: Create update report
+        run: |
+          echo "# Dependency Update Report" > update-summary.md
+          echo "" >> update-summary.md
+          echo "## Available Updates" >> update-summary.md
+          echo '```' >> update-summary.md
+          grep -E "Updating|Adding|Removing" update-report.txt || echo "No updates available"
+          echo '```' >> update-summary.md
+          
+      - name: Upload update report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-update-report
+          path: update-summary.md
+          retention-days: 7
