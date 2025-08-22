@@ -371,6 +371,7 @@
 pub mod command;
 #[cfg(feature = "compose")]
 pub mod compose;
+pub mod debug;
 pub mod error;
 pub mod platform;
 pub mod prerequisites;
@@ -441,6 +442,7 @@ pub use command::{
     CommandExecutor, CommandOutput, DockerCommand, EnvironmentBuilder, PortBuilder, PortMapping,
     Protocol,
 };
+pub use debug::{BackoffStrategy, DebugConfig, DebugExecutor, DryRunPreview, RetryPolicy};
 pub use error::{Error, Result};
 pub use platform::{Platform, PlatformInfo, Runtime};
 pub use prerequisites::{ensure_docker, DockerInfo, DockerPrerequisites};
