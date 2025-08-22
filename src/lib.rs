@@ -10,6 +10,8 @@
 #![warn(clippy::pedantic)]
 
 pub mod command;
+#[cfg(feature = "compose")]
+pub mod compose;
 pub mod error;
 pub mod prerequisites;
 
