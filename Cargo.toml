@@ -13,6 +13,10 @@ categories = ["development-tools", "api-bindings"]
 homepage = "https://github.com/joshrotenberg/docker-wrapper"
 documentation = "https://docs.rs/docker-wrapper"
 
+[features]
+default = []
+compose = []
+
 [dependencies]
 tokio = { version = "1.46", features = [
     "process",
