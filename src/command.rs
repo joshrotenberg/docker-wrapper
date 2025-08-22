@@ -32,6 +32,7 @@ pub mod load;
 pub mod login;
 pub mod logout;
 pub mod logs;
+pub mod network;
 pub mod pause;
 pub mod port;
 pub mod ps;
@@ -52,6 +53,7 @@ pub mod top;
 pub mod unpause;
 pub mod update;
 pub mod version;
+pub mod volume;
 pub mod wait;
 
 /// Base trait for all Docker commands
