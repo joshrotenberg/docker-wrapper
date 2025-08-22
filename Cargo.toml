@@ -38,3 +38,7 @@ path = "examples/basic_usage.rs"
 [[example]]
 name = "exec_examples"
 path = "examples/exec_examples.rs"
+
+[[example]]
+name = "basic_docker_patterns"
+path = "examples/basic_docker_patterns.rs"

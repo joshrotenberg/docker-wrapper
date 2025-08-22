@@ -12,22 +12,47 @@ use std::process::Stdio;
 use tokio::process::Command as TokioCommand;
 
 // Re-export all command modules
+pub mod attach;
 pub mod bake;
 pub mod build;
+pub mod commit;
+pub mod cp;
+pub mod create;
+pub mod diff;
+pub mod events;
 pub mod exec;
+pub mod export;
+pub mod history;
 pub mod images;
+pub mod import;
 pub mod info;
+pub mod inspect;
+pub mod kill;
+pub mod load;
 pub mod login;
 pub mod logout;
+pub mod logs;
+pub mod pause;
+pub mod port;
 pub mod ps;
 pub mod pull;
 pub mod push;
+pub mod rename;
 pub mod restart;
+pub mod rm;
+pub mod rmi;
 pub mod run;
+pub mod save;
 pub mod search;
 pub mod start;
+pub mod stats;
 pub mod stop;
+pub mod tag;
+pub mod top;
+pub mod unpause;
+pub mod update;
 pub mod version;
+pub mod wait;
 
 /// Base trait for all Docker commands
 #[async_trait]
