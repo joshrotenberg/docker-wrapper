@@ -1797,7 +1797,7 @@ impl RunCommand {
     ///
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let result = RunCommand::new("alpine")
-    ///     .cmd(vec!["echo", "Hello, World!"])
+    ///     .cmd(vec!["echo".to_string(), "Hello, World!".to_string()])
     ///     .stream(StreamHandler::print())
     ///     .await?;
     /// # Ok(())
