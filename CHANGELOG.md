@@ -5,6 +5,29 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.1](https://github.com/joshrotenberg/docker-wrapper/compare/v0.2.0...v0.2.1) (2025-08-22)
+
+
+### Features
+
+* Add container lifecycle commands (stop, start, restart) ([#32](https://github.com/joshrotenberg/docker-wrapper/issues/32)) ([0406d95](https://github.com/joshrotenberg/docker-wrapper/commit/0406d95a18ae9ff04fd3cbc99611dc6cd263d20f))
+* Add Docker Compose support with feature gating ([#57](https://github.com/joshrotenberg/docker-wrapper/issues/57)) ([d800225](https://github.com/joshrotenberg/docker-wrapper/commit/d80022577b6f68caad7f67b89d3e4e7f604dd3e9)), closes [#36](https://github.com/joshrotenberg/docker-wrapper/issues/36)
+* Add Docker network and volume management support ([#64](https://github.com/joshrotenberg/docker-wrapper/issues/64)) ([c69070f](https://github.com/joshrotenberg/docker-wrapper/commit/c69070fa7227708e2820c6f4eca9bb0876c22fb8))
+* Add platform detection and runtime abstraction ([#65](https://github.com/joshrotenberg/docker-wrapper/issues/65)) ([ea09fdd](https://github.com/joshrotenberg/docker-wrapper/commit/ea09fdd095f2e50d1523810d55fedae8d3835fc9)), closes [#44](https://github.com/joshrotenberg/docker-wrapper/issues/44)
+* Add streaming support for Docker command output ([#60](https://github.com/joshrotenberg/docker-wrapper/issues/60)) ([4642324](https://github.com/joshrotenberg/docker-wrapper/commit/464232457c9056ec876c95d2271316b0fe318d74))
+* Complete 100% Docker CLI coverage implementation ([#54](https://github.com/joshrotenberg/docker-wrapper/issues/54)) ([b3d1f35](https://github.com/joshrotenberg/docker-wrapper/commit/b3d1f35c680e3ea4d0b11bd3b4c77cb04aff9133))
+
+
+### Bug Fixes
+
+* Update git-cliff-action to resolve Debian buster repository issues ([#66](https://github.com/joshrotenberg/docker-wrapper/issues/66)) ([51ba6b2](https://github.com/joshrotenberg/docker-wrapper/commit/51ba6b2733e7f60e0eb9f9138256176ce0b53491)), closes [#61](https://github.com/joshrotenberg/docker-wrapper/issues/61)
+
+
+### Documentation
+
+* Add comprehensive Docker library comparison guide ([#67](https://github.com/joshrotenberg/docker-wrapper/issues/67)) ([eb59742](https://github.com/joshrotenberg/docker-wrapper/commit/eb597422ba50fc34aca00c72bb6589a81b26907a))
+* Comprehensive documentation improvements ([#62](https://github.com/joshrotenberg/docker-wrapper/issues/62)) ([63df3b2](https://github.com/joshrotenberg/docker-wrapper/commit/63df3b277d38a6a44a342f9fb1ac8b83a0d8babf))
+
 ## [0.2.0](https://github.com/joshrotenberg/docker-wrapper/compare/v0.1.0...v0.2.0) (2025-07-27)
 
 
