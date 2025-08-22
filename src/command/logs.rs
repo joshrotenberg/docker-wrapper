@@ -4,8 +4,11 @@
 
 use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
+use crate::stream::{OutputLine, StreamResult, StreamableCommand};
 use async_trait::async_trait;
 use std::ffi::OsStr;
+use tokio::process::Command as TokioCommand;
+use tokio::sync::mpsc;
 
 /// Docker logs command builder
 #[derive(Debug, Clone)]
@@ -177,6 +180,68 @@ impl DockerCommand for LogsCommand {
     fn option(&mut self, key: &str, value: &str) -> &mut Self {
         self.executor.add_option(key, value);
         self
+    }
+}
+
+// Streaming support for LogsCommand
+#[async_trait]
+impl StreamableCommand for LogsCommand {
+    async fn stream<F>(&self, handler: F) -> Result<StreamResult>
+    where
+        F: FnMut(OutputLine) + Send + 'static,
+    {
+        let mut cmd = TokioCommand::new("docker");
+        cmd.arg(self.command_name());
+
+        for arg in self.build_args() {
+            cmd.arg(arg);
+        }
+
+        crate::stream::stream_command(cmd, handler).await
+    }
+
+    async fn stream_channel(&self) -> Result<(mpsc::Receiver<OutputLine>, StreamResult)> {
+        let mut cmd = TokioCommand::new("docker");
+        cmd.arg(self.command_name());
+
+        for arg in self.build_args() {
+            cmd.arg(arg);
+        }
+
+        crate::stream::stream_command_channel(cmd).await
+    }
+}
+
+impl LogsCommand {
+    /// Stream container logs with a custom handler
+    ///
+    /// This is particularly useful with the `follow` option to stream logs in real-time.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use docker_wrapper::LogsCommand;
+    /// use docker_wrapper::StreamHandler;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// // Follow logs in real-time
+    /// let result = LogsCommand::new("mycontainer")
+    ///     .follow()
+    ///     .timestamps()
+    ///     .stream(StreamHandler::print())
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the command fails or encounters an I/O error
+    pub async fn stream<F>(&self, handler: F) -> Result<StreamResult>
+    where
+        F: FnMut(OutputLine) + Send + 'static,
+    {
+        <Self as StreamableCommand>::stream(self, handler).await
     }
 }
 

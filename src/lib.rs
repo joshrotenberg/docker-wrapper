@@ -14,6 +14,9 @@ pub mod command;
 pub mod compose;
 pub mod error;
 pub mod prerequisites;
+pub mod stream;
+
+pub use stream::{OutputLine, StreamHandler, StreamResult, StreamableCommand};
 
 pub use command::{
     attach::{AttachCommand, AttachResult},

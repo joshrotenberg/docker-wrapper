@@ -5,9 +5,12 @@
 
 use super::{CommandExecutor, DockerCommand, EnvironmentBuilder, PortBuilder};
 use crate::error::{Error, Result};
+use crate::stream::{OutputLine, StreamResult, StreamableCommand};
 use async_trait::async_trait;
 use std::ffi::OsStr;
 use std::path::PathBuf;
+use tokio::process::Command as TokioCommand;
+use tokio::sync::mpsc;
 
 /// Docker run command builder with fluent API
 #[derive(Debug, Clone)]
@@ -1738,6 +1741,80 @@ impl DockerCommand for RunCommand {
     }
 }
 
+// Streaming support for RunCommand
+#[async_trait]
+impl StreamableCommand for RunCommand {
+    async fn stream<F>(&self, handler: F) -> Result<StreamResult>
+    where
+        F: FnMut(OutputLine) + Send + 'static,
+    {
+        // Don't stream if running detached
+        if self.detach {
+            return Err(Error::custom(
+                "Cannot stream output for detached containers",
+            ));
+        }
+
+        let mut cmd = TokioCommand::new("docker");
+        cmd.arg(self.command_name());
+
+        for arg in self.build_args() {
+            cmd.arg(arg);
+        }
+
+        crate::stream::stream_command(cmd, handler).await
+    }
+
+    async fn stream_channel(&self) -> Result<(mpsc::Receiver<OutputLine>, StreamResult)> {
+        // Don't stream if running detached
+        if self.detach {
+            return Err(Error::custom(
+                "Cannot stream output for detached containers",
+            ));
+        }
+
+        let mut cmd = TokioCommand::new("docker");
+        cmd.arg(self.command_name());
+
+        for arg in self.build_args() {
+            cmd.arg(arg);
+        }
+
+        crate::stream::stream_command_channel(cmd).await
+    }
+}
+
+impl RunCommand {
+    /// Run the container with streaming output
+    ///
+    /// Note: This will fail if the container is run in detached mode.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// use docker_wrapper::RunCommand;
+    /// use docker_wrapper::StreamHandler;
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let result = RunCommand::new("alpine")
+    ///     .cmd(vec!["echo", "Hello, World!"])
+    ///     .stream(StreamHandler::print())
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the container is detached or encounters an I/O error
+    pub async fn stream<F>(&self, handler: F) -> Result<StreamResult>
+    where
+        F: FnMut(OutputLine) + Send + 'static,
+    {
+        <Self as StreamableCommand>::stream(self, handler).await
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2845,6 +2922,6 @@ mod tests {
         assert!(image_pos > 100); // Should be very far into the command
         assert_eq!(args[args.len() - 1], "enterprise-app:latest");
 
-        println!("🎉 COMPLETE! All 96 Docker run options implemented and tested!");
+        println!("COMPLETE! All 96 Docker run options implemented and tested!");
     }
 }
