@@ -56,11 +56,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 docker-wrapper is ideal for:
 
-- **🛠️ CLI tools and automation scripts** - Familiar Docker CLI behavior
-- **🔄 Docker Compose workflows** - Native compose command support  
-- **🚀 Development tools** - Container management for dev environments
-- **📜 Shell script migration** - Type-safe Rust alternative to bash scripts
-- **🌐 Cross-platform support** - Works with Docker, Podman, Colima, etc.
+- **CLI tools and automation scripts** - Familiar Docker CLI behavior
+- **Docker Compose workflows** - Native compose command support  
+- **Development tools** - Container management for dev environments
+- **Shell script migration** - Type-safe Rust alternative to bash scripts
+- **Cross-platform support** - Works with Docker, Podman, Colima, etc.
 
 **Choosing between Docker Rust libraries?** See our comprehensive [**Comparison Guide**](COMPARISON.md) comparing docker-wrapper vs bollard vs testcontainers-rs.
 

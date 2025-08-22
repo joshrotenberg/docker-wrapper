@@ -26,13 +26,13 @@ Need containers in Rust?
 | **Feature Coverage** | Complete CLI feature set | Complete API feature set | Test-focused subset | Complete CLI feature set |
 | **Error Handling** | Docker CLI error messages | Raw API error responses | Test-friendly errors | Manual parsing required |
 | **Compatibility** | Follows Docker CLI changes | Follows API versions | Limited scope | Manual maintenance |
-| **Async Support** | ✅ Full tokio support | ✅ Native async | ✅ Test-focused async | ❌ Manual implementation |
-| **Streaming** | ✅ Output streaming | ✅ Advanced streaming | ⚠️ Limited | ❌ Complex to implement |
-| **Production Ready** | ✅ Yes | ✅ Yes | ❌ Tests only | ⚠️ Error-prone |
+| **Async Support** | Full tokio support | Native async | Test-focused async | Manual implementation |
+| **Streaming** | Output streaming | Advanced streaming | Limited | Complex to implement |
+| **Production Ready** | Yes | Yes | Tests only | Error-prone |
 
 ## Use Case Recommendations
 
-### ✅ Choose docker-wrapper when:
+### Choose docker-wrapper when:
 
 - **Building CLI tools** or automation scripts
 - **Developer tools** that manage containers  
@@ -51,7 +51,7 @@ Need containers in Rust?
 - Docker Compose workflow automation
 - Multi-environment deployment tools
 
-### ✅ Choose bollard when:
+### Choose bollard when:
 
 - **Building container platforms** or orchestrators
 - **Production services** managing many containers
@@ -68,7 +68,7 @@ Need containers in Rust?
 - CI/CD runners (like GitHub Actions)
 - Container security scanning tools
 
-### ✅ Choose testcontainers-rs when:
+### Choose testcontainers-rs when:
 
 - **Integration testing** is the primary use case
 - **Database/service testing** with real containers
@@ -82,7 +82,7 @@ Need containers in Rust?
 - End-to-end testing scenarios
 - API testing with external dependencies
 
-### ❌ Avoid raw Docker CLI when:
+### Avoid raw Docker CLI when:
 
 - You need robust error handling
 - Performance is important  
@@ -171,20 +171,20 @@ let port = redis_container.get_host_port_ipv4(6379);
 
 | Library | Support Level | Implementation |
 |---------|--------------|----------------|
-| **docker-wrapper** | ✅ Full native support | Direct `docker compose` commands |
-| **bollard** | ❌ No support | API doesn't include Compose |
-| **testcontainers-rs** | ⚠️ Limited | Some compose support for tests |
-| **Raw CLI** | ✅ Full support | Manual `docker-compose` calls |
+| **docker-wrapper** | Full native support | Direct `docker compose` commands |
+| **bollard** | No support | API doesn't include Compose |
+| **testcontainers-rs** | Limited | Some compose support for tests |
+| **Raw CLI** | Full support | Manual `docker-compose` calls |
 
 ### Cross-Platform Runtime Support
 
 | Library | Docker | Podman | Docker Desktop | Colima | OrbStack |
 |---------|--------|--------|---------------|--------|----------|
-| **docker-wrapper** | ✅ | ✅ | ✅ | ✅ | ✅ |
-| **bollard** | ✅ | ⚠️ | ✅ | ⚠️ | ⚠️ |
-| **testcontainers-rs** | ✅ | ⚠️ | ✅ | ⚠️ | ⚠️ |
+| **docker-wrapper** | Yes | Yes | Yes | Yes | Yes |
+| **bollard** | Yes | Partial | Yes | Partial | Partial |
+| **testcontainers-rs** | Yes | Partial | Yes | Partial | Partial |
 
-*Note: ⚠️ means partial support or requires configuration*
+*Note: "Partial" means partial support or requires configuration*
 
 ### Error Handling Quality
 
@@ -450,25 +450,25 @@ while let Some(event) = events.next().await {
 ## Summary
 
 ### Choose docker-wrapper for:
-- 🛠️ CLI tools and automation scripts
-- 🔄 Docker Compose workflows  
-- 🚀 Rapid prototyping and development
-- 📚 Familiar Docker CLI behavior
-- 🌐 Cross-platform Docker runtime support
+- CLI tools and automation scripts
+- Docker Compose workflows  
+- Rapid prototyping and development
+- Familiar Docker CLI behavior
+- Cross-platform Docker runtime support
 
 ### Choose bollard for:
-- 🏗️ Container platforms and orchestrators
-- ⚡ High-performance production services  
-- 📊 Real-time monitoring and events
-- 🔧 Fine-grained Docker API control
-- 📈 Scalable container management
+- Container platforms and orchestrators
+- High-performance production services  
+- Real-time monitoring and events
+- Fine-grained Docker API control
+- Scalable container management
 
 ### Choose testcontainers-rs for:
-- 🧪 Integration testing scenarios
-- 🗄️ Database-dependent tests  
-- 🔒 Test isolation and cleanup
-- 📦 Pre-built service modules
-- ⚡ Quick test environment setup
+- Integration testing scenarios
+- Database-dependent tests  
+- Test isolation and cleanup
+- Pre-built service modules
+- Quick test environment setup
 
 ---
 
