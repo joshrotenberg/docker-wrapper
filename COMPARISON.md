@@ -21,14 +21,14 @@ Need containers in Rust?
 |---------|---------------|---------|-------------------|---------|
 | **Approach** | CLI subprocess wrapper | Direct Docker API client | Test-focused abstraction | Shell commands |
 | **Learning Curve** | Low (Docker CLI knowledge) | Medium (Docker API knowledge) | Low (test-focused) | High (error handling) |
-| **Dependencies** | Docker CLI required | None (direct HTTP/socket) | Docker/Podman required | Docker CLI required |
+| **Dependencies** | Docker CLI required | None (direct HTTP/socket) | Docker CLI required | Docker CLI required |
 | **Performance** | Medium (subprocess overhead) | High (direct API) | Medium | Low (manual parsing) |
 | **Feature Coverage** | Complete CLI feature set | Complete API feature set | Test-focused subset | Complete CLI feature set |
 | **Error Handling** | Docker CLI error messages | Raw API error responses | Test-friendly errors | Manual parsing required |
 | **Compatibility** | Follows Docker CLI changes | Follows API versions | Limited scope | Manual maintenance |
 | **Async Support** | Full tokio support | Native async | Test-focused async | Manual implementation |
 | **Streaming** | Output streaming | Advanced streaming | Limited | Complex to implement |
-| **Production Ready** | Yes | Yes | Tests only | Error-prone |
+| **Production Ready** | Yes | Yes | No (test-focused) | Depends on implementation |
 
 ## Use Case Recommendations
 
@@ -121,13 +121,14 @@ println!("Container ID: {}", result.container_id());
 #### bollard
 ```rust
 use bollard::{Docker, container::{Config, CreateContainerOptions}};
+use bollard::service::{HostConfig, PortBinding};
 use std::collections::HashMap;
 
 let docker = Docker::connect_with_local_defaults()?;
 
 let config = Config {
-    image: Some("redis:latest".to_string()),
-    env: Some(vec!["REDIS_PASSWORD=secret".to_string()]),
+    image: Some("redis:latest"),
+    env: Some(vec!["REDIS_PASSWORD=secret"]),
     host_config: Some(HostConfig {
         port_bindings: Some(HashMap::from([(
             "6379/tcp".to_string(),
@@ -142,21 +143,25 @@ let config = Config {
 };
 
 let container = docker.create_container(
-    Some(CreateContainerOptions { name: "my-redis" }), 
+    Some(CreateContainerOptions { 
+        name: "my-redis",
+        platform: None,
+    }), 
     config
 ).await?;
 
-docker.start_container(&container.id, None::<String>).await?;
+docker.start_container::<String>(&container.id, None).await?;
 ```
 
 #### testcontainers-rs  
 ```rust
-use testcontainers::clients::Cli;
-use testcontainers_modules::redis::Redis;
+use testcontainers::{runners::AsyncRunner, GenericImage};
 
-let docker = Cli::default();
-let redis_container = docker.run(Redis::default());
-let port = redis_container.get_host_port_ipv4(6379);
+let container = GenericImage::new("redis", "latest")
+    .with_exposed_port(6379)
+    .start()
+    .await?;
+let port = container.get_host_port_ipv4(6379)?;
 ```
 
 ### Key Differences
@@ -178,13 +183,13 @@ let port = redis_container.get_host_port_ipv4(6379);
 
 ### Cross-Platform Runtime Support
 
-| Library | Docker | Podman | Docker Desktop | Colima | OrbStack |
-|---------|--------|--------|---------------|--------|----------|
-| **docker-wrapper** | Yes | Yes | Yes | Yes | Yes |
-| **bollard** | Yes | Partial | Yes | Partial | Partial |
-| **testcontainers-rs** | Yes | Partial | Yes | Partial | Partial |
+| Library | Docker | Podman | Docker Desktop | Other Runtimes |
+|---------|--------|--------|---------------|----------------|
+| **docker-wrapper** | Yes | Yes | Yes | Yes (any Docker CLI compatible) |
+| **bollard** | Yes | Yes (with socket setup) | Yes | Yes (if API compatible) |
+| **testcontainers-rs** | Yes | Yes (with configuration) | Yes | Depends on Docker compatibility |
 
-*Note: "Partial" means partial support or requires configuration*
+*Note: Podman support typically requires Docker compatibility mode enabled*
 
 ### Error Handling Quality
 
@@ -250,9 +255,13 @@ if result.is_success() {
 ```rust
 #[tokio::test]
 async fn test_redis_connection() {
-    let docker = Cli::default();
-    let redis = docker.run(Redis::default());
-    let port = redis.get_host_port_ipv4(6379);
+    use testcontainers::{runners::AsyncRunner, GenericImage};
+    
+    let container = GenericImage::new("redis", "latest")
+        .with_exposed_port(6379)
+        .start()
+        .await?;
+    let port = container.get_host_port_ipv4(6379)?;
     
     // Test logic here
     
@@ -285,15 +294,16 @@ async fn test_redis_connection() {
 
 **Before (bollard):**
 ```rust
+use bollard::{Docker, container::ListContainersOptions};
+use std::collections::HashMap;
+
 let docker = Docker::connect_with_local_defaults()?;
 
 let containers = docker.list_containers(Some(ListContainersOptions::<String> {
     all: true,
-    filters: {
-        let mut filters = HashMap::new();
-        filters.insert("status".to_string(), vec!["running".to_string()]);
-        Some(filters)
-    },
+    filters: HashMap::from([
+        ("status".to_string(), vec!["running".to_string()])
+    ]),
     ..Default::default()
 })).await?;
 
@@ -392,25 +402,31 @@ if !test_result.is_success() {
 - Integration into long-running service architecture
 
 ```rust
-use bollard::{Docker, system::EventsOptions};
+use bollard::{Docker, system::{EventsOptions, EventMessage}};
 use futures::stream::StreamExt;
+use std::collections::HashMap;
 
 let docker = Docker::connect_with_local_defaults()?;
 
 // Stream container events in real-time
 let mut events = docker.events(Some(EventsOptions::<String> {
-    filters: {
-        let mut filters = HashMap::new();
-        filters.insert("type".to_string(), vec!["container".to_string()]);
-        Some(filters)
-    },
+    filters: HashMap::from([
+        ("type".to_string(), vec!["container".to_string()])
+    ]),
     ..Default::default()
 }));
 
 while let Some(event) = events.next().await {
     match event? {
-        Event { action: Some(action), actor: Some(actor), .. } => {
-            println!("Container {} {}", actor.id.unwrap_or_default(), action);
+        EventMessage { 
+            action: Some(action), 
+            actor: Some(actor), 
+            .. 
+        } => {
+            println!("Container {} {}", 
+                actor.id.unwrap_or_default(), 
+                action
+            );
             // Handle container lifecycle events
         }
         _ => {}
