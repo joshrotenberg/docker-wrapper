@@ -37,7 +37,7 @@ jobs:
 
       - name: Generate changelog
         if: steps.release.outputs.release_created
-        uses: orhun/git-cliff-action@v3
+        uses: orhun/git-cliff-action@v4.5.1
         with:
           config: cliff.toml
           args: --verbose
