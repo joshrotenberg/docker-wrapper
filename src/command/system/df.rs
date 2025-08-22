@@ -371,7 +371,7 @@ impl DockerCommand for SystemDfCommand {
         // Parse JSON output
         let usage: DiskUsage =
             serde_json::from_str(stdout).map_err(|e| crate::error::Error::ParseError {
-                message: format!("Failed to parse disk usage: {}", e),
+                message: format!("Failed to parse disk usage: {e}"),
             })?;
 
         Ok(usage)

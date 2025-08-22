@@ -94,3 +94,6 @@ The codebase follows a command-pattern architecture where each Docker command is
 - Use `#[must_use]` on builder methods for better ergonomics
 - Escape hatch methods (`.arg()`, `.args()`) enable forward compatibility
 - things to remember: a branch and pr with conventional commits for everything, clippy and fmt clean, reasonable test coverage for everything, rustdoc should have a reasonable example for every function
+- always run cargo fmt --all and cargo clippy  --workspace  --all-targets --all-features -- -D warnings before pushing
+- no emojis
+- always squash commits before a merge

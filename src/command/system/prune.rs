@@ -253,7 +253,7 @@ fn parse_size(size_str: &str) -> u64 {
         "MB" | "M" => 1_024 * 1_024,
         "GB" | "G" => 1_024 * 1_024 * 1_024,
         "TB" | "T" => 1_024_u64.pow(4),
-        _ => 1,  // Includes "B" and empty string
+        _ => 1, // Includes "B" and empty string
     };
 
     (value * multiplier as f64) as u64
@@ -270,7 +270,11 @@ mod tests {
         assert_eq!(parse_size("1.5KB"), 1536);
         assert_eq!(parse_size("2MB"), 2 * 1024 * 1024);
         assert_eq!(parse_size("1GB"), 1024 * 1024 * 1024);
-        assert_eq!(parse_size("1.5GB"), (1.5 * 1024.0 * 1024.0 * 1024.0) as u64);
+        #[allow(clippy::cast_possible_truncation)]
+        #[allow(clippy::cast_sign_loss)]
+        {
+            assert_eq!(parse_size("1.5GB"), (1.5 * 1024.0 * 1024.0 * 1024.0) as u64);
+        }
     }
 
     #[test]

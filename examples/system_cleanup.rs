@@ -3,10 +3,7 @@
 //! This example shows how to use Docker system prune, df, and other
 //! cleanup commands to manage Docker resources.
 
-use docker_wrapper::{
-    ContainerPruneCommand, DockerCommand, ImagePruneCommand, SystemDfCommand,
-    SystemPruneCommand,
-};
+use docker_wrapper::{ContainerPruneCommand, ImagePruneCommand, SystemDfCommand};
 
 #[tokio::main]
 async fn main() {

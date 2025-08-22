@@ -208,7 +208,7 @@ fn parse_size(size_str: &str) -> u64 {
         "MB" | "M" => 1_024 * 1_024,
         "GB" | "G" => 1_024 * 1_024 * 1_024,
         "TB" | "T" => 1_024_u64.pow(4),
-        _ => 1,  // Includes "B" and empty string
+        _ => 1, // Includes "B" and empty string
     };
 
     (value * multiplier as f64) as u64
