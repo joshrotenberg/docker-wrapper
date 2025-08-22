@@ -93,9 +93,9 @@ Need containers in Rust?
 
 | Operation | docker-wrapper | bollard | testcontainers-rs | Notes |
 |-----------|---------------|---------|-------------------|-------|
-| **Startup overhead** | ~5ms (subprocess) | ~1ms (HTTP connection) | ~10ms (abstraction layer) | Per command |
-| **100 container operations** | Slower (process spawning) | Fastest (direct API) | Medium (optimized for tests) | Bulk operations |
-| **Memory usage** | Low (subprocess cleanup) | Medium (connection pools) | Medium (test lifecycle) | Runtime footprint |
+| **Startup overhead** | Higher (subprocess) | Lower (HTTP connection) | Higher (abstraction layer) | Per command |
+| **Bulk operations** | Slower (process spawning) | Fastest (direct API) | Medium (optimized for tests) | Many containers |
+| **Memory usage** | Lower (subprocess cleanup) | Medium (connection pools) | Medium (test lifecycle) | Runtime footprint |
 | **CPU usage** | Higher (process spawning) | Lower (HTTP calls) | Medium | Sustained operations |
 | **Concurrent operations** | Limited (process pools) | Excellent (async HTTP) | Good (parallel tests) | Scalability |
 
@@ -418,34 +418,29 @@ while let Some(event) = events.next().await {
 }
 ```
 
-## Performance Benchmarks
+## Performance Characteristics
 
-### Startup Performance
-*Single container creation and start*
+### Expected Performance Trade-offs
 
-| Library | Cold Start | Warm Start | Notes |
-|---------|------------|------------|-------|
-| docker-wrapper | 45ms | 25ms | Subprocess + CLI parsing |
-| bollard | 15ms | 8ms | Direct API call |
-| testcontainers-rs | 65ms | 35ms | Additional test abstractions |
+**docker-wrapper**
+- **Startup**: Higher latency due to subprocess spawning
+- **Throughput**: Limited by process creation overhead  
+- **Memory**: Lower baseline, processes cleaned up after commands
+- **Concurrency**: Constrained by system process limits
 
-### Bulk Operations  
-*Creating and starting 50 containers*
+**bollard**  
+- **Startup**: Lower latency with direct HTTP API calls
+- **Throughput**: Higher throughput with persistent connections
+- **Memory**: Higher baseline due to connection pools and caching
+- **Concurrency**: Excellent async performance
 
-| Library | Sequential | Concurrent | Notes |
-|---------|------------|------------|-------|
-| docker-wrapper | 2.3s | 850ms | Limited by subprocess spawning |
-| bollard | 450ms | 180ms | Efficient async HTTP calls |  
-| testcontainers-rs | 1.8s | 650ms | Test-optimized but still overhead |
+**testcontainers-rs**
+- **Startup**: Higher latency due to test framework abstractions
+- **Throughput**: Optimized for test scenarios, not production workloads  
+- **Memory**: Test lifecycle management adds overhead
+- **Concurrency**: Good for parallel test execution
 
-### Memory Usage
-*Long-running application managing containers*
-
-| Library | Baseline | Per Container | Peak Usage |
-|---------|----------|--------------|------------|
-| docker-wrapper | 2MB | +50KB | 25MB (100 containers) |
-| bollard | 5MB | +25KB | 18MB (100 containers) |
-| testcontainers-rs | 3MB | +75KB | 30MB (100 containers) |
+*Note: Actual performance will vary significantly based on your specific use case, system configuration, and Docker setup. Consider benchmarking with your own workload for accurate comparisons.*
 
 ## Summary
 
