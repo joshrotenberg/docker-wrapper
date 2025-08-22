@@ -268,12 +268,12 @@ mod tests {
 
         match stdout {
             OutputLine::Stdout(s) => assert_eq!(s, "test"),
-            _ => panic!("Wrong variant"),
+            OutputLine::Stderr(_) => panic!("Wrong variant"),
         }
 
         match stderr {
             OutputLine::Stderr(s) => assert_eq!(s, "error"),
-            _ => panic!("Wrong variant"),
+            OutputLine::Stdout(_) => panic!("Wrong variant"),
         }
     }
 

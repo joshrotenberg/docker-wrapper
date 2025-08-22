@@ -127,8 +127,10 @@ async fn example_logs_filtering() -> Result<(), Box<dyn std::error::Error>> {
     println!("Streaming logs with custom filtering...\n");
 
     // Stream logs with a custom filter
-    let mut error_count = 0;
-    let mut info_count = 0;
+    let error_count = Arc::new(AtomicUsize::new(0));
+    let info_count = Arc::new(AtomicUsize::new(0));
+    let error_clone = error_count.clone();
+    let info_clone = info_count.clone();
 
     let _result = LogsCommand::new(container_name)
         .follow()
@@ -138,13 +140,13 @@ async fn example_logs_filtering() -> Result<(), Box<dyn std::error::Error>> {
             OutputLine::Stdout(text) => {
                 if text.contains("Log entry") {
                     println!("[INFO] {}", text);
-                    info_count += 1;
+                    info_clone.fetch_add(1, Ordering::SeqCst);
                 }
             }
             OutputLine::Stderr(text) => {
                 if text.contains("Error") {
                     eprintln!("[ERROR] {}", text);
-                    error_count += 1;
+                    error_clone.fetch_add(1, Ordering::SeqCst);
                 }
             }
         })
@@ -152,12 +154,12 @@ async fn example_logs_filtering() -> Result<(), Box<dyn std::error::Error>> {
 
     // Note: The logs command will continue until the container exits
     println!("\n✅ Log streaming completed");
-    println!("   Info messages: {}", info_count);
-    println!("   Error messages: {}", error_count);
+    println!("   Info messages: {}", info_count.load(Ordering::SeqCst));
+    println!("   Error messages: {}", error_count.load(Ordering::SeqCst));
 
     // Stop and remove the container
     let _ = std::process::Command::new("docker")
-        .args(&["stop", container_name])
+        .args(["stop", container_name])
         .output();
 
     Ok(())
