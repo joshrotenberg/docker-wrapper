@@ -28,6 +28,31 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
+      # Generate changelog with git-cliff after release
+      - name: Checkout code
+        if: steps.release.outputs.release_created
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        if: steps.release.outputs.release_created
+        uses: orhun/git-cliff-action@v3
+        with:
+          config: cliff.toml
+          args: --verbose
+        env:
+          OUTPUT: CHANGELOG.md
+
+      - name: Commit changelog
+        if: steps.release.outputs.release_created
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
+          git add CHANGELOG.md
+          git diff --cached --quiet || git commit -m "docs: Update CHANGELOG.md for v${{ steps.release.outputs.version }}"
+          git push
+
   publish-crates:
     name: Publish to Crates.io
     runs-on: ubuntu-latest
