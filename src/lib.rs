@@ -372,6 +372,7 @@ pub mod command;
 #[cfg(feature = "compose")]
 pub mod compose;
 pub mod error;
+pub mod platform;
 pub mod prerequisites;
 pub mod stream;
 
@@ -423,6 +424,7 @@ pub use command::{
     Protocol,
 };
 pub use error::{Error, Result};
+pub use platform::{Platform, PlatformInfo, Runtime};
 pub use prerequisites::{ensure_docker, DockerInfo, DockerPrerequisites};
 
 /// The version of this crate
