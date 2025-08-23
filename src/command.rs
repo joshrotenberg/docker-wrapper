@@ -17,6 +17,7 @@ use tokio::process::Command as TokioCommand;
 pub mod attach;
 pub mod bake;
 pub mod build;
+pub mod builder;
 pub mod commit;
 pub mod compose_attach;
 pub mod compose_build;
