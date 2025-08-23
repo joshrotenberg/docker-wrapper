@@ -1,6 +1,7 @@
 //! Integration tests for container lifecycle commands (stop, start, restart).
 
-use docker_wrapper::{DockerCommand, RestartCommand, RunCommand, StartCommand, StopCommand};
+use docker_wrapper::command::DockerCommandV2;
+use docker_wrapper::{RestartCommand, RunCommand, StartCommand, StopCommand};
 use std::time::Duration;
 use tokio::time::sleep;
 
@@ -272,15 +273,18 @@ async fn test_command_args_generation() {
 }
 
 #[tokio::test]
-async fn test_command_names() {
+async fn test_command_args() {
     let stop_cmd = StopCommand::new("test");
-    assert_eq!(stop_cmd.command_name(), "stop");
+    let stop_args = stop_cmd.build_command_args();
+    assert_eq!(stop_args[0], "stop");
 
     let start_cmd = StartCommand::new("test");
-    assert_eq!(start_cmd.command_name(), "start");
+    let start_args = start_cmd.build_command_args();
+    assert_eq!(start_args[0], "start");
 
     let restart_cmd = RestartCommand::new("test");
-    assert_eq!(restart_cmd.command_name(), "restart");
+    let restart_args = restart_cmd.build_command_args();
+    assert_eq!(restart_args[0], "restart");
 }
 
 #[tokio::test]

@@ -3,6 +3,7 @@
 //! These tests validate the docker ps command implementation
 //! with real Docker commands and containers.
 
+use docker_wrapper::command::DockerCommandV2;
 use docker_wrapper::prerequisites::ensure_docker;
 use docker_wrapper::{DockerCommand, PsCommand, RunCommand};
 use std::time::Duration;

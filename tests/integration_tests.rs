@@ -102,7 +102,7 @@ async fn test_run_command_validation() {
         .env("ENV_VAR", "value")
         .detach();
 
-    let args = run_cmd.build_args();
+    let args = run_cmd.build_command_args();
 
     // Verify the command structure (note: build_args doesn't include "run" command itself)
     assert!(args.contains(&"--name".to_string()));

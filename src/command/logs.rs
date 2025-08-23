@@ -2,11 +2,10 @@
 //!
 //! This module provides the `docker logs` command for viewing container logs.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use crate::stream::{OutputLine, StreamResult, StreamableCommand};
 use async_trait::async_trait;
-use std::ffi::OsStr;
 use tokio::process::Command as TokioCommand;
 use tokio::sync::mpsc;
 
@@ -28,7 +27,7 @@ pub struct LogsCommand {
     /// Show extra details
     details: bool,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl LogsCommand {
@@ -109,15 +108,19 @@ impl LogsCommand {
 }
 
 #[async_trait]
-impl DockerCommand for LogsCommand {
+impl DockerCommandV2 for LogsCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "logs"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["logs".to_string()];
 
         if self.follow {
             args.push("--follow".to_string());
@@ -149,37 +152,15 @@ impl DockerCommand for LogsCommand {
         // Add container name/ID
         args.push(self.container.clone());
 
+        // Add raw arguments from executor
+        args.extend(self.executor.raw_args.clone());
+
         args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        self.executor
-            .execute_command(self.command_name(), self.build_args())
-            .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+        let args = self.build_command_args();
+        self.execute_command(args).await
     }
 }
 
@@ -191,9 +172,9 @@ impl StreamableCommand for LogsCommand {
         F: FnMut(OutputLine) + Send + 'static,
     {
         let mut cmd = TokioCommand::new("docker");
-        cmd.arg(self.command_name());
+        cmd.arg("logs");
 
-        for arg in self.build_args() {
+        for arg in self.build_command_args() {
             cmd.arg(arg);
         }
 
@@ -202,9 +183,9 @@ impl StreamableCommand for LogsCommand {
 
     async fn stream_channel(&self) -> Result<(mpsc::Receiver<OutputLine>, StreamResult)> {
         let mut cmd = TokioCommand::new("docker");
-        cmd.arg(self.command_name());
+        cmd.arg("logs");
 
-        for arg in self.build_args() {
+        for arg in self.build_command_args() {
             cmd.arg(arg);
         }
 
@@ -252,36 +233,36 @@ mod tests {
     #[test]
     fn test_logs_basic() {
         let cmd = LogsCommand::new("test-container");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["logs", "test-container"]);
     }
 
     #[test]
     fn test_logs_follow() {
         let cmd = LogsCommand::new("test-container").follow();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--follow", "test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["logs", "--follow", "test-container"]);
     }
 
     #[test]
     fn test_logs_with_tail() {
         let cmd = LogsCommand::new("test-container").tail("100");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--tail", "100", "test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["logs", "--tail", "100", "test-container"]);
     }
 
     #[test]
     fn test_logs_with_timestamps() {
         let cmd = LogsCommand::new("test-container").timestamps();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--timestamps", "test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["logs", "--timestamps", "test-container"]);
     }
 
     #[test]
     fn test_logs_with_since() {
         let cmd = LogsCommand::new("test-container").since("10m");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--since", "10m", "test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["logs", "--since", "10m", "test-container"]);
     }
 
     #[test]
@@ -292,10 +273,11 @@ mod tests {
             .tail("50")
             .since("1h")
             .details();
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "logs",
                 "--follow",
                 "--timestamps",
                 "--tail",

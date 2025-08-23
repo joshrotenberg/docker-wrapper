@@ -3,8 +3,9 @@
 //! These tests validate the docker run command implementation
 //! with real Docker commands and containers.
 
+use docker_wrapper::command::DockerCommandV2;
 use docker_wrapper::prerequisites::ensure_docker;
-use docker_wrapper::{DockerCommand, RunCommand};
+use docker_wrapper::RunCommand;
 
 /// Helper to check if Docker is available, skip test if not
 async fn ensure_docker_or_skip() {
@@ -85,7 +86,7 @@ async fn test_run_command_builder() {
         .volume("/data", "/data")
         .detach();
 
-    let args = complex_run.build_args();
+    let args = complex_run.build_command_args();
 
     // Verify critical components are present (build_args doesn't include "run" command itself)
     assert!(args.contains(&"--name".to_string()));
@@ -111,7 +112,7 @@ async fn test_run_high_impact_dns_options() {
         .add_host("api.example.com:127.0.0.1")
         .remove();
 
-    let args = run_cmd.build_args();
+    let args = run_cmd.build_command_args();
 
     // Verify DNS options are properly formatted
     assert!(args.contains(&"--dns".to_string()));
@@ -135,7 +136,7 @@ async fn test_run_high_impact_security_options() {
         .security_opt("seccomp=unconfined")
         .remove();
 
-    let args = run_cmd.build_args();
+    let args = run_cmd.build_command_args();
 
     // Verify security options are properly formatted
     assert!(args.contains(&"--cap-add".to_string()));
@@ -162,7 +163,7 @@ async fn test_run_high_impact_device_filesystem_options() {
         .label("app=test")
         .remove();
 
-    let args = run_cmd.build_args();
+    let args = run_cmd.build_command_args();
 
     // Verify device and filesystem options are properly formatted
     assert!(args.contains(&"--device".to_string()));
