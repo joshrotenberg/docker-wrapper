@@ -44,12 +44,10 @@
 //! }
 //! ```
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde_json::Value;
-
-use std::ffi::OsStr;
 
 /// Docker Images Command Builder
 ///
@@ -112,7 +110,7 @@ pub struct ImagesCommand {
     /// List multi-platform images as a tree (experimental)
     tree: bool,
     /// Command executor for handling raw arguments and execution
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 /// Represents a Docker image from the output
@@ -680,6 +678,18 @@ impl ImagesCommand {
     pub fn get_format(&self) -> Option<&str> {
         self.format.as_deref()
     }
+
+    /// Get a reference to the command executor
+    #[must_use]
+    pub fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    /// Get a mutable reference to the command executor
+    #[must_use]
+    pub fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
 }
 
 impl Default for ImagesCommand {
@@ -793,51 +803,28 @@ impl ImagesOutput {
 }
 
 #[async_trait]
-impl DockerCommand for ImagesCommand {
+impl DockerCommandV2 for ImagesCommand {
     type Output = ImagesOutput;
 
-    fn command_name(&self) -> &'static str {
-        "images"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
         self.build_command_args()
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let args = self.build_args();
-        let output = self
-            .executor
-            .execute_command(self.command_name(), args)
-            .await?;
+        let args = self.build_command_args();
+        let output = self.executor.execute_command("docker", args).await?;
 
         let images = self.parse_output(&output);
 
         Ok(ImagesOutput { output, images })
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -848,7 +835,7 @@ mod tests {
     #[test]
     fn test_images_command_basic() {
         let images_cmd = ImagesCommand::new();
-        let args = images_cmd.build_args();
+        let args = images_cmd.build_command_args();
 
         assert!(args.is_empty()); // No arguments for basic images command
         assert!(!images_cmd.is_all());
@@ -864,7 +851,7 @@ mod tests {
     #[test]
     fn test_images_command_with_repository() {
         let images_cmd = ImagesCommand::new().repository("nginx:alpine");
-        let args = images_cmd.build_args();
+        let args = images_cmd.build_command_args();
 
         assert!(args.contains(&"nginx:alpine".to_string()));
         assert_eq!(args.last(), Some(&"nginx:alpine".to_string()));
@@ -880,7 +867,7 @@ mod tests {
             .quiet()
             .tree();
 
-        let args = images_cmd.build_args();
+        let args = images_cmd.build_command_args();
 
         assert!(args.contains(&"--all".to_string()));
         assert!(args.contains(&"--digests".to_string()));
@@ -902,7 +889,7 @@ mod tests {
             .filter("label=maintainer=nginx")
             .filters(vec!["before=alpine:latest", "since=ubuntu:20.04"]);
 
-        let args = images_cmd.build_args();
+        let args = images_cmd.build_command_args();
 
         assert!(args.contains(&"--filter".to_string()));
         assert!(args.contains(&"dangling=true".to_string()));
@@ -918,7 +905,7 @@ mod tests {
     #[test]
     fn test_images_command_with_format() {
         let images_cmd = ImagesCommand::new().format_json();
-        let args = images_cmd.build_args();
+        let args = images_cmd.build_command_args();
 
         assert!(args.contains(&"--format".to_string()));
         assert!(args.contains(&"json".to_string()));
@@ -929,7 +916,7 @@ mod tests {
     fn test_images_command_custom_format() {
         let custom_format = "table {{.Repository}}:{{.Tag}}\t{{.Size}}";
         let images_cmd = ImagesCommand::new().format(custom_format);
-        let args = images_cmd.build_args();
+        let args = images_cmd.build_command_args();
 
         assert!(args.contains(&"--format".to_string()));
         assert!(args.contains(&custom_format.to_string()));
@@ -947,7 +934,7 @@ mod tests {
             .no_trunc()
             .quiet();
 
-        let args = images_cmd.build_args();
+        let args = images_cmd.build_command_args();
 
         // Repository should be last
         assert_eq!(args.last(), Some(&"ubuntu".to_string()));

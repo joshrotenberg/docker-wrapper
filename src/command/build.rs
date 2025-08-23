@@ -3,12 +3,11 @@
 //! This module provides a comprehensive implementation of the `docker build` command
 //! with support for all native options and an extensible architecture for any additional options.
 
-use super::{CommandExecutor, DockerCommand};
+use super::{CommandExecutor, DockerCommandV2};
 use crate::error::Result;
 use crate::stream::{OutputLine, StreamResult, StreamableCommand};
 use async_trait::async_trait;
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::path::PathBuf;
 use tokio::process::Command as TokioCommand;
 use tokio::sync::mpsc;
@@ -20,7 +19,7 @@ pub struct BuildCommand {
     /// Build context (path, URL, or stdin)
     context: String,
     /// Command executor for extensibility
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
     /// Custom host-to-IP mappings
     add_hosts: Vec<String>,
     /// Build-time variables
@@ -1028,6 +1027,18 @@ impl BuildCommand {
         self.ssh.push(ssh.into());
         self
     }
+
+    /// Get a reference to the command executor
+    #[must_use]
+    pub fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    /// Get a mutable reference to the command executor  
+    #[must_use]
+    pub fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
 }
 
 impl Default for BuildCommand {
@@ -1282,15 +1293,19 @@ impl BuildCommand {
 }
 
 #[async_trait]
-impl DockerCommand for BuildCommand {
+impl DockerCommandV2 for BuildCommand {
     type Output = BuildOutput;
 
-    fn command_name(&self) -> &'static str {
-        "build"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["build".to_string()];
 
         self.add_basic_args(&mut args);
         self.add_resource_args(&mut args);
@@ -1306,11 +1321,8 @@ impl DockerCommand for BuildCommand {
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let args = self.build_args();
-        let output = self
-            .executor
-            .execute_command(self.command_name(), args)
-            .await?;
+        let args = self.build_command_args();
+        let output = self.executor.execute_command("docker", args).await?;
 
         // Extract image ID from output
         let image_id = if self.quiet {
@@ -1334,30 +1346,6 @@ impl DockerCommand for BuildCommand {
             image_id,
         })
     }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
-    }
 }
 
 // Streaming support for BuildCommand
@@ -1368,9 +1356,8 @@ impl StreamableCommand for BuildCommand {
         F: FnMut(OutputLine) + Send + 'static,
     {
         let mut cmd = TokioCommand::new("docker");
-        cmd.arg(self.command_name());
 
-        for arg in self.build_args() {
+        for arg in self.build_command_args() {
             cmd.arg(arg);
         }
 
@@ -1379,9 +1366,8 @@ impl StreamableCommand for BuildCommand {
 
     async fn stream_channel(&self) -> Result<(mpsc::Receiver<OutputLine>, StreamResult)> {
         let mut cmd = TokioCommand::new("docker");
-        cmd.arg(self.command_name());
 
-        for arg in self.build_args() {
+        for arg in self.build_command_args() {
             cmd.arg(arg);
         }
 
@@ -1426,7 +1412,7 @@ mod tests {
     fn test_build_command_basic() {
         let cmd = BuildCommand::new(".").tag("myapp:latest").no_cache().pull();
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--tag".to_string()));
         assert!(args.contains(&"myapp:latest".to_string()));
@@ -1441,7 +1427,7 @@ mod tests {
             .file("Dockerfile.prod")
             .tag("myapp:prod");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--file".to_string()));
         assert!(args.contains(&"Dockerfile.prod".to_string()));
@@ -1460,7 +1446,7 @@ mod tests {
             .build_args_map(build_args)
             .build_arg("EXTRA", "value");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--build-arg".to_string()));
         assert!(args.contains(&"VERSION=1.0.0".to_string()));
@@ -1474,7 +1460,7 @@ mod tests {
             .label("version", "1.0.0")
             .label("maintainer", "team@example.com");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--label".to_string()));
         assert!(args.contains(&"version=1.0.0".to_string()));
@@ -1488,7 +1474,7 @@ mod tests {
             .cpu_shares(512)
             .cpuset_cpus("0-3");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--memory".to_string()));
         assert!(args.contains(&"1g".to_string()));
@@ -1507,7 +1493,7 @@ mod tests {
             .cache_from("myapp:cache")
             .security_opt("seccomp=unconfined");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--platform".to_string()));
         assert!(args.contains(&"linux/amd64".to_string()));
@@ -1526,7 +1512,7 @@ mod tests {
         let tags = vec!["myapp:latest".to_string(), "myapp:1.0.0".to_string()];
         let cmd = BuildCommand::new(".").tags(tags);
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         let tag_count = args.iter().filter(|&arg| arg == "--tag").count();
         assert_eq!(tag_count, 2);
@@ -1538,7 +1524,7 @@ mod tests {
     fn test_build_command_quiet_mode() {
         let cmd = BuildCommand::new(".").quiet().tag("myapp:test");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--quiet".to_string()));
         assert!(args.contains(&"--tag".to_string()));
@@ -1549,7 +1535,7 @@ mod tests {
     fn test_build_command_no_rm() {
         let cmd = BuildCommand::new(".").no_rm();
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--rm=false".to_string()));
     }
@@ -1560,7 +1546,7 @@ mod tests {
             .tag("test:latest")
             .no_cache();
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Context should be the last argument
         assert_eq!(args.last(), Some(&"/custom/context".to_string()));
@@ -1590,7 +1576,7 @@ mod tests {
         cmd.option("--some-option", "value");
         cmd.arg("extra-arg");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--some-flag".to_string()));
         assert!(args.contains(&"--some-option".to_string()));
@@ -1634,7 +1620,7 @@ mod tests {
             .secret("id=mysecret,src=/local/secret")
             .ssh("default");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--allow".to_string()));
         assert!(args.contains(&"network.host".to_string()));

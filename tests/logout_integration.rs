@@ -3,7 +3,7 @@
 //! These tests validate the logout command functionality against a real Docker daemon.
 //! They test the command construction, execution, and output parsing.
 
-use docker_wrapper::{ensure_docker, DockerCommand, LogoutCommand};
+use docker_wrapper::{ensure_docker, DockerCommandV2, LogoutCommand};
 
 /// Helper to check if Docker is available for testing
 async fn setup_docker() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,10 +22,10 @@ async fn test_logout_basic_command() -> Result<(), Box<dyn std::error::Error>> {
     setup_docker().await?;
 
     let command = LogoutCommand::new();
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify the basic command structure
-    assert_eq!(command.command_name(), "logout");
+    assert_eq!(args[0], "logout");
 
     // Default logout should just have the command name
     assert_eq!(args, vec!["logout"]);
@@ -41,10 +41,10 @@ async fn test_logout_command_builder() -> Result<(), Box<dyn std::error::Error>>
 
     let command = LogoutCommand::new().server("my-registry.example.com");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify server is specified
-    assert_eq!(command.command_name(), "logout");
+    assert_eq!(args[0], "logout");
     assert!(args.contains(&"my-registry.example.com".to_string()));
     Ok(())
 }
@@ -55,7 +55,7 @@ async fn test_logout_with_private_registry() -> Result<(), Box<dyn std::error::E
 
     let command = LogoutCommand::new().server("registry.company.com:5000");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify private registry with port
     assert!(args.contains(&"registry.company.com:5000".to_string()));
@@ -76,9 +76,9 @@ async fn test_logout_docker_hub_variations() -> Result<(), Box<dyn std::error::E
 
     for server in hub_variations {
         let command = LogoutCommand::new().server(server);
-        let args = command.build_args();
 
-        assert_eq!(command.command_name(), "logout");
+        let args = command.build_command_args();
+        assert_eq!(args[0], "logout");
         assert!(args.contains(&server.to_string()));
     }
     Ok(())
@@ -89,7 +89,8 @@ async fn test_logout_command_name() -> Result<(), Box<dyn std::error::Error>> {
     setup_docker().await?;
 
     let command = LogoutCommand::new();
-    assert_eq!(command.command_name(), "logout");
+    let args = command.build_command_args();
+    assert_eq!(args[0], "logout");
     Ok(())
 }
 
@@ -99,9 +100,10 @@ async fn test_logout_command_display() -> Result<(), Box<dyn std::error::Error>>
 
     let command = LogoutCommand::new().server("test-registry.com");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
     assert!(!args.is_empty());
-    assert_eq!(command.command_name(), "logout");
+    let args = command.build_command_args();
+    assert_eq!(args[0], "logout");
     assert!(args.contains(&"test-registry.com".to_string()));
     Ok(())
 }
@@ -111,10 +113,10 @@ async fn test_logout_command_format() -> Result<(), Box<dyn std::error::Error>> 
     setup_docker().await?;
 
     let command = LogoutCommand::new().server("registry.example.com");
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify command format is correct
-    assert_eq!(command.command_name(), "logout");
+    assert_eq!(args[0], "logout");
     assert!(args.contains(&"registry.example.com".to_string()));
     Ok(())
 }
@@ -135,9 +137,9 @@ async fn test_logout_various_registry_formats() -> Result<(), Box<dyn std::error
 
     for registry in registry_formats {
         let command = LogoutCommand::new().server(registry);
-        let args = command.build_args();
 
-        assert_eq!(command.command_name(), "logout");
+        let args = command.build_command_args();
+        assert_eq!(args[0], "logout");
         assert!(args.contains(&registry.to_string()));
 
         // Verify command can be built
@@ -151,10 +153,10 @@ async fn test_logout_default_daemon_behavior() -> Result<(), Box<dyn std::error:
     setup_docker().await?;
 
     let command = LogoutCommand::new();
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Default logout should just have the command name
-    assert_eq!(command.command_name(), "logout");
+    assert_eq!(args[0], "logout");
     assert_eq!(args, vec!["logout"]);
     Ok(())
 }
@@ -165,10 +167,10 @@ async fn test_logout_command_order() -> Result<(), Box<dyn std::error::Error>> {
 
     let command = LogoutCommand::new().server("registry.example.com");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify command structure
-    assert_eq!(command.command_name(), "logout");
+    assert_eq!(args[0], "logout");
 
     // Server should be in the args
     assert!(args.contains(&"registry.example.com".to_string()));
@@ -185,11 +187,10 @@ async fn test_logout_multiple_servers_concept() -> Result<(), Box<dyn std::error
 
     for server in servers {
         let command = LogoutCommand::new().server(server);
-        let args = command.build_args();
 
-        assert_eq!(command.command_name(), "logout");
+        let args = command.build_command_args();
+        assert_eq!(args[0], "logout");
         assert!(args.contains(&server.to_string()));
-        assert_eq!(command.command_name(), "logout");
     }
     Ok(())
 }
@@ -200,10 +201,11 @@ async fn test_logout_empty_server_handling() -> Result<(), Box<dyn std::error::E
 
     // Test with empty server (should behave like default)
     let command = LogoutCommand::new().server("");
-    let _args = command.build_args();
+    let _args = command.build_command_args();
 
     // Should still produce valid command
-    assert_eq!(command.command_name(), "logout");
+    let args = command.build_command_args();
+    assert_eq!(args[0], "logout");
     // Empty server still gets passed as an argument
     assert_eq!(_args, vec!["logout", ""]);
     Ok(())
@@ -221,9 +223,9 @@ async fn test_logout_server_with_protocol() -> Result<(), Box<dyn std::error::Er
 
     for server in servers_with_protocol {
         let command = LogoutCommand::new().server(server);
-        let args = command.build_args();
 
-        assert_eq!(command.command_name(), "logout");
+        let args = command.build_command_args();
+        assert_eq!(args[0], "logout");
         assert!(args.contains(&server.to_string()));
     }
     Ok(())
@@ -237,10 +239,11 @@ async fn test_logout_validation() -> Result<(), Box<dyn std::error::Error>> {
     let command = LogoutCommand::new().server("test-registry.io");
 
     // Test command name
-    assert_eq!(command.command_name(), "logout");
+    let args = command.build_command_args();
+    assert_eq!(args[0], "logout");
 
     // Test build args format
-    let args = command.build_args();
+    let args = command.build_command_args();
     assert!(!args.is_empty());
     assert!(args.contains(&"test-registry.io".to_string()));
     Ok(())
@@ -252,9 +255,9 @@ async fn test_logout_builder_pattern() -> Result<(), Box<dyn std::error::Error>>
 
     // Test fluent builder pattern
     let command = LogoutCommand::new().server("registry.example.com");
-    let args = command.build_args();
 
-    assert_eq!(command.command_name(), "logout");
+    let args = command.build_command_args();
+    assert_eq!(args[0], "logout");
     assert!(args.contains(&"registry.example.com".to_string()));
 
     // Test that builder methods can be chained
@@ -262,7 +265,7 @@ async fn test_logout_builder_pattern() -> Result<(), Box<dyn std::error::Error>>
         .server("first.com")
         .server("second.com"); // Last server wins
 
-    let chained_args = chained.build_args();
+    let chained_args = chained.build_command_args();
     assert!(chained_args.contains(&"second.com".to_string()));
     assert!(!chained_args.contains(&"first.com".to_string()));
     Ok(())

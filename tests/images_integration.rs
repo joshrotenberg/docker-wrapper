@@ -4,7 +4,7 @@
 //! and gracefully handle cases where Docker is not available.
 
 use docker_wrapper::prerequisites::ensure_docker;
-use docker_wrapper::{DockerCommand, ImagesCommand};
+use docker_wrapper::{DockerCommandV2, ImagesCommand};
 
 /// Helper to check if Docker is available, skip test if not
 async fn ensure_docker_or_skip() {
@@ -43,7 +43,7 @@ async fn test_images_command_builder() {
         .no_trunc()
         .quiet();
 
-    let args = images_cmd.build_args();
+    let args = images_cmd.build_command_args();
 
     // Verify critical components are present
     assert!(args.contains(&"--all".to_string()));
@@ -434,7 +434,7 @@ async fn test_images_command_validation() {
     ];
 
     for (images_cmd, min_args) in test_cases {
-        let args = images_cmd.build_args();
+        let args = images_cmd.build_command_args();
 
         // Each command should produce at least the expected number of arguments
         assert!(args.len() >= min_args);
