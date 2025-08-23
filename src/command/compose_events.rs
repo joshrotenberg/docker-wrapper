@@ -224,12 +224,7 @@ impl ComposeEventsResult {
     pub fn events_for_service(&self, service: &str) -> Vec<&ComposeEvent> {
         self.events
             .iter()
-            .filter(|event| {
-                event
-                    .service
-                    .as_ref()
-                    .is_some_and(|s| s == service)
-            })
+            .filter(|event| event.service.as_ref().is_some_and(|s| s == service))
             .collect()
     }
 }
@@ -271,9 +266,7 @@ mod tests {
 
     #[test]
     fn test_compose_events_with_services() {
-        let cmd = ComposeEventsCommand::new()
-            .service("web")
-            .service("db");
+        let cmd = ComposeEventsCommand::new().service("web").service("db");
 
         let args = cmd.build_subcommand_args();
         assert!(args.contains(&"web".to_string()));

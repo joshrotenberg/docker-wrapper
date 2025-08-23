@@ -142,8 +142,7 @@ mod tests {
 
     #[test]
     fn test_compose_top_with_services() {
-        let cmd = ComposeTopCommand::new()
-            .services(vec!["web", "db"]);
+        let cmd = ComposeTopCommand::new().services(vec!["web", "db"]);
         let args = cmd.build_subcommand_args();
         assert_eq!(args, vec!["web", "db"]);
     }

@@ -253,8 +253,7 @@ mod tests {
 
     #[test]
     fn test_compose_images_with_services() {
-        let cmd = ComposeImagesCommand::new()
-            .services(vec!["web", "db"]);
+        let cmd = ComposeImagesCommand::new().services(vec!["web", "db"]);
         let args = cmd.build_subcommand_args();
         assert!(args.contains(&"web".to_string()));
         assert!(args.contains(&"db".to_string()));

@@ -238,9 +238,7 @@ mod tests {
 
     #[test]
     fn test_compose_version_all_options() {
-        let cmd = ComposeVersionCommand::new()
-            .format_json()
-            .short();
+        let cmd = ComposeVersionCommand::new().format_json().short();
 
         let args = cmd.build_subcommand_args();
         assert!(args.contains(&"--short".to_string()));

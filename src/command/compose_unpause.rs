@@ -144,7 +144,9 @@ mod tests {
 
     #[test]
     fn test_compose_unpause_with_services() {
-        let cmd = ComposeUnpauseCommand::new().service("web").service("worker");
+        let cmd = ComposeUnpauseCommand::new()
+            .service("web")
+            .service("worker");
         let args = cmd.build_subcommand_args();
         assert_eq!(args, vec!["web", "worker"]);
     }

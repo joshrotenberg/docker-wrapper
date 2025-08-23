@@ -357,10 +357,7 @@ mod tests {
 
     #[test]
     fn test_compose_config_show_options() {
-        let cmd = ComposeConfigCommand::new()
-            .volumes()
-            .profiles()
-            .images();
+        let cmd = ComposeConfigCommand::new().volumes().profiles().images();
 
         let args = cmd.build_subcommand_args();
         assert!(args.contains(&"--volumes".to_string()));

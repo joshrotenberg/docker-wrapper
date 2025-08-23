@@ -170,9 +170,7 @@ mod tests {
 
     #[test]
     fn test_compose_scale_no_deps() {
-        let cmd = ComposeScaleCommand::new()
-            .service("api", 5)
-            .no_deps();
+        let cmd = ComposeScaleCommand::new().service("api", 5).no_deps();
 
         let args = cmd.build_subcommand_args();
         assert!(args.contains(&"--no-deps".to_string()));
