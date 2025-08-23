@@ -170,7 +170,9 @@ mod tests {
 
     #[test]
     fn test_compose_kill_with_signal() {
-        let cmd = ComposeKillCommand::new().signal("SIGTERM").service("app");
+        let cmd = ComposeKillCommand::new()
+            .signal("SIGTERM")
+            .service("app");
 
         let args = cmd.build_subcommand_args();
         assert_eq!(args, vec!["--signal", "SIGTERM", "app"]);
@@ -178,7 +180,9 @@ mod tests {
 
     #[test]
     fn test_compose_kill_with_numeric_signal() {
-        let cmd = ComposeKillCommand::new().signal("15").service("database");
+        let cmd = ComposeKillCommand::new()
+            .signal("15")
+            .service("database");
 
         let args = cmd.build_subcommand_args();
         assert_eq!(args, vec!["--signal", "15", "database"]);
