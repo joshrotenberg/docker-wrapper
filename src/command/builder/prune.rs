@@ -12,6 +12,7 @@ use std::collections::HashMap;
 /// # Example
 /// ```no_run
 /// use docker_wrapper::command::builder::BuilderPruneCommand;
+/// use docker_wrapper::DockerCommand;
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// // Remove all build cache
@@ -99,6 +100,7 @@ impl BuilderPruneCommand {
     /// # Example
     /// ```no_run
     /// # use docker_wrapper::command::builder::BuilderPruneCommand;
+    /// # use docker_wrapper::DockerCommand;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// BuilderPruneCommand::new()
     ///     .keep_storage("5GB")

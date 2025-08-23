@@ -15,6 +15,7 @@ use async_trait::async_trait;
 /// # Example
 /// ```no_run
 /// use docker_wrapper::command::builder::BuilderBuildCommand;
+/// use docker_wrapper::DockerCommand;
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// let result = BuilderBuildCommand::new(".")
