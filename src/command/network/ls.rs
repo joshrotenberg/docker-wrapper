@@ -1,11 +1,10 @@
 //! Docker network ls command implementation.
 
-use crate::command::{CommandExecutor, CommandOutput, DockerCommand};
+use crate::command::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::ffi::OsStr;
 
 /// Docker network ls command builder
 #[derive(Debug, Clone)]
@@ -19,7 +18,7 @@ pub struct NetworkLsCommand {
     /// Only show IDs
     quiet: bool,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl NetworkLsCommand {
@@ -122,15 +121,11 @@ impl Default for NetworkLsCommand {
 }
 
 #[async_trait]
-impl DockerCommand for NetworkLsCommand {
+impl DockerCommandV2 for NetworkLsCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "network ls"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = vec!["ls".to_string()];
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["network".to_string(), "ls".to_string()];
 
         for (key, value) in &self.filters {
             args.push("--filter".to_string());
@@ -150,37 +145,25 @@ impl DockerCommand for NetworkLsCommand {
             args.push("--quiet".to_string());
         }
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
     async fn execute(&self) -> Result<Self::Output> {
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command("network", self.build_args())
+            .execute_command(&command_name, command_args)
             .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -318,8 +301,8 @@ mod tests {
     #[test]
     fn test_network_ls_basic() {
         let cmd = NetworkLsCommand::new();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["ls"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["network", "ls"]);
     }
 
     #[test]
@@ -327,7 +310,7 @@ mod tests {
         let cmd = NetworkLsCommand::new()
             .driver_filter("bridge")
             .name_filter("my-network");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert!(args.contains(&"--filter".to_string()));
         assert!(args.iter().any(|a| a.contains("driver=bridge")));
         assert!(args.iter().any(|a| a.contains("name=my-network")));
@@ -336,15 +319,15 @@ mod tests {
     #[test]
     fn test_network_ls_with_format() {
         let cmd = NetworkLsCommand::new().format_json();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["ls", "--format", "json"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["network", "ls", "--format", "json"]);
     }
 
     #[test]
     fn test_network_ls_quiet() {
         let cmd = NetworkLsCommand::new().quiet();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["ls", "--quiet"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["network", "ls", "--quiet"]);
     }
 
     #[test]

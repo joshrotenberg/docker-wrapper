@@ -2,10 +2,9 @@
 //!
 //! This module provides the `docker import` command for importing tarball contents as images.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker import command builder
 ///
@@ -40,7 +39,7 @@ pub struct ImportCommand {
     /// Apply Dockerfile instructions while importing
     changes: Vec<String>,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl ImportCommand {
@@ -202,15 +201,11 @@ impl ImportCommand {
 }
 
 #[async_trait]
-impl DockerCommand for ImportCommand {
+impl DockerCommandV2 for ImportCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "import"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["import".to_string()];
 
         // Add message if specified
         if let Some(ref message) = self.message {
@@ -232,37 +227,25 @@ impl DockerCommand for ImportCommand {
             args.push(repository.clone());
         }
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command(self.command_name(), self.build_args())
+            .execute_command(&command_name, command_args)
             .await
     }
 
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 }
 
@@ -342,15 +325,15 @@ mod tests {
     #[test]
     fn test_import_basic() {
         let cmd = ImportCommand::new("backup.tar");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["backup.tar"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["import", "backup.tar"]);
     }
 
     #[test]
     fn test_import_with_repository() {
         let cmd = ImportCommand::new("backup.tar").repository("my-app:v1.0");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["backup.tar", "my-app:v1.0"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["import", "backup.tar", "my-app:v1.0"]);
     }
 
     #[test]
@@ -360,10 +343,11 @@ mod tests {
             .message("Imported from backup")
             .change("ENV NODE_ENV=production")
             .change("EXPOSE 3000");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "import",
                 "--message",
                 "Imported from backup",
                 "--change",
@@ -380,10 +364,11 @@ mod tests {
     fn test_import_with_changes() {
         let cmd = ImportCommand::new("app.tar")
             .changes(vec!["ENV PATH=/usr/local/bin:$PATH", "WORKDIR /app"]);
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "import",
                 "--change",
                 "ENV PATH=/usr/local/bin:$PATH",
                 "--change",
@@ -396,17 +381,17 @@ mod tests {
     #[test]
     fn test_import_from_stdin() {
         let cmd = ImportCommand::new("-").repository("stdin-image");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["-", "stdin-image"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["import", "-", "stdin-image"]);
     }
 
     #[test]
     fn test_import_from_url() {
         let cmd = ImportCommand::new("http://example.com/image.tar.gz").repository("remote-image");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
-            vec!["http://example.com/image.tar.gz", "remote-image"]
+            vec!["import", "http://example.com/image.tar.gz", "remote-image"]
         );
     }
 
@@ -475,11 +460,5 @@ mod tests {
         assert!(!url_result.imported_from_stdin());
         assert!(url_result.imported_from_url());
         assert!(!url_result.imported_from_file());
-    }
-
-    #[test]
-    fn test_command_name() {
-        let cmd = ImportCommand::new("file.tar");
-        assert_eq!(cmd.command_name(), "import");
     }
 }

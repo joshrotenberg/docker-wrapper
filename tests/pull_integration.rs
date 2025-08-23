@@ -292,19 +292,19 @@ async fn test_pull_all_tags_small_repo() {
 async fn test_pull_command_validation() {
     // This test doesn't require Docker - just validates argument building
     let test_cases = vec![
-        ("nginx", vec!["nginx"]),
-        ("nginx:latest", vec!["nginx:latest"]),
-        ("nginx:alpine", vec!["nginx:alpine"]),
-        ("redis:7.0", vec!["redis:7.0"]),
-        ("postgres:15", vec!["postgres:15"]),
+        ("nginx", vec!["pull", "nginx"]),
+        ("nginx:latest", vec!["pull", "nginx:latest"]),
+        ("nginx:alpine", vec!["pull", "nginx:alpine"]),
+        ("redis:7.0", vec!["pull", "redis:7.0"]),
+        ("postgres:15", vec!["pull", "postgres:15"]),
     ];
 
-    for (image, expected_end) in test_cases {
+    for (image, expected_args) in test_cases {
         let pull_cmd = PullCommand::new(image);
         let args = pull_cmd.build_command_args();
 
-        // Image should be at the end
-        assert_eq!(args, expected_end);
+        // Verify command structure
+        assert_eq!(args, expected_args);
         assert_eq!(pull_cmd.get_image(), image);
     }
 

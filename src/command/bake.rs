@@ -9,7 +9,7 @@
 //!
 //! ```no_run
 //! use docker_wrapper::BakeCommand;
-//! use docker_wrapper::DockerCommand;
+//! use docker_wrapper::DockerCommandV2;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,7 +25,7 @@
 //!
 //! ```no_run
 //! use docker_wrapper::BakeCommand;
-//! use docker_wrapper::DockerCommand;
+//! use docker_wrapper::DockerCommandV2;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -46,11 +46,10 @@
 //! }
 //! ```
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
-use std::ffi::OsStr;
 
 /// Docker Bake Command Builder
 ///
@@ -78,7 +77,7 @@ use std::ffi::OsStr;
 ///
 /// ```no_run
 /// use docker_wrapper::BakeCommand;
-/// use docker_wrapper::DockerCommand;
+/// use docker_wrapper::DockerCommandV2;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -132,7 +131,7 @@ pub struct BakeCommand {
     /// Target value overrides (key=value pairs)
     set_values: HashMap<String, String>,
     /// Command executor for handling raw arguments and execution
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl BakeCommand {
@@ -548,113 +547,6 @@ impl BakeCommand {
         self
     }
 
-    /// Build the command arguments
-    ///
-    /// This method constructs the complete argument list for the docker bake command.
-    fn build_command_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
-
-        // Add file arguments
-        for file in &self.files {
-            args.push("--file".to_string());
-            args.push(file.clone());
-        }
-
-        // Add allow arguments
-        for allow in &self.allow {
-            args.push("--allow".to_string());
-            args.push(allow.clone());
-        }
-
-        // Add builder
-        if let Some(ref builder) = self.builder {
-            args.push("--builder".to_string());
-            args.push(builder.clone());
-        }
-
-        // Add call method
-        if let Some(ref call) = self.call {
-            args.push("--call".to_string());
-            args.push(call.clone());
-        }
-
-        // Add check flag
-        if self.check {
-            args.push("--check".to_string());
-        }
-
-        // Add debug flag
-        if self.debug {
-            args.push("--debug".to_string());
-        }
-
-        // Add list
-        if let Some(ref list) = self.list {
-            args.push("--list".to_string());
-            args.push(list.clone());
-        }
-
-        // Add load flag
-        if self.load {
-            args.push("--load".to_string());
-        }
-
-        // Add metadata file
-        if let Some(ref metadata_file) = self.metadata_file {
-            args.push("--metadata-file".to_string());
-            args.push(metadata_file.clone());
-        }
-
-        // Add no-cache flag
-        if self.no_cache {
-            args.push("--no-cache".to_string());
-        }
-
-        // Add print flag
-        if self.print {
-            args.push("--print".to_string());
-        }
-
-        // Add progress
-        if let Some(ref progress) = self.progress {
-            args.push("--progress".to_string());
-            args.push(progress.clone());
-        }
-
-        // Add provenance
-        if let Some(ref provenance) = self.provenance {
-            args.push("--provenance".to_string());
-            args.push(provenance.clone());
-        }
-
-        // Add pull flag
-        if self.pull {
-            args.push("--pull".to_string());
-        }
-
-        // Add push flag
-        if self.push {
-            args.push("--push".to_string());
-        }
-
-        // Add sbom
-        if let Some(ref sbom) = self.sbom {
-            args.push("--sbom".to_string());
-            args.push(sbom.clone());
-        }
-
-        // Add set values
-        for (key, value) in &self.set_values {
-            args.push("--set".to_string());
-            args.push(format!("{key}={value}"));
-        }
-
-        // Add targets at the end
-        args.extend(self.targets.clone());
-
-        args
-    }
-
     /// Get the number of targets
     ///
     /// # Examples
@@ -763,46 +655,128 @@ impl Default for BakeCommand {
 }
 
 #[async_trait]
-impl DockerCommand for BakeCommand {
+impl DockerCommandV2 for BakeCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "bake"
-    }
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["bake".to_string()];
 
-    fn build_args(&self) -> Vec<String> {
-        self.build_command_args()
+        // Add file arguments
+        for file in &self.files {
+            args.push("--file".to_string());
+            args.push(file.clone());
+        }
+
+        // Add allow arguments
+        for allow in &self.allow {
+            args.push("--allow".to_string());
+            args.push(allow.clone());
+        }
+
+        // Add builder
+        if let Some(ref builder) = self.builder {
+            args.push("--builder".to_string());
+            args.push(builder.clone());
+        }
+
+        // Add call method
+        if let Some(ref call) = self.call {
+            args.push("--call".to_string());
+            args.push(call.clone());
+        }
+
+        // Add check flag
+        if self.check {
+            args.push("--check".to_string());
+        }
+
+        // Add debug flag
+        if self.debug {
+            args.push("--debug".to_string());
+        }
+
+        // Add list
+        if let Some(ref list) = self.list {
+            args.push("--list".to_string());
+            args.push(list.clone());
+        }
+
+        // Add load flag
+        if self.load {
+            args.push("--load".to_string());
+        }
+
+        // Add metadata file
+        if let Some(ref metadata_file) = self.metadata_file {
+            args.push("--metadata-file".to_string());
+            args.push(metadata_file.clone());
+        }
+
+        // Add no-cache flag
+        if self.no_cache {
+            args.push("--no-cache".to_string());
+        }
+
+        // Add print flag
+        if self.print {
+            args.push("--print".to_string());
+        }
+
+        // Add progress
+        if let Some(ref progress) = self.progress {
+            args.push("--progress".to_string());
+            args.push(progress.clone());
+        }
+
+        // Add provenance
+        if let Some(ref provenance) = self.provenance {
+            args.push("--provenance".to_string());
+            args.push(provenance.clone());
+        }
+
+        // Add pull flag
+        if self.pull {
+            args.push("--pull".to_string());
+        }
+
+        // Add push flag
+        if self.push {
+            args.push("--push".to_string());
+        }
+
+        // Add sbom
+        if let Some(ref sbom) = self.sbom {
+            args.push("--sbom".to_string());
+            args.push(sbom.clone());
+        }
+
+        // Add set values
+        for (key, value) in &self.set_values {
+            args.push("--set".to_string());
+            args.push(format!("{key}={value}"));
+        }
+
+        // Add targets at the end
+        args.extend(self.targets.clone());
+        args.extend(self.executor.raw_args.clone());
+        args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let args = self.build_args();
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command(self.command_name(), args)
+            .execute_command(&command_name, command_args)
             .await
     }
 
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 }
 
@@ -813,9 +787,9 @@ mod tests {
     #[test]
     fn test_bake_command_basic() {
         let bake_cmd = BakeCommand::new();
-        let args = bake_cmd.build_args();
+        let args = bake_cmd.build_command_args();
 
-        assert!(args.is_empty()); // No arguments for basic bake command
+        assert_eq!(args, vec!["bake"]); // Only bake command for basic case
     }
 
     #[test]
@@ -825,7 +799,7 @@ mod tests {
             .target("api")
             .target("worker");
 
-        let args = bake_cmd.build_args();
+        let args = bake_cmd.build_command_args();
 
         assert!(args.contains(&"web".to_string()));
         assert!(args.contains(&"api".to_string()));
@@ -839,7 +813,7 @@ mod tests {
             .file("docker-compose.yml")
             .file("custom-bake.hcl");
 
-        let args = bake_cmd.build_args();
+        let args = bake_cmd.build_command_args();
 
         assert!(args.contains(&"--file".to_string()));
         assert!(args.contains(&"docker-compose.yml".to_string()));
@@ -851,7 +825,7 @@ mod tests {
     fn test_bake_command_push_and_load() {
         let bake_cmd = BakeCommand::new().push().load();
 
-        let args = bake_cmd.build_args();
+        let args = bake_cmd.build_command_args();
 
         assert!(args.contains(&"--push".to_string()));
         assert!(args.contains(&"--load".to_string()));
@@ -863,7 +837,7 @@ mod tests {
     fn test_bake_command_with_builder() {
         let bake_cmd = BakeCommand::new().builder("mybuilder");
 
-        let args = bake_cmd.build_args();
+        let args = bake_cmd.build_command_args();
 
         assert!(args.contains(&"--builder".to_string()));
         assert!(args.contains(&"mybuilder".to_string()));
@@ -875,7 +849,7 @@ mod tests {
             .set("web.platform", "linux/amd64,linux/arm64")
             .set("*.output", "type=registry");
 
-        let args = bake_cmd.build_args();
+        let args = bake_cmd.build_command_args();
 
         assert!(args.contains(&"--set".to_string()));
         assert!(args.contains(&"web.platform=linux/amd64,linux/arm64".to_string()));
@@ -886,7 +860,7 @@ mod tests {
     fn test_bake_command_flags() {
         let bake_cmd = BakeCommand::new().check().debug().no_cache().print().pull();
 
-        let args = bake_cmd.build_args();
+        let args = bake_cmd.build_command_args();
 
         assert!(args.contains(&"--check".to_string()));
         assert!(args.contains(&"--debug".to_string()));
@@ -900,7 +874,7 @@ mod tests {
     fn test_bake_command_with_metadata_file() {
         let bake_cmd = BakeCommand::new().metadata_file("build-metadata.json");
 
-        let args = bake_cmd.build_args();
+        let args = bake_cmd.build_command_args();
 
         assert!(args.contains(&"--metadata-file".to_string()));
         assert!(args.contains(&"build-metadata.json".to_string()));
@@ -910,7 +884,7 @@ mod tests {
     fn test_bake_command_with_progress() {
         let bake_cmd = BakeCommand::new().progress("plain");
 
-        let args = bake_cmd.build_args();
+        let args = bake_cmd.build_command_args();
 
         assert!(args.contains(&"--progress".to_string()));
         assert!(args.contains(&"plain".to_string()));
@@ -922,7 +896,7 @@ mod tests {
             .provenance("mode=max")
             .sbom("generator=docker/buildkit");
 
-        let args = bake_cmd.build_args();
+        let args = bake_cmd.build_command_args();
 
         assert!(args.contains(&"--provenance".to_string()));
         assert!(args.contains(&"mode=max".to_string()));
@@ -936,7 +910,7 @@ mod tests {
             .allow("network.host")
             .allow("security.insecure");
 
-        let args = bake_cmd.build_args();
+        let args = bake_cmd.build_command_args();
 
         assert!(args.contains(&"--allow".to_string()));
         assert!(args.contains(&"network.host".to_string()));
@@ -947,7 +921,7 @@ mod tests {
     fn test_bake_command_with_call() {
         let bake_cmd = BakeCommand::new().call("check");
 
-        let args = bake_cmd.build_args();
+        let args = bake_cmd.build_command_args();
 
         assert!(args.contains(&"--call".to_string()));
         assert!(args.contains(&"check".to_string()));
@@ -957,7 +931,7 @@ mod tests {
     fn test_bake_command_with_list() {
         let bake_cmd = BakeCommand::new().list("targets");
 
-        let args = bake_cmd.build_args();
+        let args = bake_cmd.build_command_args();
 
         assert!(args.contains(&"--list".to_string()));
         assert!(args.contains(&"targets".to_string()));
@@ -966,13 +940,14 @@ mod tests {
     #[test]
     fn test_bake_command_extensibility() {
         let mut bake_cmd = BakeCommand::new();
+        bake_cmd.get_executor_mut().add_arg("--experimental");
         bake_cmd
-            .arg("--experimental")
-            .args(vec!["--custom", "value"]);
+            .get_executor_mut()
+            .add_args(vec!["--custom", "value"]);
 
         // Extensibility is handled through the executor's raw_args
         // The actual testing of raw args is done in command.rs tests
-        // We can't access private fields, but we know the methods work
+        // We can verify the executor methods are accessible
         println!("Extensibility methods called successfully");
     }
 }

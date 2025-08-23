@@ -2,10 +2,9 @@
 //!
 //! This module provides the `docker rmi` command for removing Docker images.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker rmi command builder
 ///
@@ -39,7 +38,7 @@ pub struct RmiCommand {
     /// Do not delete untagged parents
     no_prune: bool,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl RmiCommand {
@@ -169,15 +168,11 @@ impl RmiCommand {
 }
 
 #[async_trait]
-impl DockerCommand for RmiCommand {
+impl DockerCommandV2 for RmiCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "rmi"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["rmi".to_string()];
 
         if self.force {
             args.push("--force".to_string());
@@ -190,7 +185,16 @@ impl DockerCommand for RmiCommand {
         // Add image names/IDs
         args.extend(self.images.clone());
 
+        args.extend(self.executor.raw_args.clone());
         args
+    }
+
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 
     async fn execute(&self) -> Result<Self::Output> {
@@ -200,33 +204,12 @@ impl DockerCommand for RmiCommand {
             ));
         }
 
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command(self.command_name(), self.build_args())
+            .execute_command(&command_name, command_args)
             .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -266,29 +249,29 @@ mod tests {
     #[test]
     fn test_rmi_single_image() {
         let cmd = RmiCommand::new("test-image:latest");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-image:latest"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["rmi", "test-image:latest"]);
     }
 
     #[test]
     fn test_rmi_multiple_images() {
         let cmd = RmiCommand::new_multiple(vec!["image1:latest", "image2:v1.0", "image3"]);
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["image1:latest", "image2:v1.0", "image3"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["rmi", "image1:latest", "image2:v1.0", "image3"]);
     }
 
     #[test]
     fn test_rmi_with_force() {
         let cmd = RmiCommand::new("stubborn-image:latest").force();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--force", "stubborn-image:latest"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["rmi", "--force", "stubborn-image:latest"]);
     }
 
     #[test]
     fn test_rmi_with_no_prune() {
         let cmd = RmiCommand::new("test-image:latest").no_prune();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--no-prune", "test-image:latest"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["rmi", "--no-prune", "test-image:latest"]);
     }
 
     #[test]
@@ -297,10 +280,11 @@ mod tests {
             .image("another-image:v1.0")
             .force()
             .no_prune();
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "rmi",
                 "--force",
                 "--no-prune",
                 "test-image:latest",

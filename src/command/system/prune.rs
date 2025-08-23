@@ -1,6 +1,6 @@
 //! Docker system prune command implementation.
 
-use crate::command::{CommandExecutor, DockerCommand};
+use crate::command::{CommandExecutor, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -70,7 +70,7 @@ pub struct SystemPruneCommand {
     filter: HashMap<String, String>,
 
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl SystemPruneCommand {
@@ -131,15 +131,11 @@ impl Default for SystemPruneCommand {
 }
 
 #[async_trait]
-impl DockerCommand for SystemPruneCommand {
+impl DockerCommandV2 for SystemPruneCommand {
     type Output = PruneResult;
 
-    fn command_name(&self) -> &'static str {
-        "system"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = vec!["prune".to_string()];
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["system".to_string(), "prune".to_string()];
 
         if self.all {
             args.push("--all".to_string());
@@ -158,34 +154,25 @@ impl DockerCommand for SystemPruneCommand {
             args.push(format!("{key}={value}"));
         }
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
-    fn arg<S: AsRef<std::ffi::OsStr>>(&mut self, _arg: S) -> &mut Self {
-        self
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn args<I, S>(&mut self, _args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<std::ffi::OsStr>,
-    {
-        self
-    }
-
-    fn flag(&mut self, _flag: &str) -> &mut Self {
-        self
-    }
-
-    fn option(&mut self, _key: &str, _value: &str) -> &mut Self {
-        self
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let args = self.build_args();
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         let output = self
             .executor
-            .execute_command(self.command_name(), args)
+            .execute_command(&command_name, command_args)
             .await?;
 
         // Parse the output to extract deleted items and space reclaimed
@@ -285,7 +272,8 @@ mod tests {
             .force()
             .filter("until", "24h");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
+        assert_eq!(args[0], "system");
         assert!(args.contains(&"prune".to_string()));
         assert!(args.contains(&"--all".to_string()));
         assert!(args.contains(&"--volumes".to_string()));
