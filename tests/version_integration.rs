@@ -3,7 +3,7 @@
 //! These tests validate the version command functionality against a real Docker daemon.
 //! They test the command construction, execution, and output parsing.
 
-use docker_wrapper::{ensure_docker, DockerCommand, VersionCommand};
+use docker_wrapper::{ensure_docker, DockerCommandV2, VersionCommand};
 
 /// Helper to check if Docker is available for testing
 async fn setup_docker() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,10 +22,10 @@ async fn test_version_basic_command() -> Result<(), Box<dyn std::error::Error>> 
     setup_docker().await?;
 
     let command = VersionCommand::new();
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify the basic command structure
-    assert_eq!(command.command_name(), "version");
+    assert_eq!(args[0], "version");
     // Default version should just have the command name
     assert_eq!(args, vec!["version"]);
 
@@ -40,10 +40,10 @@ async fn test_version_command_builder() -> Result<(), Box<dyn std::error::Error>
 
     let command = VersionCommand::new().format("json");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify format option is present
-    assert_eq!(command.command_name(), "version");
+    assert_eq!(args[0], "version");
     assert!(args.contains(&"--format".to_string()));
     assert!(args.contains(&"json".to_string()));
     Ok(())
@@ -57,9 +57,9 @@ async fn test_version_format_variations() -> Result<(), Box<dyn std::error::Erro
 
     for format in formats {
         let command = VersionCommand::new().format(format);
-        let args = command.build_args();
+        let args = command.build_command_args();
 
-        assert_eq!(command.command_name(), "version");
+        assert_eq!(args[0], "version");
         assert!(args.contains(&"--format".to_string()));
         assert!(args.contains(&format.to_string()));
     }
@@ -71,7 +71,7 @@ async fn test_version_json_format() -> Result<(), Box<dyn std::error::Error>> {
     setup_docker().await?;
 
     let command = VersionCommand::new().format("json");
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify JSON format
     assert!(args.contains(&"--format".to_string()));
@@ -84,7 +84,7 @@ async fn test_version_table_format() -> Result<(), Box<dyn std::error::Error>> {
     setup_docker().await?;
 
     let command = VersionCommand::new().format("table");
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify table format
     assert!(args.contains(&"--format".to_string()));
@@ -98,7 +98,7 @@ async fn test_version_custom_go_template() -> Result<(), Box<dyn std::error::Err
 
     let template = "{{.Server.Version}} - {{.Client.Version}}";
     let command = VersionCommand::new().format(template);
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify custom template
     assert!(args.contains(&"--format".to_string()));
@@ -111,7 +111,7 @@ async fn test_version_command_name() -> Result<(), Box<dyn std::error::Error>> {
     setup_docker().await?;
 
     let command = VersionCommand::new();
-    assert_eq!(command.command_name(), "version");
+    assert_eq!(args[0], "version");
     Ok(())
 }
 
@@ -121,9 +121,9 @@ async fn test_version_command_display() -> Result<(), Box<dyn std::error::Error>
 
     let command = VersionCommand::new().format("json");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
     assert!(!args.is_empty());
-    assert_eq!(command.command_name(), "version");
+    assert_eq!(args[0], "version");
     assert!(args.contains(&"--format".to_string()));
     assert!(args.contains(&"json".to_string()));
     Ok(())
@@ -134,10 +134,10 @@ async fn test_version_default_format() -> Result<(), Box<dyn std::error::Error>>
     setup_docker().await?;
 
     let command = VersionCommand::new();
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Default should not include format flag
-    assert_eq!(command.command_name(), "version");
+    assert_eq!(args[0], "version");
     assert_eq!(args, vec!["version"]);
     Ok(())
 }
@@ -150,8 +150,8 @@ async fn test_version_format_parsing_concept() -> Result<(), Box<dyn std::error:
     let json_command = VersionCommand::new().format("json");
     let table_command = VersionCommand::new().format("table");
 
-    let json_args = json_command.build_args();
-    let table_args = table_command.build_args();
+    let json_args = json_command.build_command_args();
+    let table_args = table_command.build_command_args();
 
     // Verify format arguments are correctly set
     assert!(json_args.contains(&"--format".to_string()));
@@ -167,10 +167,10 @@ async fn test_version_command_order() -> Result<(), Box<dyn std::error::Error>> 
 
     let command = VersionCommand::new().format("table");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify command structure
-    assert_eq!(command.command_name(), "version");
+    assert_eq!(args[0], "version");
     assert!(args.contains(&"--format".to_string()));
     assert!(args.contains(&"table".to_string()));
     Ok(())
@@ -182,12 +182,12 @@ async fn test_version_empty_format_handling() -> Result<(), Box<dyn std::error::
 
     // Test with empty format (should behave like default)
     let command = VersionCommand::new().format("");
-    let _args = command.build_args();
+    let args = command.build_command_args();
 
     // Should still produce valid command
-    assert_eq!(command.command_name(), "version");
+    assert_eq!(args[0], "version");
     // Empty format still gets passed as a flag
-    assert_eq!(_args, vec!["version", "--format", ""]);
+    assert_eq!(args, vec!["version", "--format", ""]);
     Ok(())
 }
 
@@ -205,9 +205,9 @@ async fn test_version_complex_go_templates() -> Result<(), Box<dyn std::error::E
 
     for template in complex_templates {
         let command = VersionCommand::new().format(template);
-        let args = command.build_args();
+        let args = command.build_command_args();
 
-        assert_eq!(command.command_name(), "version");
+        assert_eq!(args[0], "version");
         assert!(args.contains(&"--format".to_string()));
         assert!(args.contains(&template.to_string()));
     }
@@ -222,10 +222,10 @@ async fn test_version_validation() -> Result<(), Box<dyn std::error::Error>> {
     let command = VersionCommand::new().format("json");
 
     // Test command name
-    assert_eq!(command.command_name(), "version");
+    assert_eq!(args[0], "version");
 
     // Test build args format
-    let args = command.build_args();
+    let args = command.build_command_args();
     assert!(!args.is_empty());
     assert!(args.contains(&"--format".to_string()));
     assert!(args.contains(&"json".to_string()));
@@ -238,9 +238,9 @@ async fn test_version_builder_pattern() -> Result<(), Box<dyn std::error::Error>
 
     // Test fluent builder pattern
     let command = VersionCommand::new().format("json");
-    let args = command.build_args();
+    let args = command.build_command_args();
 
-    assert_eq!(command.command_name(), "version");
+    assert_eq!(args[0], "version");
     assert!(args.contains(&"--format".to_string()));
     assert!(args.contains(&"json".to_string()));
 
@@ -249,7 +249,7 @@ async fn test_version_builder_pattern() -> Result<(), Box<dyn std::error::Error>
         .format("table")
         .format("{{.Server.Version}}"); // Last format wins
 
-    let chained_args = chained_command.build_args();
+    let chained_args = chained_command.build_command_args();
     assert!(chained_args.contains(&"--format".to_string()));
     assert!(chained_args.contains(&"{{.Server.Version}}".to_string()));
     Ok(())
@@ -270,9 +270,9 @@ async fn test_version_format_edge_cases() -> Result<(), Box<dyn std::error::Erro
 
     for format in edge_case_formats {
         let command = VersionCommand::new().format(format);
-        let args = command.build_args();
+        let args = command.build_command_args();
 
-        assert_eq!(command.command_name(), "version");
+        assert_eq!(args[0], "version");
         assert!(args.contains(&"--format".to_string()));
         // Format should be properly included
         assert!(args.contains(&format.to_string()));
@@ -290,15 +290,26 @@ async fn test_version_output_parsing_concept() -> Result<(), Box<dyn std::error:
     let default_command = VersionCommand::new();
 
     // Verify different formats produce different commands
-    assert!(json_command.build_args().contains(&"--format".to_string()));
-    assert!(json_command.build_args().contains(&"json".to_string()));
-    assert!(table_command.build_args().contains(&"--format".to_string()));
-    assert!(table_command.build_args().contains(&"table".to_string()));
-    assert_eq!(default_command.build_args(), vec!["version"]);
+    assert!(json_command
+        .build_command_args()
+        .contains(&"--format".to_string()));
+    assert!(json_command
+        .build_command_args()
+        .contains(&"json".to_string()));
+    assert!(table_command
+        .build_command_args()
+        .contains(&"--format".to_string()));
+    assert!(table_command
+        .build_command_args()
+        .contains(&"table".to_string()));
+    assert_eq!(default_command.build_command_args(), vec!["version"]);
 
     // All should be valid version commands
-    assert_eq!(json_command.command_name(), "version");
-    assert_eq!(table_command.command_name(), "version");
-    assert_eq!(default_command.command_name(), "version");
+    let json_args = json_command.build_command_args();
+    let table_args = table_command.build_command_args();
+    let default_args = default_command.build_command_args();
+    assert_eq!(json_args[0], "version");
+    assert_eq!(table_args[0], "version");
+    assert_eq!(default_args[0], "version");
     Ok(())
 }

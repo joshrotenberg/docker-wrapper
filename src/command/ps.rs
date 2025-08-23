@@ -3,19 +3,17 @@
 //! This module provides a comprehensive implementation of the `docker ps` command
 //! with support for all native options and an extensible architecture for any additional options.
 
-use super::{CommandExecutor, DockerCommand};
+use super::{CommandExecutor, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-
-use std::ffi::OsStr;
 
 /// Docker ps command builder with fluent API
 #[derive(Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct PsCommand {
     /// Command executor for extensibility
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
     /// Show all containers (default shows just running)
     all: bool,
     /// Filter output based on conditions provided
@@ -376,24 +374,22 @@ impl PsCommand {
 
         Vec::new()
     }
-}
 
-impl Default for PsCommand {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[async_trait]
-impl DockerCommand for PsCommand {
-    type Output = PsOutput;
-
-    fn command_name(&self) -> &'static str {
-        "ps"
+    /// Gets the command executor
+    #[must_use]
+    pub fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    /// Gets the command executor mutably
+    pub fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    /// Builds the command arguments for Docker ps
+    #[must_use]
+    pub fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["ps".to_string()];
 
         if self.all {
             args.push("--all".to_string());
@@ -435,13 +431,33 @@ impl DockerCommand for PsCommand {
 
         args
     }
+}
+
+impl Default for PsCommand {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[async_trait]
+impl DockerCommandV2 for PsCommand {
+    type Output = PsOutput;
+
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        self.build_command_args()
+    }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let args = self.build_args();
-        let output = self
-            .executor
-            .execute_command(self.command_name(), args)
-            .await?;
+        let args = self.build_command_args();
+        let output = self.execute_command(args).await?;
 
         // Parse containers based on format
         let containers = if self.quiet {
@@ -465,30 +481,6 @@ impl DockerCommand for PsCommand {
             containers,
         })
     }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
-    }
 }
 
 #[cfg(test)]
@@ -505,7 +497,7 @@ mod tests {
             .no_trunc()
             .size();
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--all".to_string()));
         assert!(args.contains(&"--filter".to_string()));
@@ -521,7 +513,7 @@ mod tests {
     fn test_ps_command_quiet() {
         let cmd = PsCommand::new().quiet().all();
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--quiet".to_string()));
         assert!(args.contains(&"--all".to_string()));
@@ -531,7 +523,7 @@ mod tests {
     fn test_ps_command_latest() {
         let cmd = PsCommand::new().latest();
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--latest".to_string()));
     }
@@ -540,7 +532,7 @@ mod tests {
     fn test_ps_command_last() {
         let cmd = PsCommand::new().last(5);
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--last".to_string()));
         assert!(args.contains(&"5".to_string()));
@@ -551,7 +543,7 @@ mod tests {
         let filters = vec!["status=running".to_string(), "name=web".to_string()];
         let cmd = PsCommand::new().filters(filters);
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Should have two --filter entries
         let filter_count = args.iter().filter(|&arg| arg == "--filter").count();
@@ -563,13 +555,13 @@ mod tests {
     #[test]
     fn test_ps_command_format_variants() {
         let cmd1 = PsCommand::new().format_table();
-        assert!(cmd1.build_args().contains(&"table".to_string()));
+        assert!(cmd1.build_command_args().contains(&"table".to_string()));
 
         let cmd2 = PsCommand::new().format_json();
-        assert!(cmd2.build_args().contains(&"json".to_string()));
+        assert!(cmd2.build_command_args().contains(&"json".to_string()));
 
         let cmd3 = PsCommand::new().format_template("{{.ID}}");
-        assert!(cmd3.build_args().contains(&"{{.ID}}".to_string()));
+        assert!(cmd3.build_command_args().contains(&"{{.ID}}".to_string()));
     }
 
     #[test]
@@ -600,7 +592,7 @@ mod tests {
         cmd.option("--some-option", "value");
         cmd.arg("extra-arg");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--some-flag".to_string()));
         assert!(args.contains(&"--some-option".to_string()));

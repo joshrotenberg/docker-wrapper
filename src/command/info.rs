@@ -3,10 +3,9 @@
 //! This module provides functionality to retrieve Docker system information,
 //! including daemon configuration, storage details, and runtime information.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
-use std::ffi::OsStr;
 use std::fmt;
 
 /// Command for retrieving Docker system information
@@ -34,7 +33,7 @@ pub struct InfoCommand {
     /// Output format
     format: Option<String>,
     /// Command executor for running the command
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 /// Docker system information
@@ -190,19 +189,20 @@ impl InfoCommand {
         }
     }
 
-    /// Sets a custom command executor
-    ///
-    /// # Arguments
-    ///
-    /// * `executor` - Custom command executor
+    /// Gets the command executor
     #[must_use]
-    pub fn executor(mut self, executor: CommandExecutor) -> Self {
-        self.executor = executor;
-        self
+    pub fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    /// Gets the command executor mutably
+    pub fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 
     /// Builds the command arguments for Docker info
-    fn build_command_args(&self) -> Vec<String> {
+    #[must_use]
+    pub fn build_command_args(&self) -> Vec<String> {
         let mut args = vec!["info".to_string()];
 
         // Add format option
@@ -210,6 +210,9 @@ impl InfoCommand {
             args.push("--format".to_string());
             args.push(format.clone());
         }
+
+        // Add any additional raw arguments
+        args.extend(self.executor.raw_args.clone());
 
         args
     }
@@ -527,22 +530,24 @@ impl InfoOutput {
 }
 
 #[async_trait]
-impl DockerCommand for InfoCommand {
+impl DockerCommandV2 for InfoCommand {
     type Output = InfoOutput;
 
-    fn command_name(&self) -> &'static str {
-        "info"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
         self.build_command_args()
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let output = self
-            .executor
-            .execute_command(self.command_name(), self.build_args())
-            .await?;
+        let args = self.build_command_args();
+        let output = self.execute_command(args).await?;
 
         let docker_info = self.parse_output(&output)?;
 
@@ -550,37 +555,6 @@ impl DockerCommand for InfoCommand {
             output,
             docker_info,
         })
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        match key {
-            "--format" | "-f" | "format" => {
-                self.format = Some(value.to_string());
-            }
-            _ => {
-                self.executor.add_option(key, value);
-            }
-        }
-        self
     }
 }
 
@@ -858,21 +832,27 @@ mod tests {
     #[test]
     fn test_info_command_name() {
         let info = InfoCommand::new();
-        assert_eq!(info.command_name(), "info");
+        let args = info.build_command_args();
+        assert_eq!(args[0], "info");
     }
 
     #[test]
     fn test_info_command_extensibility() {
         let mut info = InfoCommand::new();
 
-        // Test the extension methods
-        info.arg("extra")
-            .args(vec!["more", "args"])
-            .flag("--verbose")
-            .option("--format", "json");
+        // Test that we can add custom raw arguments
+        info.get_executor_mut()
+            .raw_args
+            .push("--verbose".to_string());
+        info.get_executor_mut()
+            .raw_args
+            .push("--some-flag".to_string());
 
-        // Verify the format option was applied
-        assert_eq!(info.get_format(), Some("json"));
+        let args = info.build_command_args();
+
+        // Verify raw args are included
+        assert!(args.contains(&"--verbose".to_string()));
+        assert!(args.contains(&"--some-flag".to_string()));
     }
 
     #[test]

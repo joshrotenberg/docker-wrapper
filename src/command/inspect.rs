@@ -3,11 +3,10 @@
 //! This module provides the `docker inspect` command for getting detailed information
 //! about Docker objects (containers, images, volumes, networks, etc.).
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde_json::Value;
-use std::ffi::OsStr;
 
 /// Docker inspect command builder
 ///
@@ -39,7 +38,7 @@ pub struct InspectCommand {
     /// Type of object to inspect
     object_type: Option<String>,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl InspectCommand {
@@ -136,18 +135,22 @@ impl InspectCommand {
         let output = self.execute().await?;
         Ok(InspectOutput { output })
     }
-}
 
-#[async_trait]
-impl DockerCommand for InspectCommand {
-    type Output = CommandOutput;
-
-    fn command_name(&self) -> &'static str {
-        "inspect"
+    /// Gets the command executor
+    #[must_use]
+    pub fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    /// Gets the command executor mutably
+    pub fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    /// Builds the command arguments for Docker inspect
+    #[must_use]
+    pub fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["inspect".to_string()];
 
         if let Some(ref format) = self.format {
             args.push("--format".to_string());
@@ -166,37 +169,32 @@ impl DockerCommand for InspectCommand {
         // Add object names/IDs
         args.extend(self.objects.clone());
 
+        // Add any additional raw arguments
+        args.extend(self.executor.raw_args.clone());
+
         args
+    }
+}
+
+#[async_trait]
+impl DockerCommandV2 for InspectCommand {
+    type Output = CommandOutput;
+
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        self.build_command_args()
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        self.executor
-            .execute_command(self.command_name(), self.build_args())
-            .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+        let args = self.build_command_args();
+        self.execute_command(args).await
     }
 }
 
@@ -243,39 +241,39 @@ mod tests {
     #[test]
     fn test_inspect_single_object() {
         let cmd = InspectCommand::new("test-container");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["inspect", "test-container"]);
     }
 
     #[test]
     fn test_inspect_multiple_objects() {
         let cmd = InspectCommand::new_multiple(vec!["container1", "image1", "volume1"]);
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["container1", "image1", "volume1"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["inspect", "container1", "image1", "volume1"]);
     }
 
     #[test]
     fn test_inspect_with_format() {
         let cmd = InspectCommand::new("test-container").format("{{.State.Status}}");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
-            vec!["--format", "{{.State.Status}}", "test-container"]
+            vec!["inspect", "--format", "{{.State.Status}}", "test-container"]
         );
     }
 
     #[test]
     fn test_inspect_with_size() {
         let cmd = InspectCommand::new("test-image").size();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--size", "test-image"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["inspect", "--size", "test-image"]);
     }
 
     #[test]
     fn test_inspect_with_type() {
         let cmd = InspectCommand::new("my-network").object_type("network");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--type", "network", "my-network"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["inspect", "--type", "network", "my-network"]);
     }
 
     #[test]
@@ -284,10 +282,11 @@ mod tests {
             .format("{{json .}}")
             .size()
             .object_type("container");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "inspect",
                 "--format",
                 "{{json .}}",
                 "--size",
