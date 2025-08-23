@@ -195,25 +195,6 @@ impl ComposeConfig {
     }
 }
 
-/// Common trait for all compose commands
-#[async_trait]
-pub trait ComposeCommand {
-    /// The output type this command produces
-    type Output;
-
-    /// Get the compose subcommand name (e.g., "up", "down", "ps")
-    fn subcommand(&self) -> &'static str;
-
-    /// Build command-specific arguments
-    fn build_args(&self) -> Vec<String>;
-
-    /// Execute the command
-    async fn execute(&self) -> Result<Self::Output>;
-
-    /// Get the compose configuration
-    fn config(&self) -> &ComposeConfig;
-}
-
 /// Execute a compose command with the given configuration and arguments
 async fn execute_compose_command(
     config: &ComposeConfig,
@@ -270,6 +251,92 @@ async fn execute_compose_command(
     })
 }
 
+/// Common trait for all compose commands (existing pattern)
+#[async_trait]
+pub trait ComposeCommand {
+    /// The output type this command produces
+    type Output;
+
+    /// Get the compose subcommand name (e.g., "up", "down", "ps")
+    fn subcommand(&self) -> &'static str;
+
+    /// Build command-specific arguments
+    fn build_args(&self) -> Vec<String>;
+
+    /// Execute the command
+    async fn execute(&self) -> Result<Self::Output>;
+
+    /// Get the compose configuration
+    fn config(&self) -> &ComposeConfig;
+}
+
+/// Common trait for new compose commands
+#[async_trait]
+pub trait ComposeCommandV2 {
+    /// The output type this command produces
+    type Output;
+
+    /// Get the compose configuration
+    fn get_config(&self) -> &ComposeConfig;
+
+    /// Get mutable compose configuration
+    fn get_config_mut(&mut self) -> &mut ComposeConfig;
+
+    /// Execute compose command with given arguments
+    async fn execute_compose(&self, args: Vec<String>) -> Result<Self::Output>;
+
+    /// Execute the command
+    async fn execute(&self) -> Result<Self::Output>;
+
+    /// Helper to execute compose command
+    async fn execute_compose_command(&self, args: Vec<String>) -> Result<ComposeOutput> {
+        let config = self.get_config();
+        let mut cmd = TokioCommand::new("docker");
+
+        // Add "compose" as the first argument
+        cmd.arg("compose");
+
+        // Add global compose arguments
+        for arg in config.build_global_args() {
+            cmd.arg(arg);
+        }
+
+        // Add command-specific arguments
+        for arg in args {
+            cmd.arg(arg);
+        }
+
+        // Set up output pipes
+        cmd.stdout(Stdio::piped());
+        cmd.stderr(Stdio::piped());
+
+        let output = cmd.output().await.map_err(|e| {
+            crate::error::Error::custom(format!("Failed to execute docker compose: {e}"))
+        })?;
+
+        let stdout = String::from_utf8_lossy(&output.stdout).to_string();
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        let success = output.status.success();
+        let exit_code = output.status.code().unwrap_or(-1);
+
+        if !success && !stderr.contains("Gracefully stopping...") {
+            return Err(crate::error::Error::command_failed(
+                "docker compose".to_string(),
+                exit_code,
+                stdout.clone(),
+                stderr.clone(),
+            ));
+        }
+
+        Ok(ComposeOutput {
+            stdout,
+            stderr,
+            exit_code,
+            success,
+        })
+    }
+}
+
 /// Output from a compose command
 #[derive(Debug, Clone)]
 pub struct ComposeOutput {
@@ -298,27 +365,65 @@ impl ComposeOutput {
 }
 
 // Re-export submodules
+pub mod attach;
 pub mod build;
+pub mod config;
+pub mod convert;
+pub mod cp;
+pub mod create;
 pub mod down;
+pub mod events;
 pub mod exec;
+pub mod images;
+pub mod kill;
 pub mod logs;
+pub mod ls;
+pub mod pause;
+pub mod port;
 pub mod ps;
+pub mod push;
 pub mod restart;
+pub mod rm;
 pub mod run;
+pub mod scale;
 pub mod start;
 pub mod stop;
+pub mod top;
+pub mod unpause;
 pub mod up;
+pub mod version;
+pub mod wait;
+pub mod watch;
 
+pub use attach::{AttachResult, ComposeAttachCommand};
 pub use build::ComposeBuildCommand;
+pub use config::{ComposeConfigCommand, ConfigFormat, ConfigResult};
+pub use convert::{ComposeConvertCommand, ConvertFormat, ConvertResult};
+pub use cp::{ComposeCpCommand, CpResult};
+pub use create::{ComposeCreateCommand, CreateResult, PullPolicy};
 pub use down::ComposeDownCommand;
+pub use events::{ComposeEvent, ComposeEventsCommand, EventsResult};
 pub use exec::ComposeExecCommand;
+pub use images::{ComposeImagesCommand, ImageInfo, ImagesFormat, ImagesResult};
+pub use kill::{ComposeKillCommand, KillResult};
 pub use logs::ComposeLogsCommand;
+pub use ls::{ComposeLsCommand, ComposeProject, LsFormat, LsResult};
+pub use pause::{ComposePauseCommand, PauseResult};
+pub use port::{ComposePortCommand, PortResult};
 pub use ps::ComposePsCommand;
+pub use push::{ComposePushCommand, PushResult};
 pub use restart::ComposeRestartCommand;
+pub use rm::{ComposeRmCommand, RmResult};
 pub use run::ComposeRunCommand;
+pub use scale::{ComposeScaleCommand, ScaleResult};
 pub use start::ComposeStartCommand;
 pub use stop::ComposeStopCommand;
+pub use top::{ComposeTopCommand, TopResult};
+pub use unpause::{ComposeUnpauseCommand, UnpauseResult};
 pub use up::ComposeUpCommand;
+pub use version::{ComposeVersionCommand, VersionFormat, VersionInfo, VersionResult};
+pub use wait::{ComposeWaitCommand, WaitResult};
+pub use watch::{ComposeWatchCommand, WatchResult};
 
 #[cfg(test)]
 mod tests {
