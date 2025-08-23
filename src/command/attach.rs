@@ -2,10 +2,9 @@
 //!
 //! This module provides the `docker attach` command for attaching to a running container.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker attach command builder
 ///
@@ -41,7 +40,7 @@ pub struct AttachCommand {
     /// Proxy all received signals to the process
     sig_proxy: bool,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl AttachCommand {
@@ -147,15 +146,19 @@ impl AttachCommand {
 }
 
 #[async_trait]
-impl DockerCommand for AttachCommand {
+impl DockerCommandV2 for AttachCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "attach"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["attach".to_string()];
 
         if let Some(ref keys) = self.detach_keys {
             args.push("--detach-keys".to_string());
@@ -173,37 +176,15 @@ impl DockerCommand for AttachCommand {
         // Add container name/ID
         args.push(self.container.clone());
 
+        // Add raw arguments from executor
+        args.extend(self.executor.raw_args.clone());
+
         args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        self.executor
-            .execute_command(self.command_name(), self.build_args())
-            .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+        let args = self.build_command_args();
+        self.execute_command(args).await
     }
 }
 
@@ -237,32 +218,32 @@ mod tests {
     #[test]
     fn test_attach_basic() {
         let cmd = AttachCommand::new("test-container");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["attach", "test-container"]);
     }
 
     #[test]
     fn test_attach_with_detach_keys() {
         let cmd = AttachCommand::new("test-container").detach_keys("ctrl-a,ctrl-d");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
-            vec!["--detach-keys", "ctrl-a,ctrl-d", "test-container"]
+            vec!["attach", "--detach-keys", "ctrl-a,ctrl-d", "test-container"]
         );
     }
 
     #[test]
     fn test_attach_no_stdin() {
         let cmd = AttachCommand::new("test-container").no_stdin();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--no-stdin", "test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["attach", "--no-stdin", "test-container"]);
     }
 
     #[test]
     fn test_attach_no_sig_proxy() {
         let cmd = AttachCommand::new("test-container").no_sig_proxy();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--sig-proxy=false", "test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["attach", "--sig-proxy=false", "test-container"]);
     }
 
     #[test]
@@ -271,10 +252,11 @@ mod tests {
             .detach_keys("ctrl-x,ctrl-y")
             .no_stdin()
             .no_sig_proxy();
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "attach",
                 "--detach-keys",
                 "ctrl-x,ctrl-y",
                 "--no-stdin",

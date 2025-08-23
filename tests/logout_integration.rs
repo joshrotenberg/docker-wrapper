@@ -3,7 +3,7 @@
 //! These tests validate the logout command functionality against a real Docker daemon.
 //! They test the command construction, execution, and output parsing.
 
-use docker_wrapper::{ensure_docker, DockerCommand, LogoutCommand};
+use docker_wrapper::{ensure_docker, LogoutCommand};
 
 /// Helper to check if Docker is available for testing
 async fn setup_docker() -> Result<(), Box<dyn std::error::Error>> {

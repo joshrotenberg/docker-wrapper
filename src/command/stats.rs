@@ -3,11 +3,10 @@
 //! This module provides the `docker stats` command for displaying real-time
 //! resource usage statistics of containers.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::ffi::OsStr;
 
 /// Docker stats command builder
 ///
@@ -54,7 +53,7 @@ pub struct StatsCommand {
     /// Only display numeric IDs
     no_trunc: bool,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl StatsCommand {
@@ -230,15 +229,19 @@ impl Default for StatsCommand {
 }
 
 #[async_trait]
-impl DockerCommand for StatsCommand {
+impl DockerCommandV2 for StatsCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "stats"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["stats".to_string()];
 
         if self.all {
             args.push("--all".to_string());
@@ -260,37 +263,15 @@ impl DockerCommand for StatsCommand {
         // Add container names/IDs
         args.extend(self.containers.clone());
 
+        // Add raw arguments from executor
+        args.extend(self.executor.raw_args.clone());
+
         args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        self.executor
-            .execute_command(self.command_name(), self.build_args())
-            .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+        let args = self.build_command_args();
+        self.execute_command(args).await
     }
 }
 
@@ -394,43 +375,43 @@ mod tests {
     #[test]
     fn test_stats_basic() {
         let cmd = StatsCommand::new();
-        let args = cmd.build_args();
-        assert!(args.is_empty());
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["stats"]);
     }
 
     #[test]
     fn test_stats_with_containers() {
         let cmd = StatsCommand::new().container("web").container("db");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["web", "db"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["stats", "web", "db"]);
     }
 
     #[test]
     fn test_stats_with_all_flag() {
         let cmd = StatsCommand::new().all();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--all"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["stats", "--all"]);
     }
 
     #[test]
     fn test_stats_with_format() {
         let cmd = StatsCommand::new().format("json");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--format", "json"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["stats", "--format", "json"]);
     }
 
     #[test]
     fn test_stats_no_stream() {
         let cmd = StatsCommand::new().no_stream();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--no-stream"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["stats", "--no-stream"]);
     }
 
     #[test]
     fn test_stats_no_trunc() {
         let cmd = StatsCommand::new().no_trunc();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--no-trunc"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["stats", "--no-trunc"]);
     }
 
     #[test]
@@ -441,10 +422,11 @@ mod tests {
             .no_stream()
             .no_trunc()
             .container("test-container");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "stats",
                 "--all",
                 "--format",
                 "table",

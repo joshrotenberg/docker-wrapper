@@ -3,11 +3,10 @@
 //! This module provides a comprehensive implementation of the `docker run` command
 //! with support for common options and an extensible architecture for any additional options.
 
-use super::{CommandExecutor, DockerCommand, EnvironmentBuilder, PortBuilder};
+use super::{CommandExecutor, DockerCommandV2, EnvironmentBuilder, PortBuilder};
 use crate::error::{Error, Result};
 use crate::stream::{OutputLine, StreamResult, StreamableCommand};
 use async_trait::async_trait;
-use std::ffi::OsStr;
 use std::path::PathBuf;
 use tokio::process::Command as TokioCommand;
 use tokio::sync::mpsc;
@@ -19,7 +18,7 @@ pub struct RunCommand {
     /// The Docker image to run
     image: String,
     /// Command executor for extensibility
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
     /// Container name
     name: Option<String>,
     /// Run in detached mode
@@ -1244,16 +1243,20 @@ impl RunCommand {
 }
 
 #[async_trait]
-impl DockerCommand for RunCommand {
+impl DockerCommandV2 for RunCommand {
     type Output = ContainerId;
 
-    fn command_name(&self) -> &'static str {
-        "run"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 
     #[allow(clippy::too_many_lines)]
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["run".to_string()];
 
         // Add flags
         if self.detach {
@@ -1695,15 +1698,15 @@ impl DockerCommand for RunCommand {
             args.extend(command.clone());
         }
 
+        // Add raw arguments from executor
+        args.extend(self.executor.raw_args.clone());
+
         args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let args = self.build_args();
-        let output = self
-            .executor
-            .execute_command(self.command_name(), args)
-            .await?;
+        let args = self.build_command_args();
+        let output = self.execute_command(args).await?;
 
         // Parse container ID from output
         let container_id = output.stdout.trim().to_string();
@@ -1714,30 +1717,6 @@ impl DockerCommand for RunCommand {
         }
 
         Ok(ContainerId(container_id))
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -1756,9 +1735,9 @@ impl StreamableCommand for RunCommand {
         }
 
         let mut cmd = TokioCommand::new("docker");
-        cmd.arg(self.command_name());
+        cmd.arg("run");
 
-        for arg in self.build_args() {
+        for arg in self.build_command_args() {
             cmd.arg(arg);
         }
 
@@ -1774,9 +1753,9 @@ impl StreamableCommand for RunCommand {
         }
 
         let mut cmd = TokioCommand::new("docker");
-        cmd.arg(self.command_name());
+        cmd.arg("run");
 
-        for arg in self.build_args() {
+        for arg in self.build_command_args() {
             cmd.arg(arg);
         }
 
@@ -1830,7 +1809,7 @@ mod tests {
             .workdir("/app")
             .remove();
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--detach".to_string()));
         assert!(args.contains(&"--name".to_string()));
@@ -1852,7 +1831,7 @@ mod tests {
         let cmd =
             RunCommand::new("alpine:latest").cmd(vec!["echo".to_string(), "hello".to_string()]);
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert!(args.contains(&"alpine:latest".to_string()));
         assert!(args.contains(&"echo".to_string()));
         assert!(args.contains(&"hello".to_string()));
@@ -1901,7 +1880,7 @@ mod tests {
             .memory_swap("2g")
             .memory_reservation("500m");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--memory".to_string()));
         assert!(args.contains(&"1g".to_string()));
@@ -1930,7 +1909,7 @@ mod tests {
             .privileged()
             .hostname("test-host");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--user".to_string()));
         assert!(args.contains(&"1000:1000".to_string()));
@@ -1943,7 +1922,7 @@ mod tests {
     fn test_run_command_lifecycle_management() {
         let cmd = RunCommand::new("alpine:latest").restart("always");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--restart".to_string()));
         assert!(args.contains(&"always".to_string()));
@@ -1960,7 +1939,7 @@ mod tests {
             .domainname("example.com")
             .mac_address("92:d0:c6:0a:29:33");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--platform".to_string()));
         assert!(args.contains(&"linux/amd64".to_string()));
@@ -1984,7 +1963,7 @@ mod tests {
             .log_driver("json-file")
             .volume_driver("local");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--log-driver".to_string()));
         assert!(args.contains(&"json-file".to_string()));
@@ -2002,7 +1981,7 @@ mod tests {
             .cgroupns("private")
             .cgroup_parent("/docker");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--userns".to_string()));
         assert!(args.contains(&"host".to_string()));
@@ -2024,7 +2003,7 @@ mod tests {
             .pids_limit(100)
             .shm_size("64m");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--kernel-memory".to_string()));
         assert!(args.contains(&"100m".to_string()));
@@ -2045,7 +2024,7 @@ mod tests {
             .stop_timeout(10)
             .detach_keys("ctrl-p,ctrl-q");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--stop-signal".to_string()));
         assert!(args.contains(&"SIGTERM".to_string()));
@@ -2067,7 +2046,7 @@ mod tests {
             .publish_all()
             .quiet();
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--sig-proxy=false".to_string()));
         assert!(args.contains(&"--read-only".to_string()));
@@ -2099,7 +2078,7 @@ mod tests {
             .init()
             .remove();
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Verify comprehensive options are all present
         assert!(args.contains(&"--name".to_string()));
@@ -2131,7 +2110,7 @@ mod tests {
     #[test]
     fn test_run_command_default_flag_values() {
         let cmd = RunCommand::new("alpine:latest");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Default flags should not appear in args unless explicitly changed
         assert!(!args.contains(&"--sig-proxy=false".to_string()));
@@ -2155,7 +2134,7 @@ mod tests {
     #[test]
     fn test_it_convenience_method() {
         let cmd = RunCommand::new("alpine:latest").it();
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert!(args.contains(&"--interactive".to_string()));
         assert!(args.contains(&"--tty".to_string()));
     }
@@ -2173,7 +2152,7 @@ mod tests {
             .add_host("api.example.com:127.0.0.1")
             .add_host("db.example.com:192.168.1.100");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // DNS servers
         assert!(args.contains(&"--dns".to_string()));
@@ -2208,7 +2187,7 @@ mod tests {
             .security_opt("no-new-privileges:true")
             .security_opt("seccomp=unconfined");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Capabilities to add
         assert!(args.contains(&"--cap-add".to_string()));
@@ -2237,7 +2216,7 @@ mod tests {
             .expose("443")
             .expose("8080/tcp");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Devices
         assert!(args.contains(&"--device".to_string()));
@@ -2269,7 +2248,7 @@ mod tests {
             .label_file(PathBuf::from("/etc/labels"))
             .label_file(PathBuf::from("./metadata.labels"));
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Environment files
         assert!(args.contains(&"--env-file".to_string()));
@@ -2312,7 +2291,7 @@ mod tests {
             .label("version=1.0.0")
             .label_file(PathBuf::from("labels"));
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Verify all option types are present
         assert!(args.contains(&"--dns".to_string()));
@@ -2338,7 +2317,7 @@ mod tests {
     #[test]
     fn test_run_command_empty_lists_not_added() {
         let cmd = RunCommand::new("alpine:latest");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Ensure empty lists don't add any arguments
         assert!(!args.contains(&"--dns".to_string()));
@@ -2391,7 +2370,7 @@ mod tests {
             .link_local_ip("169.254.1.1")
             .link_local_ip("fe80::1");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Network aliases
         assert!(args.contains(&"--network-alias".to_string()));
@@ -2442,48 +2421,48 @@ mod tests {
     fn test_run_command_additional_list_individual_options() {
         // Test each additional list option individually for proper argument generation
         let network_cmd = RunCommand::new("alpine:latest").network_alias("api");
-        let network_args = network_cmd.build_args();
+        let network_args = network_cmd.build_command_args();
         assert!(network_args.contains(&"--network-alias".to_string()));
         assert!(network_args.contains(&"api".to_string()));
 
         let group_cmd = RunCommand::new("alpine:latest").group_add("wheel");
-        let group_args = group_cmd.build_args();
+        let group_args = group_cmd.build_command_args();
         assert!(group_args.contains(&"--group-add".to_string()));
         assert!(group_args.contains(&"wheel".to_string()));
 
         let attach_cmd = RunCommand::new("alpine:latest").attach("stdin");
-        let attach_args = attach_cmd.build_args();
+        let attach_args = attach_cmd.build_command_args();
         assert!(attach_args.contains(&"--attach".to_string()));
         assert!(attach_args.contains(&"stdin".to_string()));
 
         let log_cmd = RunCommand::new("alpine:latest").log_opt("compress=true");
-        let log_args = log_cmd.build_args();
+        let log_args = log_cmd.build_command_args();
         assert!(log_args.contains(&"--log-opt".to_string()));
         assert!(log_args.contains(&"compress=true".to_string()));
 
         let storage_cmd =
             RunCommand::new("alpine:latest").storage_opt("dm.thinpooldev=/dev/mapper/thin-pool");
-        let storage_args = storage_cmd.build_args();
+        let storage_args = storage_cmd.build_command_args();
         assert!(storage_args.contains(&"--storage-opt".to_string()));
         assert!(storage_args.contains(&"dm.thinpooldev=/dev/mapper/thin-pool".to_string()));
 
         let ulimit_cmd = RunCommand::new("alpine:latest").ulimit("memlock=-1:-1");
-        let ulimit_args = ulimit_cmd.build_args();
+        let ulimit_args = ulimit_cmd.build_command_args();
         assert!(ulimit_args.contains(&"--ulimit".to_string()));
         assert!(ulimit_args.contains(&"memlock=-1:-1".to_string()));
 
         let volumes_cmd = RunCommand::new("alpine:latest").volumes_from("shared-data");
-        let volumes_args = volumes_cmd.build_args();
+        let volumes_args = volumes_cmd.build_command_args();
         assert!(volumes_args.contains(&"--volumes-from".to_string()));
         assert!(volumes_args.contains(&"shared-data".to_string()));
 
         let link_cmd = RunCommand::new("alpine:latest").link("mysql:db");
-        let link_args = link_cmd.build_args();
+        let link_args = link_cmd.build_command_args();
         assert!(link_args.contains(&"--link".to_string()));
         assert!(link_args.contains(&"mysql:db".to_string()));
 
         let ip_cmd = RunCommand::new("alpine:latest").link_local_ip("169.254.100.1");
-        let ip_args = ip_cmd.build_args();
+        let ip_args = ip_cmd.build_command_args();
         assert!(ip_args.contains(&"--link-local-ip".to_string()));
         assert!(ip_args.contains(&"169.254.100.1".to_string()));
     }
@@ -2498,7 +2477,7 @@ mod tests {
             .health_start_period("60s")
             .health_start_interval("5s");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Health check options
         assert!(args.contains(&"--health-cmd".to_string()));
@@ -2528,7 +2507,7 @@ mod tests {
             .sysctl("net.core.somaxconn", "1024")
             .sysctl("kernel.shm_rmid_forced", "1");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Mount options
         assert!(args.contains(&"--mount".to_string()));
@@ -2559,42 +2538,42 @@ mod tests {
     fn test_run_command_health_advanced_individual_options() {
         // Test each health check and advanced option individually
         let health_cmd = RunCommand::new("alpine:latest").health_cmd("ping -c 1 localhost");
-        let health_args = health_cmd.build_args();
+        let health_args = health_cmd.build_command_args();
         assert!(health_args.contains(&"--health-cmd".to_string()));
         assert!(health_args.contains(&"ping -c 1 localhost".to_string()));
 
         let health_interval = RunCommand::new("alpine:latest").health_interval("10s");
-        let interval_args = health_interval.build_args();
+        let interval_args = health_interval.build_command_args();
         assert!(interval_args.contains(&"--health-interval".to_string()));
         assert!(interval_args.contains(&"10s".to_string()));
 
         let health_retries = RunCommand::new("alpine:latest").health_retries(5);
-        let retries_args = health_retries.build_args();
+        let retries_args = health_retries.build_command_args();
         assert!(retries_args.contains(&"--health-retries".to_string()));
         assert!(retries_args.contains(&"5".to_string()));
 
         let mount_cmd = RunCommand::new("alpine:latest").mount("type=tmpfs,destination=/app");
-        let mount_args = mount_cmd.build_args();
+        let mount_args = mount_cmd.build_command_args();
         assert!(mount_args.contains(&"--mount".to_string()));
         assert!(mount_args.contains(&"type=tmpfs,destination=/app".to_string()));
 
         let network_cmd = RunCommand::new("alpine:latest").network("my-network");
-        let network_args = network_cmd.build_args();
+        let network_args = network_cmd.build_command_args();
         assert!(network_args.contains(&"--network".to_string()));
         assert!(network_args.contains(&"my-network".to_string()));
 
         let gpu_cmd = RunCommand::new("alpine:latest").gpus("device=0");
-        let gpu_args = gpu_cmd.build_args();
+        let gpu_args = gpu_cmd.build_command_args();
         assert!(gpu_args.contains(&"--gpus".to_string()));
         assert!(gpu_args.contains(&"device=0".to_string()));
 
         let annotation_cmd = RunCommand::new("alpine:latest").annotation("key", "value");
-        let annotation_args = annotation_cmd.build_args();
+        let annotation_args = annotation_cmd.build_command_args();
         assert!(annotation_args.contains(&"--annotation".to_string()));
         assert!(annotation_args.contains(&"key=value".to_string()));
 
         let sysctl_cmd = RunCommand::new("alpine:latest").sysctl("net.ipv4.ip_forward", "1");
-        let sysctl_args = sysctl_cmd.build_args();
+        let sysctl_args = sysctl_cmd.build_command_args();
         assert!(sysctl_args.contains(&"--sysctl".to_string()));
         assert!(sysctl_args.contains(&"net.ipv4.ip_forward=1".to_string()));
     }
@@ -2636,7 +2615,7 @@ mod tests {
             .restart("unless-stopped")
             .detach();
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Verify all health check and advanced options are present
         assert!(args.contains(&"--health-cmd".to_string()));
@@ -2666,7 +2645,7 @@ mod tests {
             .device_read_iops("/dev/sda:1000")
             .device_write_iops("/dev/sda:800");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Block I/O weight
         assert!(args.contains(&"--blkio-weight".to_string()));
@@ -2700,7 +2679,7 @@ mod tests {
             .device_cgroup_rule("c 1:3 mr")
             .device_cgroup_rule("a 7:* rmw");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Real-time CPU scheduling
         assert!(args.contains(&"--cpu-rt-period".to_string()));
@@ -2724,58 +2703,58 @@ mod tests {
     fn test_run_command_advanced_system_individual_options() {
         // Test each advanced system option individually
         let blkio_cmd = RunCommand::new("alpine:latest").blkio_weight(100);
-        let blkio_args = blkio_cmd.build_args();
+        let blkio_args = blkio_cmd.build_command_args();
         assert!(blkio_args.contains(&"--blkio-weight".to_string()));
         assert!(blkio_args.contains(&"100".to_string()));
 
         let weight_device_cmd =
             RunCommand::new("alpine:latest").blkio_weight_device("/dev/sda:500");
-        let weight_device_args = weight_device_cmd.build_args();
+        let weight_device_args = weight_device_cmd.build_command_args();
         assert!(weight_device_args.contains(&"--blkio-weight-device".to_string()));
         assert!(weight_device_args.contains(&"/dev/sda:500".to_string()));
 
         let read_bps_cmd = RunCommand::new("alpine:latest").device_read_bps("/dev/sda:1mb");
-        let read_bps_args = read_bps_cmd.build_args();
+        let read_bps_args = read_bps_cmd.build_command_args();
         assert!(read_bps_args.contains(&"--device-read-bps".to_string()));
         assert!(read_bps_args.contains(&"/dev/sda:1mb".to_string()));
 
         let write_bps_cmd = RunCommand::new("alpine:latest").device_write_bps("/dev/sda:1mb");
-        let write_bps_args = write_bps_cmd.build_args();
+        let write_bps_args = write_bps_cmd.build_command_args();
         assert!(write_bps_args.contains(&"--device-write-bps".to_string()));
         assert!(write_bps_args.contains(&"/dev/sda:1mb".to_string()));
 
         let read_iops_cmd = RunCommand::new("alpine:latest").device_read_iops("/dev/sda:100");
-        let read_iops_args = read_iops_cmd.build_args();
+        let read_iops_args = read_iops_cmd.build_command_args();
         assert!(read_iops_args.contains(&"--device-read-iops".to_string()));
         assert!(read_iops_args.contains(&"/dev/sda:100".to_string()));
 
         let write_iops_cmd = RunCommand::new("alpine:latest").device_write_iops("/dev/sda:100");
-        let write_iops_args = write_iops_cmd.build_args();
+        let write_iops_args = write_iops_cmd.build_command_args();
         assert!(write_iops_args.contains(&"--device-write-iops".to_string()));
         assert!(write_iops_args.contains(&"/dev/sda:100".to_string()));
 
         let rt_period_cmd = RunCommand::new("alpine:latest").cpu_rt_period(100_000);
-        let rt_period_args = rt_period_cmd.build_args();
+        let rt_period_args = rt_period_cmd.build_command_args();
         assert!(rt_period_args.contains(&"--cpu-rt-period".to_string()));
         assert!(rt_period_args.contains(&"100000".to_string()));
 
         let rt_runtime_cmd = RunCommand::new("alpine:latest").cpu_rt_runtime(95_000);
-        let rt_runtime_args = rt_runtime_cmd.build_args();
+        let rt_runtime_args = rt_runtime_cmd.build_command_args();
         assert!(rt_runtime_args.contains(&"--cpu-rt-runtime".to_string()));
         assert!(rt_runtime_args.contains(&"95000".to_string()));
 
         let ip_cmd = RunCommand::new("alpine:latest").ip("192.168.1.100");
-        let ip_args = ip_cmd.build_args();
+        let ip_args = ip_cmd.build_command_args();
         assert!(ip_args.contains(&"--ip".to_string()));
         assert!(ip_args.contains(&"192.168.1.100".to_string()));
 
         let ipv6_cmd = RunCommand::new("alpine:latest").ip6("fe80::1");
-        let ipv6_args = ipv6_cmd.build_args();
+        let ipv6_args = ipv6_cmd.build_command_args();
         assert!(ipv6_args.contains(&"--ip6".to_string()));
         assert!(ipv6_args.contains(&"fe80::1".to_string()));
 
         let cgroup_rule_cmd = RunCommand::new("alpine:latest").device_cgroup_rule("c 1:1 rwm");
-        let cgroup_rule_args = cgroup_rule_cmd.build_args();
+        let cgroup_rule_args = cgroup_rule_cmd.build_command_args();
         assert!(cgroup_rule_args.contains(&"--device-cgroup-rule".to_string()));
         assert!(cgroup_rule_args.contains(&"c 1:1 rwm".to_string()));
     }
@@ -2901,7 +2880,7 @@ mod tests {
             .ip6("2001:db8::50")
             .device_cgroup_rule("c 1:1 rwm");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Verify we have a substantial command with all option types
         assert!(args.len() > 150); // Should be a very long command

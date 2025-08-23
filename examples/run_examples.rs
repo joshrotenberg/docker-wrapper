@@ -3,7 +3,7 @@
 //! This example shows various ways to use the RunCommand with both
 //! high-level structured APIs and extensible escape hatches.
 
-use docker_wrapper::{ensure_docker, DockerCommand, RunCommand};
+use docker_wrapper::{ensure_docker, RunCommand};
 use std::collections::HashMap;
 
 #[tokio::main]
@@ -35,7 +35,7 @@ async fn main() {
     let simple_run = RunCommand::new("alpine:latest")
         .cmd(vec!["echo".to_string(), "Hello from Alpine!".to_string()]);
 
-    println!("Command: docker {}", simple_run.build_args().join(" "));
+    println!("Command: docker {}", simple_run.build_command_args().join(" "));
 
     match simple_run.execute().await {
         Ok(container_id) => {
@@ -61,7 +61,7 @@ async fn main() {
         .envs(env_vars)
         .remove();
 
-    println!("Command: docker {}", web_run.build_args().join(" "));
+    println!("Command: docker {}", web_run.build_command_args().join(" "));
 
     match web_run.execute().await {
         Ok(container_id) => {
@@ -95,7 +95,7 @@ async fn main() {
         .env("USER", "developer")
         .remove();
 
-    println!("Command: docker {}", interactive_run.build_args().join(" "));
+    println!("Command: docker {}", interactive_run.build_command_args().join(" "));
     println!("This would start an interactive Ubuntu shell");
 
     println!();
@@ -112,7 +112,7 @@ async fn main() {
         .bind("/tmp/postgres-logs", "/var/log/postgresql")
         .remove();
 
-    println!("Command: docker {}", volume_run.build_args().join(" "));
+    println!("Command: docker {}", volume_run.build_command_args().join(" "));
     println!("This would start PostgreSQL with persistent data and log bind mount");
 
     println!();
@@ -133,7 +133,7 @@ async fn main() {
         .arg("--log-driver=json-file")
         .option("log-opt", "max-size=10m");
 
-    println!("Command: docker {}", advanced_run.build_args().join(" "));
+    println!("Command: docker {}", advanced_run.build_command_args().join(" "));
     println!("This demonstrates using escape hatches for any Docker option");
 
     println!();
@@ -152,7 +152,7 @@ async fn main() {
             "sleep 300".to_string(),
         ]);
 
-    let args = demo_run.build_args();
+    let args = demo_run.build_command_args();
     println!("Full argument list:");
     for (i, arg) in args.iter().enumerate() {
         println!("  [{i}]: {arg}");

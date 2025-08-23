@@ -3,10 +3,9 @@
 //! This module provides a comprehensive implementation of the `docker exec` command
 //! with support for all native options and an extensible architecture for any additional options.
 
-use super::{CommandExecutor, DockerCommand, EnvironmentBuilder};
+use super::{CommandExecutor, DockerCommandV2, EnvironmentBuilder};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 use std::path::PathBuf;
 
 /// Docker exec command builder with fluent API
@@ -18,7 +17,7 @@ pub struct ExecCommand {
     /// The command to execute
     command: Vec<String>,
     /// Command executor for extensibility
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
     /// Run in detached mode
     detach: bool,
     /// Override the key sequence for detaching a container
@@ -295,15 +294,19 @@ impl ExecCommand {
 }
 
 #[async_trait]
-impl DockerCommand for ExecCommand {
+impl DockerCommandV2 for ExecCommand {
     type Output = ExecOutput;
 
-    fn command_name(&self) -> &'static str {
-        "exec"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["exec".to_string()];
 
         // Add flags
         if self.detach {
@@ -362,41 +365,14 @@ impl DockerCommand for ExecCommand {
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let args = self.build_args();
-        let output = self
-            .executor
-            .execute_command(self.command_name(), args)
-            .await?;
+        let args = self.build_command_args();
+        let output = self.execute_command(args).await?;
 
         Ok(ExecOutput {
             stdout: output.stdout,
             stderr: output.stderr,
             exit_code: output.exit_code,
         })
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -413,7 +389,7 @@ mod tests {
             .user("root")
             .workdir("/app");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--interactive".to_string()));
         assert!(args.contains(&"--tty".to_string()));
@@ -437,7 +413,7 @@ mod tests {
         .detach()
         .detach_keys("ctrl-p,ctrl-q");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--detach".to_string()));
         assert!(args.contains(&"--detach-keys".to_string()));
@@ -448,7 +424,7 @@ mod tests {
     fn test_exec_command_privileged() {
         let cmd = ExecCommand::new("test-container", vec!["mount".to_string()]).privileged();
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--privileged".to_string()));
     }
@@ -459,7 +435,7 @@ mod tests {
             .env_file("/path/to/env.file")
             .env_file("/another/env.file");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--env-file".to_string()));
         assert!(args.contains(&"/path/to/env.file".to_string()));
@@ -470,7 +446,7 @@ mod tests {
     fn test_it_convenience_method() {
         let cmd = ExecCommand::new("test-container", vec!["bash".to_string()]).it();
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--interactive".to_string()));
         assert!(args.contains(&"--tty".to_string()));
@@ -518,7 +494,7 @@ mod tests {
         cmd.option("--some-option", "value");
         cmd.arg("extra-arg");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         assert!(args.contains(&"--some-flag".to_string()));
         assert!(args.contains(&"--some-option".to_string()));

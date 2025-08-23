@@ -3,7 +3,7 @@
 //! These tests require Docker to be installed and running.
 //! Note: These tests do NOT perform actual authentication to avoid requiring credentials.
 
-use docker_wrapper::{ensure_docker, DockerCommand, LoginCommand};
+use docker_wrapper::{ensure_docker, LoginCommand};
 
 /// Helper to check if Docker is available for testing
 async fn setup_docker() -> Result<(), Box<dyn std::error::Error>> {

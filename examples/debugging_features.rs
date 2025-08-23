@@ -3,9 +3,10 @@
 //! This example shows how to use dry-run mode, retry logic, and verbose debugging.
 
 use docker_wrapper::{
-    BackoffStrategy, DebugConfig, DebugExecutor, DockerCommand, DryRunPreview, PsCommand,
+    BackoffStrategy, DebugConfig, DebugExecutor, DryRunPreview, PsCommand,
     PullCommand, RetryPolicy, RunCommand,
 };
+use docker_wrapper::command::DockerCommandV2;
 use std::time::Duration;
 
 #[tokio::main]
@@ -148,7 +149,7 @@ trait ExecuteWithExecutor {
 
 impl ExecuteWithExecutor for RunCommand {
     async fn execute_with_executor(&self, executor: &DebugExecutor) -> docker_wrapper::Result<()> {
-        let args = self.build_args();
+        let args = self.build_command_args();
         let _ = executor.execute_command("run", args).await?;
         Ok(())
     }
@@ -156,7 +157,9 @@ impl ExecuteWithExecutor for RunCommand {
 
 impl ExecuteWithExecutor for PullCommand {
     async fn execute_with_executor(&self, executor: &DebugExecutor) -> docker_wrapper::Result<()> {
-        let args = self.build_args();
+        // PullCommand doesn't implement DockerCommandV2 yet, so create args manually
+        let mut args = vec!["pull".to_string()];
+        args.push(self.image().to_string());
         let _ = executor.execute_command("pull", args).await?;
         Ok(())
     }
@@ -164,7 +167,8 @@ impl ExecuteWithExecutor for PullCommand {
 
 impl ExecuteWithExecutor for PsCommand {
     async fn execute_with_executor(&self, executor: &DebugExecutor) -> docker_wrapper::Result<()> {
-        let args = self.build_args();
+        // PsCommand doesn't implement DockerCommandV2 yet, so create args manually
+        let args = vec!["ps".to_string()];
         let _ = executor.execute_command("ps", args).await?;
         Ok(())
     }

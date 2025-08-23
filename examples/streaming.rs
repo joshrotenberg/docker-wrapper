@@ -5,7 +5,7 @@
 //!
 //! Run with: cargo run --example streaming
 
-use docker_wrapper::command::DockerCommand;
+use docker_wrapper::command::DockerCommandV2;
 use docker_wrapper::{BuildCommand, LogsCommand, RunCommand};
 use docker_wrapper::{OutputLine, StreamHandler, StreamableCommand};
 use std::sync::atomic::{AtomicUsize, Ordering};

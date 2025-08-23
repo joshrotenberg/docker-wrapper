@@ -3,16 +3,15 @@
 //! This module provides a comprehensive implementation of the `docker start` command
 //! with support for all native options and an extensible architecture.
 
-use super::{CommandExecutor, DockerCommand};
+use super::{CommandExecutor, DockerCommandV2};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker start command builder with fluent API
 #[derive(Debug, Clone)]
 pub struct StartCommand {
     /// Command executor for extensibility
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
     /// Container IDs or names to start
     containers: Vec<String>,
     /// Attach STDOUT/STDERR and forward signals
@@ -188,15 +187,19 @@ impl StartCommand {
 }
 
 #[async_trait]
-impl DockerCommand for StartCommand {
+impl DockerCommandV2 for StartCommand {
     type Output = StartResult;
 
-    fn command_name(&self) -> &'static str {
-        "start"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["start".to_string()];
 
         // Add attach option
         if self.attach {
@@ -228,6 +231,10 @@ impl DockerCommand for StartCommand {
 
         // Add container names/IDs
         args.extend(self.containers.clone());
+
+        // Add raw arguments from executor
+        args.extend(self.executor.raw_args.clone());
+
         args
     }
 
@@ -236,11 +243,8 @@ impl DockerCommand for StartCommand {
             return Err(Error::invalid_config("No containers specified"));
         }
 
-        let args = self.build_args();
-        let output = self
-            .executor
-            .execute_command(self.command_name(), args)
-            .await?;
+        let args = self.build_command_args();
+        let output = self.execute_command(args).await?;
 
         // Parse the output to extract started container IDs
         let started_containers = if output.stdout.trim().is_empty() {
@@ -262,39 +266,13 @@ impl DockerCommand for StartCommand {
             started_containers,
         })
     }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
-    }
 }
 
 impl StartCommand {
     /// Get the command arguments (for testing)
     #[must_use]
     pub fn args(&self) -> Vec<String> {
-        let mut args = vec!["start".to_string()];
-        args.extend(self.build_args());
-        args
+        self.build_command_args()
     }
 }
 
@@ -485,6 +463,7 @@ mod tests {
     #[test]
     fn test_command_name() {
         let cmd = StartCommand::new("test");
-        assert_eq!(cmd.command_name(), "start");
+        let args = cmd.build_command_args();
+        assert_eq!(args[0], "start");
     }
 }

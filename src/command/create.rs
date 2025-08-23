@@ -2,10 +2,9 @@
 //!
 //! This module provides the `docker create` command for creating containers without starting them.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand, EnvironmentBuilder, PortBuilder};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2, EnvironmentBuilder, PortBuilder};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker create command builder
 #[allow(clippy::struct_excessive_bools)]
@@ -68,7 +67,7 @@ pub struct CreateCommand {
     /// Network mode
     network: Option<String>,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl CreateCommand {
@@ -312,15 +311,19 @@ impl CreateCommand {
 }
 
 #[async_trait]
-impl DockerCommand for CreateCommand {
+impl DockerCommandV2 for CreateCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "create"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["create".to_string()];
 
         if let Some(ref name) = self.name {
             args.push("--name".to_string());
@@ -402,37 +405,15 @@ impl DockerCommand for CreateCommand {
         // Add command
         args.extend(self.command.clone());
 
+        // Add raw arguments from executor
+        args.extend(self.executor.raw_args.clone());
+
         args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        self.executor
-            .execute_command(self.command_name(), self.build_args())
-            .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+        let args = self.build_command_args();
+        self.execute_command(args).await
     }
 }
 
@@ -466,22 +447,25 @@ mod tests {
     #[test]
     fn test_create_basic() {
         let cmd = CreateCommand::new("alpine:latest");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["alpine:latest"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["create", "alpine:latest"]);
     }
 
     #[test]
     fn test_create_with_name() {
         let cmd = CreateCommand::new("alpine:latest").name("test-container");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--name", "test-container", "alpine:latest"]);
+        let args = cmd.build_command_args();
+        assert_eq!(
+            args,
+            vec!["create", "--name", "test-container", "alpine:latest"]
+        );
     }
 
     #[test]
     fn test_create_with_command() {
         let cmd = CreateCommand::new("alpine:latest").cmd(vec!["echo", "hello"]);
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["alpine:latest", "echo", "hello"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["create", "alpine:latest", "echo", "hello"]);
     }
 
     #[test]
@@ -489,7 +473,7 @@ mod tests {
         let cmd = CreateCommand::new("alpine:latest")
             .env("KEY1", "value1")
             .env("KEY2", "value2");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert!(args.contains(&"--env".to_string()));
         assert!(args.contains(&"KEY1=value1".to_string()));
         assert!(args.contains(&"KEY2=value2".to_string()));
@@ -498,7 +482,7 @@ mod tests {
     #[test]
     fn test_create_with_ports() {
         let cmd = CreateCommand::new("nginx:latest").port(8080, 80);
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert!(args.contains(&"--publish".to_string()));
         assert!(args.contains(&"8080:80".to_string()));
     }
@@ -508,7 +492,7 @@ mod tests {
         let cmd = CreateCommand::new("alpine:latest")
             .volume("/host:/container")
             .volume("/data:/app/data:ro");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert!(args.contains(&"--volume".to_string()));
         assert!(args.contains(&"/host:/container".to_string()));
         assert!(args.contains(&"/data:/app/data:ro".to_string()));
@@ -517,7 +501,7 @@ mod tests {
     #[test]
     fn test_create_interactive_tty() {
         let cmd = CreateCommand::new("alpine:latest").interactive().tty();
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert!(args.contains(&"--interactive".to_string()));
         assert!(args.contains(&"--tty".to_string()));
     }
@@ -540,7 +524,7 @@ mod tests {
             .cpus("0.5")
             .network("bridge");
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
 
         // Verify key arguments are present
         assert!(args.contains(&"--name".to_string()));

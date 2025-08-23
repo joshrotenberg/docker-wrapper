@@ -4,7 +4,8 @@
 //! and gracefully handle cases where Docker is not available or registry access is limited.
 
 use docker_wrapper::prerequisites::ensure_docker;
-use docker_wrapper::{DockerCommand, PushCommand};
+use docker_wrapper::command::DockerCommandV2;
+use docker_wrapper::{ PushCommand};
 
 /// Helper to check if Docker is available, skip test if not
 async fn ensure_docker_or_skip() {
