@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.2](https://github.com/joshrotenberg/docker-wrapper/compare/v0.2.1...v0.2.2) (2025-08-22)
+
+
+### Features
+
+* Add debugging and reliability features ([#51](https://github.com/joshrotenberg/docker-wrapper/issues/51)) ([#71](https://github.com/joshrotenberg/docker-wrapper/issues/71)) ([357a3a1](https://github.com/joshrotenberg/docker-wrapper/commit/357a3a130565317cffe959fc4fe118bb94680ab6))
+* Add system cleanup and maintenance commands ([#50](https://github.com/joshrotenberg/docker-wrapper/issues/50)) ([#70](https://github.com/joshrotenberg/docker-wrapper/issues/70)) ([5e00e15](https://github.com/joshrotenberg/docker-wrapper/commit/5e00e157e64ce370bcb9707fae997c63c4c62fd3))
+
+
+### Performance Improvements
+
+* Optimize CI workflow runtime ([#72](https://github.com/joshrotenberg/docker-wrapper/issues/72)) ([f86dd9e](https://github.com/joshrotenberg/docker-wrapper/commit/f86dd9eea2fcdbd456e56f960a152ad104ece979))
+
+
+### Documentation
+
+* Fix bollard code examples and imports in comparison guide ([#68](https://github.com/joshrotenberg/docker-wrapper/issues/68)) ([52df4f5](https://github.com/joshrotenberg/docker-wrapper/commit/52df4f57f84835f90bca34b188fbe264a59b5bf7))
+
 ## [0.2.1](https://github.com/joshrotenberg/docker-wrapper/compare/v0.2.0...v0.2.1) (2025-08-22)
 
 
