@@ -81,7 +81,7 @@ async fn test_logout_docker_hub_variations() -> Result<(), Box<dyn std::error::E
         let args = command.build_command_args();
 
         let args = command.build_command_args();
-    assert_eq!(args[0], "logout");
+        assert_eq!(args[0], "logout");
         assert!(args.contains(&server.to_string()));
     }
     Ok(())
@@ -144,7 +144,7 @@ async fn test_logout_various_registry_formats() -> Result<(), Box<dyn std::error
         let args = command.build_command_args();
 
         let args = command.build_command_args();
-    assert_eq!(args[0], "logout");
+        assert_eq!(args[0], "logout");
         assert!(args.contains(&registry.to_string()));
 
         // Verify command can be built
@@ -197,10 +197,10 @@ async fn test_logout_multiple_servers_concept() -> Result<(), Box<dyn std::error
         let args = command.build_command_args();
 
         let args = command.build_command_args();
-    assert_eq!(args[0], "logout");
+        assert_eq!(args[0], "logout");
         assert!(args.contains(&server.to_string()));
         let args = command.build_command_args();
-    assert_eq!(args[0], "logout");
+        assert_eq!(args[0], "logout");
     }
     Ok(())
 }
@@ -236,7 +236,7 @@ async fn test_logout_server_with_protocol() -> Result<(), Box<dyn std::error::Er
         let args = command.build_command_args();
 
         let args = command.build_command_args();
-    assert_eq!(args[0], "logout");
+        assert_eq!(args[0], "logout");
         assert!(args.contains(&server.to_string()));
     }
     Ok(())
