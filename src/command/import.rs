@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker import` command for importing tarball contents as images.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -201,7 +201,7 @@ impl ImportCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ImportCommand {
+impl DockerCommand for ImportCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

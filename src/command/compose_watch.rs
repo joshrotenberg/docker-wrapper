@@ -1,6 +1,6 @@
 //! Docker Compose watch command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommandV2};
+use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -85,7 +85,7 @@ impl Default for ComposeWatchCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ComposeWatchCommand {
+impl DockerCommand for ComposeWatchCommand {
     type Output = ComposeWatchResult;
 
     fn get_executor(&self) -> &CommandExecutor {

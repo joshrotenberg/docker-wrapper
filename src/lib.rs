@@ -39,7 +39,7 @@
 //! ### Running a Container
 //!
 //! ```rust,no_run
-//! use docker_wrapper::{DockerCommandV2, RunCommand};
+//! use docker_wrapper::{DockerCommand, RunCommand};
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -59,7 +59,7 @@
 //! ### Building an Image
 //!
 //! ```rust,no_run
-//! use docker_wrapper::{DockerCommandV2, BuildCommand};
+//! use docker_wrapper::{DockerCommand, BuildCommand};
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -80,7 +80,7 @@
 //! ### Listing Containers
 //!
 //! ```rust,no_run
-//! use docker_wrapper::{DockerCommandV2, PsCommand};
+//! use docker_wrapper::{DockerCommand, PsCommand};
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -165,7 +165,7 @@
 //! Commands use the builder pattern for configuration, allowing fluent and intuitive API usage:
 //!
 //! ```rust,no_run
-//! # use docker_wrapper::{DockerCommandV2, RunCommand};
+//! # use docker_wrapper::{DockerCommand, RunCommand};
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! RunCommand::new("alpine")
@@ -185,7 +185,7 @@
 //! All operations return `Result<T, docker_wrapper::Error>`, providing detailed error information:
 //!
 //! ```rust,no_run
-//! # use docker_wrapper::{DockerCommandV2, RunCommand};
+//! # use docker_wrapper::{DockerCommand, RunCommand};
 //! # #[tokio::main]
 //! # async fn main() {
 //! match RunCommand::new("invalid:image").execute().await {
@@ -269,7 +269,7 @@
 //! Always clean up containers and resources:
 //!
 //! ```rust,no_run
-//! # use docker_wrapper::{DockerCommandV2, RunCommand, RmCommand};
+//! # use docker_wrapper::{DockerCommand, RunCommand, RmCommand};
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! // Use auto-remove for temporary containers
@@ -292,7 +292,7 @@
 //! Handle errors appropriately for production use:
 //!
 //! ```rust,no_run
-//! # use docker_wrapper::{DockerCommandV2, RunCommand, Error};
+//! # use docker_wrapper::{DockerCommand, RunCommand, Error};
 //! # #[tokio::main]
 //! # async fn main() {
 //! async fn run_container() -> Result<String, Error> {
@@ -342,7 +342,7 @@
 //!
 //! **Rust:**
 //! ```rust,no_run
-//! # use docker_wrapper::{DockerCommandV2, RunCommand};
+//! # use docker_wrapper::{DockerCommand, RunCommand};
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! RunCommand::new("nginx:latest")
@@ -439,8 +439,8 @@ pub use command::{
         VolumePruneResult, VolumeRmCommand, VolumeRmResult,
     },
     wait::{WaitCommand, WaitResult},
-    CommandExecutor, CommandOutput, DockerCommand, DockerCommandV2, EnvironmentBuilder,
-    PortBuilder, PortMapping, Protocol,
+    CommandExecutor, CommandOutput, DockerCommand, EnvironmentBuilder, PortBuilder, PortMapping,
+    Protocol,
 };
 pub use debug::{BackoffStrategy, DebugConfig, DebugExecutor, DryRunPreview, RetryPolicy};
 pub use error::{Error, Result};

@@ -1,6 +1,6 @@
 //! Integration tests for container lifecycle commands (stop, start, restart).
 
-use docker_wrapper::command::DockerCommandV2;
+use docker_wrapper::command::DockerCommand;
 use docker_wrapper::{RestartCommand, RunCommand, StartCommand, StopCommand};
 use std::time::Duration;
 use tokio::time::sleep;

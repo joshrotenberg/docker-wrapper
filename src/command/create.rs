@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker create` command for creating containers without starting them.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2, EnvironmentBuilder, PortBuilder};
+use super::{CommandExecutor, CommandOutput, DockerCommand, EnvironmentBuilder, PortBuilder};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -311,7 +311,7 @@ impl CreateCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for CreateCommand {
+impl DockerCommand for CreateCommand {
     type Output = CommandOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

@@ -1,6 +1,6 @@
 //! Docker network connect command implementation.
 
-use crate::command::{CommandExecutor, CommandOutput, DockerCommandV2};
+use crate::command::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -97,7 +97,7 @@ impl NetworkConnectCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for NetworkConnectCommand {
+impl DockerCommand for NetworkConnectCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

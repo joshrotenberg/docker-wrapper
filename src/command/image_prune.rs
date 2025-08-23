@@ -1,6 +1,6 @@
 //! Docker image prune command implementation.
 
-use crate::command::{CommandExecutor, DockerCommandV2};
+use crate::command::{CommandExecutor, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -127,7 +127,7 @@ impl Default for ImagePruneCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ImagePruneCommand {
+impl DockerCommand for ImagePruneCommand {
     type Output = ImagePruneResult;
 
     fn build_command_args(&self) -> Vec<String> {

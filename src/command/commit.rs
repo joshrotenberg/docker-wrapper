@@ -3,7 +3,7 @@
 //! This module provides the `docker commit` command for creating a new image
 //! from a container's changes.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -190,7 +190,7 @@ impl CommitCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for CommitCommand {
+impl DockerCommand for CommitCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

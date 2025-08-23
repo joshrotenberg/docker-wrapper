@@ -3,7 +3,7 @@
 //! This example shows various ways to use the RunCommand with both
 //! high-level structured APIs and extensible escape hatches.
 
-use docker_wrapper::{ensure_docker, DockerCommandV2, RunCommand};
+use docker_wrapper::{ensure_docker, DockerCommand, RunCommand};
 use std::collections::HashMap;
 
 #[tokio::main]

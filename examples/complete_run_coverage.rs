@@ -6,7 +6,7 @@
 //! This represents the most comprehensive Docker run implementation in any
 //! programming language, achieving perfect feature parity with the Docker CLI.
 
-use docker_wrapper::command::DockerCommandV2;
+use docker_wrapper::command::DockerCommand;
 use docker_wrapper::RunCommand;
 use std::path::PathBuf;
 

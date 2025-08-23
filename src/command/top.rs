@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker top` command for displaying running processes in a container.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -194,7 +194,7 @@ impl TopCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for TopCommand {
+impl DockerCommand for TopCommand {
     type Output = CommandOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

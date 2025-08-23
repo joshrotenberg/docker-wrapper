@@ -1,6 +1,6 @@
 //! Docker Compose logs command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommandV2};
+use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -136,7 +136,7 @@ impl Default for ComposeLogsCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ComposeLogsCommand {
+impl DockerCommand for ComposeLogsCommand {
     type Output = ComposeLogsResult;
 
     fn get_executor(&self) -> &CommandExecutor {

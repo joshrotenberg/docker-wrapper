@@ -2,7 +2,7 @@
 //!
 //! This module provides commands for managing Docker volumes.
 
-use crate::command::{CommandExecutor, CommandOutput, DockerCommandV2};
+use crate::command::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -78,7 +78,7 @@ impl Default for VolumeCreateCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for VolumeCreateCommand {
+impl DockerCommand for VolumeCreateCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {
@@ -203,7 +203,7 @@ impl Default for VolumeLsCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for VolumeLsCommand {
+impl DockerCommand for VolumeLsCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {
@@ -335,7 +335,7 @@ impl VolumeRmCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for VolumeRmCommand {
+impl DockerCommand for VolumeRmCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {
@@ -434,7 +434,7 @@ impl VolumeInspectCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for VolumeInspectCommand {
+impl DockerCommand for VolumeInspectCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {
@@ -550,7 +550,7 @@ impl Default for VolumePruneCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for VolumePruneCommand {
+impl DockerCommand for VolumePruneCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

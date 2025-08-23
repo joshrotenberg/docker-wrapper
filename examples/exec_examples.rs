@@ -3,7 +3,7 @@
 //! This example shows various ways to use the exec command to execute
 //! commands in running containers.
 
-use docker_wrapper::command::DockerCommandV2;
+use docker_wrapper::command::DockerCommand;
 use docker_wrapper::prerequisites::ensure_docker;
 use docker_wrapper::{ExecCommand, RunCommand};
 use std::collections::HashMap;

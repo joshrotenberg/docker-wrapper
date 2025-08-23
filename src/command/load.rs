@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker load` command for loading Docker images from tar archives.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use std::path::Path;
@@ -155,7 +155,7 @@ impl Default for LoadCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for LoadCommand {
+impl DockerCommand for LoadCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

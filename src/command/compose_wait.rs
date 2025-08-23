@@ -1,6 +1,6 @@
 //! Docker Compose wait command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommandV2};
+use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use std::time::Duration;
@@ -88,7 +88,7 @@ impl Default for ComposeWaitCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ComposeWaitCommand {
+impl DockerCommand for ComposeWaitCommand {
     type Output = ComposeWaitResult;
 
     fn get_executor(&self) -> &CommandExecutor {

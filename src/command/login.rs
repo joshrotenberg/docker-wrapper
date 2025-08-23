@@ -3,7 +3,7 @@
 //! This module provides functionality to authenticate with Docker registries.
 //! It supports both Docker Hub and private registries with various authentication methods.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use std::fmt;
@@ -195,7 +195,7 @@ impl LoginOutput {
 }
 
 #[async_trait]
-impl DockerCommandV2 for LoginCommand {
+impl DockerCommand for LoginCommand {
     type Output = LoginOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

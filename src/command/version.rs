@@ -3,7 +3,7 @@
 //! This module provides functionality to retrieve Docker version information,
 //! including client and server versions, API versions, and build details.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
 use std::fmt;
@@ -395,7 +395,7 @@ impl VersionOutput {
 }
 
 #[async_trait]
-impl DockerCommandV2 for VersionCommand {
+impl DockerCommand for VersionCommand {
     type Output = VersionOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

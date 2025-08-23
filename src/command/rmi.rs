@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker rmi` command for removing Docker images.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -168,7 +168,7 @@ impl RmiCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for RmiCommand {
+impl DockerCommand for RmiCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

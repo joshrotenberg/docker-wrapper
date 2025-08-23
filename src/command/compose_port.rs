@@ -1,6 +1,6 @@
 //! Docker Compose port command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommandV2};
+use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -73,7 +73,7 @@ impl ComposePortCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ComposePortCommand {
+impl DockerCommand for ComposePortCommand {
     type Output = ComposePortResult;
 
     fn get_executor(&self) -> &CommandExecutor {

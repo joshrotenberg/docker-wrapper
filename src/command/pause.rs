@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker pause` command for pausing all processes within containers.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -112,7 +112,7 @@ impl PauseCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for PauseCommand {
+impl DockerCommand for PauseCommand {
     type Output = CommandOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

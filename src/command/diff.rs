@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker diff` command for inspecting filesystem changes in a container.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -127,7 +127,7 @@ impl DiffCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for DiffCommand {
+impl DockerCommand for DiffCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

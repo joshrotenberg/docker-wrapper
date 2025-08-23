@@ -3,7 +3,7 @@
 //! This module provides a comprehensive implementation of the `docker build` command
 //! with support for all native options and an extensible architecture for any additional options.
 
-use super::{CommandExecutor, DockerCommandV2};
+use super::{CommandExecutor, DockerCommand};
 use crate::error::Result;
 use crate::stream::{OutputLine, StreamResult, StreamableCommand};
 use async_trait::async_trait;
@@ -1293,7 +1293,7 @@ impl BuildCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for BuildCommand {
+impl DockerCommand for BuildCommand {
     type Output = BuildOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

@@ -1,6 +1,6 @@
 //! Docker Compose create command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommandV2};
+use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -150,7 +150,7 @@ impl Default for ComposeCreateCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ComposeCreateCommand {
+impl DockerCommand for ComposeCreateCommand {
     type Output = ComposeCreateResult;
 
     fn get_executor(&self) -> &CommandExecutor {

@@ -1,6 +1,6 @@
 //! Docker Compose push command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommandV2};
+use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -95,7 +95,7 @@ impl Default for ComposePushCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ComposePushCommand {
+impl DockerCommand for ComposePushCommand {
     type Output = ComposePushResult;
 
     fn get_executor(&self) -> &CommandExecutor {

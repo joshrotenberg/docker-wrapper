@@ -58,4 +58,5 @@ docker-test-*
 *.temp
 
 # Context
+CLAUDE.md
 .claude/

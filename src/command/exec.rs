@@ -3,7 +3,7 @@
 //! This module provides a comprehensive implementation of the `docker exec` command
 //! with support for all native options and an extensible architecture for any additional options.
 
-use super::{CommandExecutor, DockerCommandV2, EnvironmentBuilder};
+use super::{CommandExecutor, DockerCommand, EnvironmentBuilder};
 use crate::error::Result;
 use async_trait::async_trait;
 use std::path::PathBuf;
@@ -294,7 +294,7 @@ impl ExecCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ExecCommand {
+impl DockerCommand for ExecCommand {
     type Output = ExecOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

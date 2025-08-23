@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker save` command for saving Docker images to tar archives.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use std::path::Path;
@@ -140,7 +140,7 @@ impl SaveCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for SaveCommand {
+impl DockerCommand for SaveCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

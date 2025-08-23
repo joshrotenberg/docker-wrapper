@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker logs` command for viewing container logs.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use crate::stream::{OutputLine, StreamResult, StreamableCommand};
 use async_trait::async_trait;
@@ -108,7 +108,7 @@ impl LogsCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for LogsCommand {
+impl DockerCommand for LogsCommand {
     type Output = CommandOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

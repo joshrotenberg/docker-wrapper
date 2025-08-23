@@ -3,7 +3,7 @@
 //! These tests require Docker to be installed and running.
 //! Note: These tests perform actual searches against Docker Hub.
 
-use docker_wrapper::{ensure_docker, DockerCommandV2, SearchCommand};
+use docker_wrapper::{ensure_docker, DockerCommand, SearchCommand};
 
 /// Helper to check if Docker is available for testing
 async fn setup_docker() -> Result<(), Box<dyn std::error::Error>> {

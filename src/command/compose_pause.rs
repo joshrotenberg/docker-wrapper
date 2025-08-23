@@ -1,6 +1,6 @@
 //! Docker Compose pause command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommandV2};
+use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -65,7 +65,7 @@ impl Default for ComposePauseCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ComposePauseCommand {
+impl DockerCommand for ComposePauseCommand {
     type Output = ComposePauseResult;
 
     fn get_executor(&self) -> &CommandExecutor {
