@@ -2,10 +2,9 @@
 //!
 //! This module provides the `docker kill` command for sending signals to running containers.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker kill command builder
 #[derive(Debug, Clone)]
@@ -15,7 +14,7 @@ pub struct KillCommand {
     /// Signal to send (default: SIGKILL)
     signal: Option<String>,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl KillCommand {
@@ -81,15 +80,11 @@ impl KillCommand {
 }
 
 #[async_trait]
-impl DockerCommand for KillCommand {
+impl DockerCommandV2 for KillCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "kill"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["kill".to_string()];
 
         if let Some(ref sig) = self.signal {
             args.push("--signal".to_string());
@@ -99,7 +94,16 @@ impl DockerCommand for KillCommand {
         // Add container names/IDs
         args.extend(self.containers.clone());
 
+        args.extend(self.executor.raw_args.clone());
         args
+    }
+
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 
     async fn execute(&self) -> Result<Self::Output> {
@@ -107,33 +111,12 @@ impl DockerCommand for KillCommand {
             return Err(Error::invalid_config("No containers specified for kill"));
         }
 
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command(self.command_name(), self.build_args())
+            .execute_command(&command_name, command_args)
             .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -175,29 +158,29 @@ mod tests {
     #[test]
     fn test_kill_single_container() {
         let cmd = KillCommand::new("test-container");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["kill", "test-container"]);
     }
 
     #[test]
     fn test_kill_multiple_containers() {
         let cmd = KillCommand::new_multiple(vec!["container1", "container2", "container3"]);
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["container1", "container2", "container3"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["kill", "container1", "container2", "container3"]);
     }
 
     #[test]
     fn test_kill_with_signal() {
         let cmd = KillCommand::new("test-container").signal("SIGTERM");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--signal", "SIGTERM", "test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["kill", "--signal", "SIGTERM", "test-container"]);
     }
 
     #[test]
     fn test_kill_with_numeric_signal() {
         let cmd = KillCommand::new("test-container").signal("9");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--signal", "9", "test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["kill", "--signal", "9", "test-container"]);
     }
 
     #[test]
@@ -206,10 +189,11 @@ mod tests {
             .container("container2")
             .container("container3")
             .signal("SIGTERM");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "kill",
                 "--signal",
                 "SIGTERM",
                 "container1",

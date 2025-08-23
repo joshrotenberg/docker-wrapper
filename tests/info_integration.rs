@@ -3,7 +3,7 @@
 //! These tests validate the info command functionality against a real Docker daemon.
 //! They test the command construction, execution, and output parsing.
 
-use docker_wrapper::{ensure_docker, DockerCommandV2, InfoCommand};
+use docker_wrapper::{ensure_docker, InfoCommand};
 
 /// Helper to check if Docker is available for testing
 async fn setup_docker() -> Result<(), Box<dyn std::error::Error>> {
@@ -195,13 +195,13 @@ async fn test_info_empty_format_handling() -> Result<(), Box<dyn std::error::Err
 
     // Test with empty format (should behave like default)
     let command = InfoCommand::new().format("");
-    let _args = command.build_command_args();
+    let args = command.build_command_args();
 
     // Should still produce valid command
     let args = command.build_command_args();
     assert_eq!(args[0], "info");
     // Empty format still gets passed as a flag
-    assert_eq!(_args, vec!["info", "--format", ""]);
+    assert_eq!(args, vec!["info", "--format", ""]);
     Ok(())
 }
 

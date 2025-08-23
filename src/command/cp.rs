@@ -3,10 +3,9 @@
 //! This module provides the `docker cp` command for copying files/folders between
 //! a container and the local filesystem.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 use std::path::Path;
 
 /// Docker cp command builder
@@ -48,7 +47,7 @@ pub struct CpCommand {
     /// Suppress progress output
     quiet: bool,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl CpCommand {
@@ -164,15 +163,11 @@ impl CpCommand {
 }
 
 #[async_trait]
-impl DockerCommand for CpCommand {
+impl DockerCommandV2 for CpCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "cp"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["cp".to_string()];
 
         if self.archive {
             args.push("--archive".to_string());
@@ -190,7 +185,16 @@ impl DockerCommand for CpCommand {
         args.push(self.source.clone());
         args.push(self.destination.clone());
 
+        args.extend(self.executor.raw_args.clone());
         args
+    }
+
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 
     async fn execute(&self) -> Result<Self::Output> {
@@ -200,33 +204,12 @@ impl DockerCommand for CpCommand {
             ));
         }
 
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command(self.command_name(), self.build_args())
+            .execute_command(&command_name, command_args)
             .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -269,16 +252,22 @@ mod tests {
     fn test_cp_from_container_to_host() {
         let cmd = CpCommand::from_container("test-container", "/app/file.txt")
             .to_host(Path::new("./file.txt"));
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container:/app/file.txt", "./file.txt"]);
+        let args = cmd.build_command_args();
+        assert_eq!(
+            args,
+            vec!["cp", "test-container:/app/file.txt", "./file.txt"]
+        );
     }
 
     #[test]
     fn test_cp_from_host_to_container() {
         let cmd = CpCommand::from_host(Path::new("./data.txt"))
             .to_container("test-container", "/data/data.txt");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["./data.txt", "test-container:/data/data.txt"]);
+        let args = cmd.build_command_args();
+        assert_eq!(
+            args,
+            vec!["cp", "./data.txt", "test-container:/data/data.txt"]
+        );
     }
 
     #[test]
@@ -286,8 +275,11 @@ mod tests {
         let cmd = CpCommand::from_container("test-container", "/app")
             .to_host(Path::new("./backup"))
             .archive();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--archive", "test-container:/app", "./backup"]);
+        let args = cmd.build_command_args();
+        assert_eq!(
+            args,
+            vec!["cp", "--archive", "test-container:/app", "./backup"]
+        );
     }
 
     #[test]
@@ -295,10 +287,10 @@ mod tests {
         let cmd = CpCommand::from_container("test-container", "/link")
             .to_host(Path::new("./file"))
             .follow_link();
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
-            vec!["--follow-link", "test-container:/link", "./file"]
+            vec!["cp", "--follow-link", "test-container:/link", "./file"]
         );
     }
 
@@ -309,10 +301,11 @@ mod tests {
             .archive()
             .follow_link()
             .quiet();
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "cp",
                 "--archive",
                 "--follow-link",
                 "--quiet",
