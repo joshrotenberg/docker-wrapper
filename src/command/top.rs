@@ -2,10 +2,9 @@
 //!
 //! This module provides the `docker top` command for displaying running processes in a container.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker top command builder
 ///
@@ -37,7 +36,7 @@ pub struct TopCommand {
     /// ps command options
     ps_options: Option<String>,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl TopCommand {
@@ -162,18 +161,22 @@ impl TopCommand {
 
         processes
     }
-}
 
-#[async_trait]
-impl DockerCommand for TopCommand {
-    type Output = CommandOutput;
-
-    fn command_name(&self) -> &'static str {
-        "top"
+    /// Gets the command executor
+    #[must_use]
+    pub fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    /// Gets the command executor mutably
+    pub fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    /// Builds the command arguments for Docker top
+    #[must_use]
+    pub fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["top".to_string()];
 
         // Add container name/ID
         args.push(self.container.clone());
@@ -183,37 +186,32 @@ impl DockerCommand for TopCommand {
             args.push(options.clone());
         }
 
+        // Add any additional raw arguments
+        args.extend(self.executor.raw_args.clone());
+
         args
+    }
+}
+
+#[async_trait]
+impl DockerCommandV2 for TopCommand {
+    type Output = CommandOutput;
+
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        self.build_command_args()
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        self.executor
-            .execute_command(self.command_name(), self.build_args())
-            .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+        let args = self.build_command_args();
+        self.execute_command(args).await
     }
 }
 
@@ -290,22 +288,22 @@ mod tests {
     #[test]
     fn test_top_basic() {
         let cmd = TopCommand::new("test-container");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["top", "test-container"]);
     }
 
     #[test]
     fn test_top_with_ps_options() {
         let cmd = TopCommand::new("test-container").ps_options("aux");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container", "aux"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["top", "test-container", "aux"]);
     }
 
     #[test]
     fn test_top_with_custom_ps_options() {
         let cmd = TopCommand::new("test-container").ps_options("-eo pid,ppid,cmd");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container", "-eo pid,ppid,cmd"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["top", "test-container", "-eo pid,ppid,cmd"]);
     }
 
     #[test]

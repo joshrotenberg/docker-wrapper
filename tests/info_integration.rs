@@ -3,7 +3,7 @@
 //! These tests validate the info command functionality against a real Docker daemon.
 //! They test the command construction, execution, and output parsing.
 
-use docker_wrapper::{ensure_docker, DockerCommand, InfoCommand};
+use docker_wrapper::{ensure_docker, DockerCommandV2, InfoCommand};
 
 /// Helper to check if Docker is available for testing
 async fn setup_docker() -> Result<(), Box<dyn std::error::Error>> {
@@ -22,10 +22,11 @@ async fn test_info_basic_command() -> Result<(), Box<dyn std::error::Error>> {
     setup_docker().await?;
 
     let command = InfoCommand::new();
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify the basic command structure
-    assert_eq!(command.command_name(), "info");
+
+    assert_eq!(args[0], "info");
     // Default info should just have the command name
     assert_eq!(args, vec!["info"]);
 
@@ -40,10 +41,11 @@ async fn test_info_command_builder() -> Result<(), Box<dyn std::error::Error>> {
 
     let command = InfoCommand::new().format("json");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify format option is present
-    assert_eq!(command.command_name(), "info");
+
+    assert_eq!(args[0], "info");
     assert!(args.contains(&"--format".to_string()));
     assert!(args.contains(&"json".to_string()));
     Ok(())
@@ -63,9 +65,10 @@ async fn test_info_format_variations() -> Result<(), Box<dyn std::error::Error>>
 
     for format in formats {
         let command = InfoCommand::new().format(format);
-        let args = command.build_args();
+        let args = command.build_command_args();
 
-        assert_eq!(command.command_name(), "info");
+        let args = command.build_command_args();
+        assert_eq!(args[0], "info");
         assert!(args.contains(&"--format".to_string()));
         assert!(args.contains(&format.to_string()));
     }
@@ -77,7 +80,7 @@ async fn test_info_json_format() -> Result<(), Box<dyn std::error::Error>> {
     setup_docker().await?;
 
     let command = InfoCommand::new().format("json");
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify JSON format
     assert!(args.contains(&"--format".to_string()));
@@ -90,7 +93,7 @@ async fn test_info_table_format() -> Result<(), Box<dyn std::error::Error>> {
     setup_docker().await?;
 
     let command = InfoCommand::new().format("table");
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify table format
     assert!(args.contains(&"--format".to_string()));
@@ -104,7 +107,7 @@ async fn test_info_custom_go_template() -> Result<(), Box<dyn std::error::Error>
 
     let template = "Server Version: {{.ServerVersion}}, Storage Driver: {{.Driver}}";
     let command = InfoCommand::new().format(template);
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify custom template
     assert!(args.contains(&"--format".to_string()));
@@ -117,7 +120,8 @@ async fn test_info_command_name() -> Result<(), Box<dyn std::error::Error>> {
     setup_docker().await?;
 
     let command = InfoCommand::new();
-    assert_eq!(command.command_name(), "info");
+    let args = command.build_command_args();
+    assert_eq!(args[0], "info");
     Ok(())
 }
 
@@ -127,9 +131,10 @@ async fn test_info_command_display() -> Result<(), Box<dyn std::error::Error>> {
 
     let command = InfoCommand::new().format("json");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
     assert!(!args.is_empty());
-    assert_eq!(command.command_name(), "info");
+    let args = command.build_command_args();
+    assert_eq!(args[0], "info");
     assert!(args.contains(&"--format".to_string()));
     assert!(args.contains(&"json".to_string()));
     Ok(())
@@ -140,10 +145,11 @@ async fn test_info_default_format() -> Result<(), Box<dyn std::error::Error>> {
     setup_docker().await?;
 
     let command = InfoCommand::new();
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Default should not include format flag
-    assert_eq!(command.command_name(), "info");
+
+    assert_eq!(args[0], "info");
     assert_eq!(args, vec!["info"]);
     Ok(())
 }
@@ -156,8 +162,8 @@ async fn test_info_format_parsing_concept() -> Result<(), Box<dyn std::error::Er
     let json_command = InfoCommand::new().format("json");
     let table_command = InfoCommand::new().format("table");
 
-    let json_args = json_command.build_args();
-    let table_args = table_command.build_args();
+    let json_args = json_command.build_command_args();
+    let table_args = table_command.build_command_args();
 
     // Verify format arguments are correctly set
     assert!(json_args.contains(&"--format".to_string()));
@@ -173,10 +179,11 @@ async fn test_info_command_order() -> Result<(), Box<dyn std::error::Error>> {
 
     let command = InfoCommand::new().format("table");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify command structure
-    assert_eq!(command.command_name(), "info");
+
+    assert_eq!(args[0], "info");
     assert!(args.contains(&"--format".to_string()));
     assert!(args.contains(&"table".to_string()));
     Ok(())
@@ -188,10 +195,11 @@ async fn test_info_empty_format_handling() -> Result<(), Box<dyn std::error::Err
 
     // Test with empty format (should behave like default)
     let command = InfoCommand::new().format("");
-    let _args = command.build_args();
+    let _args = command.build_command_args();
 
     // Should still produce valid command
-    assert_eq!(command.command_name(), "info");
+    let args = command.build_command_args();
+    assert_eq!(args[0], "info");
     // Empty format still gets passed as a flag
     assert_eq!(_args, vec!["info", "--format", ""]);
     Ok(())
@@ -212,9 +220,10 @@ async fn test_info_complex_go_templates() -> Result<(), Box<dyn std::error::Erro
 
     for template in complex_templates {
         let command = InfoCommand::new().format(template);
-        let args = command.build_args();
+        let args = command.build_command_args();
 
-        assert_eq!(command.command_name(), "info");
+        let args = command.build_command_args();
+        assert_eq!(args[0], "info");
         assert!(args.contains(&"--format".to_string()));
         assert!(args.contains(&template.to_string()));
     }
@@ -236,9 +245,10 @@ async fn test_info_system_information_templates() -> Result<(), Box<dyn std::err
 
     for template in system_templates {
         let command = InfoCommand::new().format(template);
-        let args = command.build_args();
+        let args = command.build_command_args();
 
-        assert_eq!(command.command_name(), "info");
+        let args = command.build_command_args();
+        assert_eq!(args[0], "info");
         assert!(args.contains(&"--format".to_string()));
         assert!(args.contains(&template.to_string()));
     }
@@ -261,9 +271,10 @@ async fn test_info_container_runtime_templates() -> Result<(), Box<dyn std::erro
 
     for template in runtime_templates {
         let command = InfoCommand::new().format(template);
-        let args = command.build_args();
+        let args = command.build_command_args();
 
-        assert_eq!(command.command_name(), "info");
+        let args = command.build_command_args();
+        assert_eq!(args[0], "info");
         assert!(args.contains(&"--format".to_string()));
         assert!(args.contains(&template.to_string()));
     }
@@ -278,10 +289,11 @@ async fn test_info_validation() -> Result<(), Box<dyn std::error::Error>> {
     let command = InfoCommand::new().format("json");
 
     // Test command name
-    assert_eq!(command.command_name(), "info");
+    let args = command.build_command_args();
+    assert_eq!(args[0], "info");
 
     // Test build args format
-    let args = command.build_args();
+    let args = command.build_command_args();
     assert!(!args.is_empty());
     assert!(args.contains(&"--format".to_string()));
     assert!(args.contains(&"json".to_string()));
@@ -295,9 +307,10 @@ async fn test_info_builder_pattern() -> Result<(), Box<dyn std::error::Error>> {
     // Test fluent builder pattern
     let command = InfoCommand::new().format("json");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
-    assert_eq!(command.command_name(), "info");
+    let args = command.build_command_args();
+    assert_eq!(args[0], "info");
     assert!(args.contains(&"--format".to_string()));
     assert!(args.contains(&"json".to_string()));
 
@@ -306,7 +319,7 @@ async fn test_info_builder_pattern() -> Result<(), Box<dyn std::error::Error>> {
         .format("table")
         .format("{{.ServerVersion}}"); // Last format wins
 
-    let chained_args = chained_command.build_args();
+    let chained_args = chained_command.build_command_args();
     assert!(chained_args.contains(&"--format".to_string()));
     assert!(chained_args.contains(&"{{.ServerVersion}}".to_string()));
     Ok(())
@@ -327,9 +340,10 @@ async fn test_info_format_edge_cases() -> Result<(), Box<dyn std::error::Error>>
 
     for format in edge_case_formats {
         let command = InfoCommand::new().format(format);
-        let args = command.build_args();
+        let args = command.build_command_args();
 
-        assert_eq!(command.command_name(), "info");
+        let args = command.build_command_args();
+        assert_eq!(args[0], "info");
         assert!(args.contains(&"--format".to_string()));
         // Format should be properly included
         assert!(args.contains(&format.to_string()));
@@ -347,16 +361,21 @@ async fn test_info_output_parsing_concept() -> Result<(), Box<dyn std::error::Er
     let default_command = InfoCommand::new();
 
     // Verify different formats produce different commands
-    assert!(json_command.build_args().contains(&"--format".to_string()));
-    assert!(json_command.build_args().contains(&"json".to_string()));
-    assert!(table_command.build_args().contains(&"--format".to_string()));
-    assert!(table_command.build_args().contains(&"table".to_string()));
-    assert_eq!(default_command.build_args(), vec!["info"]);
+    assert!(json_command
+        .build_command_args()
+        .contains(&"--format".to_string()));
+    assert!(json_command
+        .build_command_args()
+        .contains(&"json".to_string()));
+    assert!(table_command
+        .build_command_args()
+        .contains(&"--format".to_string()));
+    assert!(table_command
+        .build_command_args()
+        .contains(&"table".to_string()));
+    assert_eq!(default_command.build_command_args(), vec!["info"]);
 
     // All should be valid info commands
-    assert_eq!(json_command.command_name(), "info");
-    assert_eq!(table_command.command_name(), "info");
-    assert_eq!(default_command.command_name(), "info");
     Ok(())
 }
 
@@ -373,9 +392,10 @@ async fn test_info_security_context_templates() -> Result<(), Box<dyn std::error
 
     for template in security_templates {
         let command = InfoCommand::new().format(template);
-        let args = command.build_args();
+        let args = command.build_command_args();
 
-        assert_eq!(command.command_name(), "info");
+        let args = command.build_command_args();
+        assert_eq!(args[0], "info");
         assert!(args.contains(&"--format".to_string()));
         assert!(args.contains(&template.to_string()));
     }
@@ -395,9 +415,10 @@ async fn test_info_storage_templates() -> Result<(), Box<dyn std::error::Error>>
 
     for template in storage_templates {
         let command = InfoCommand::new().format(template);
-        let args = command.build_args();
+        let args = command.build_command_args();
 
-        assert_eq!(command.command_name(), "info");
+        let args = command.build_command_args();
+        assert_eq!(args[0], "info");
         assert!(args.contains(&"--format".to_string()));
         assert!(args.contains(&template.to_string()));
     }

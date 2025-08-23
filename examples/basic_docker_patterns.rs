@@ -3,7 +3,7 @@
 //! This example shows the most common Docker usage patterns that developers
 //! use daily, with simple and clear demonstrations.
 
-use docker_wrapper::{DockerCommand, VersionCommand};
+use docker_wrapper::{DockerCommandV2, VersionCommand};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
