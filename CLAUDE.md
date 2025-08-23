@@ -76,9 +76,9 @@ When migrating commands from `DockerCommand` to `DockerCommandV2`:
 
 ### Migration Status
 
-**Completed (46 commands)**: attach, build, create, exec, login, logout, logs, pull, push, restart, run, search, start, stats, stop, tag, images, all compose_* commands
+**Completed (52 commands)**: attach, build, commit, cp, create, diff, exec, export, kill, login, logout, logs, port, pull, push, restart, run, search, start, stats, stop, tag, images, all compose_* commands
 
-**Remaining (28 commands)**: bake, commit, cp, diff, events, export, history, import, info, inspect, kill, load, network, pause, port, ps, rename, rm, rmi, save, system, top, unpause, update, version, volume, wait, container_prune, image_prune
+**Remaining (22 commands)**: bake, events, history, import, info, inspect, load, network, pause, ps, rename, rm, rmi, save, system, top, unpause, update, version, volume, wait, container_prune, image_prune
 
 ## Key Implementation Rules
 

@@ -2,10 +2,9 @@
 //!
 //! This module provides the `docker port` command for listing port mappings.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker port command builder
 ///
@@ -37,7 +36,7 @@ pub struct PortCommand {
     /// Specific port to query
     port: Option<u16>,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl PortCommand {
@@ -147,51 +146,35 @@ impl PortCommand {
 }
 
 #[async_trait]
-impl DockerCommand for PortCommand {
+impl DockerCommandV2 for PortCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "port"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = vec![self.container.clone()];
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["port".to_string(), self.container.clone()];
 
         if let Some(port) = self.port {
             args.push(port.to_string());
         }
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
     async fn execute(&self) -> Result<Self::Output> {
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command(self.command_name(), self.build_args())
+            .execute_command(&command_name, command_args)
             .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -252,15 +235,15 @@ mod tests {
     #[test]
     fn test_port_basic() {
         let cmd = PortCommand::new("test-container");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["port", "test-container"]);
     }
 
     #[test]
     fn test_port_with_specific_port() {
         let cmd = PortCommand::new("test-container").port(80);
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container", "80"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["port", "test-container", "80"]);
     }
 
     #[test]

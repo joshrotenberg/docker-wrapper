@@ -2,10 +2,9 @@
 //!
 //! This module provides the `docker export` command for exporting containers to tarballs.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker export command builder
 ///
@@ -36,7 +35,7 @@ pub struct ExportCommand {
     /// Output file path
     output: Option<String>,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl ExportCommand {
@@ -113,15 +112,11 @@ impl ExportCommand {
 }
 
 #[async_trait]
-impl DockerCommand for ExportCommand {
+impl DockerCommandV2 for ExportCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "export"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["export".to_string()];
 
         if let Some(ref output) = self.output {
             args.push("--output".to_string());
@@ -129,37 +124,25 @@ impl DockerCommand for ExportCommand {
         }
 
         args.push(self.container.clone());
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
     async fn execute(&self) -> Result<Self::Output> {
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command(self.command_name(), self.build_args())
+            .execute_command(&command_name, command_args)
             .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -219,22 +202,28 @@ mod tests {
     #[test]
     fn test_export_basic() {
         let cmd = ExportCommand::new("test-container");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["export", "test-container"]);
     }
 
     #[test]
     fn test_export_with_output() {
         let cmd = ExportCommand::new("test-container").output("backup.tar");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--output", "backup.tar", "test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(
+            args,
+            vec!["export", "--output", "backup.tar", "test-container"]
+        );
     }
 
     #[test]
     fn test_export_with_path() {
         let cmd = ExportCommand::new("web-server").output("/tmp/exports/web.tar");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--output", "/tmp/exports/web.tar", "web-server"]);
+        let args = cmd.build_command_args();
+        assert_eq!(
+            args,
+            vec!["export", "--output", "/tmp/exports/web.tar", "web-server"]
+        );
     }
 
     #[test]
@@ -275,11 +264,5 @@ mod tests {
         assert_eq!(result.output_file(), None);
         assert!(!result.exported_to_file());
         assert!(result.exported_to_stdout());
-    }
-
-    #[test]
-    fn test_command_name() {
-        let cmd = ExportCommand::new("container");
-        assert_eq!(cmd.command_name(), "export");
     }
 }

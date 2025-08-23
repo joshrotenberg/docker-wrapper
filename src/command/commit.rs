@@ -3,10 +3,9 @@
 //! This module provides the `docker commit` command for creating a new image
 //! from a container's changes.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker commit command builder
 ///
@@ -48,7 +47,7 @@ pub struct CommitCommand {
     /// Dockerfile instructions to apply
     changes: Vec<String>,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl CommitCommand {
@@ -191,15 +190,11 @@ impl CommitCommand {
 }
 
 #[async_trait]
-impl DockerCommand for CommitCommand {
+impl DockerCommandV2 for CommitCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "commit"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["commit".to_string()];
 
         if let Some(ref author) = self.author {
             args.push("--author".to_string());
@@ -233,37 +228,25 @@ impl DockerCommand for CommitCommand {
             args.push(image_name);
         }
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
     async fn execute(&self) -> Result<Self::Output> {
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command(self.command_name(), self.build_args())
+            .execute_command(&command_name, command_args)
             .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -297,15 +280,15 @@ mod tests {
     #[test]
     fn test_commit_basic() {
         let cmd = CommitCommand::new("test-container");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["commit", "test-container"]);
     }
 
     #[test]
     fn test_commit_with_repository() {
         let cmd = CommitCommand::new("test-container").repository("myapp");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container", "myapp"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["commit", "test-container", "myapp"]);
     }
 
     #[test]
@@ -313,8 +296,8 @@ mod tests {
         let cmd = CommitCommand::new("test-container")
             .repository("myapp")
             .tag("v2.0");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container", "myapp:v2.0"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["commit", "test-container", "myapp:v2.0"]);
     }
 
     #[test]
@@ -323,10 +306,11 @@ mod tests {
             .message("Updated config")
             .author("Dev <dev@example.com>")
             .repository("myapp");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "commit",
                 "--author",
                 "Dev <dev@example.com>",
                 "--message",
@@ -343,10 +327,11 @@ mod tests {
             .change("ENV VERSION=2.0")
             .change("EXPOSE 8080")
             .repository("myapp");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "commit",
                 "--change",
                 "ENV VERSION=2.0",
                 "--change",
@@ -362,8 +347,11 @@ mod tests {
         let cmd = CommitCommand::new("test-container")
             .no_pause()
             .repository("myapp");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--pause=false", "test-container", "myapp"]);
+        let args = cmd.build_command_args();
+        assert_eq!(
+            args,
+            vec!["commit", "--pause=false", "test-container", "myapp"]
+        );
     }
 
     #[test]
@@ -375,10 +363,11 @@ mod tests {
             .author("Author Name")
             .no_pause()
             .change("ENV FOO=bar");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "commit",
                 "--author",
                 "Author Name",
                 "--change",

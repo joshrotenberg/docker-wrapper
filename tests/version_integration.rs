@@ -3,7 +3,7 @@
 //! These tests validate the version command functionality against a real Docker daemon.
 //! They test the command construction, execution, and output parsing.
 
-use docker_wrapper::{ensure_docker, DockerCommandV2, VersionCommand};
+use docker_wrapper::{ensure_docker, VersionCommand};
 
 /// Helper to check if Docker is available for testing
 async fn setup_docker() -> Result<(), Box<dyn std::error::Error>> {
@@ -111,6 +111,7 @@ async fn test_version_command_name() -> Result<(), Box<dyn std::error::Error>> {
     setup_docker().await?;
 
     let command = VersionCommand::new();
+    let args = command.build_command_args();
     assert_eq!(args[0], "version");
     Ok(())
 }
@@ -221,11 +222,11 @@ async fn test_version_validation() -> Result<(), Box<dyn std::error::Error>> {
     // Test command validation
     let command = VersionCommand::new().format("json");
 
-    // Test command name
-    assert_eq!(args[0], "version");
-
     // Test build args format
     let args = command.build_command_args();
+
+    // Test command name
+    assert_eq!(args[0], "version");
     assert!(!args.is_empty());
     assert!(args.contains(&"--format".to_string()));
     assert!(args.contains(&"json".to_string()));
