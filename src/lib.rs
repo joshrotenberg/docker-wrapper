@@ -383,6 +383,7 @@ pub use command::{
     attach::{AttachCommand, AttachResult},
     bake::BakeCommand,
     build::{BuildCommand, BuildOutput},
+    builder::{BuilderBuildCommand, BuilderPruneCommand, BuilderPruneResult},
     commit::{CommitCommand, CommitResult},
     container_prune::{ContainerPruneCommand, ContainerPruneResult},
     cp::{CpCommand, CpResult},
