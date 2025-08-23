@@ -10,6 +10,7 @@ permissions:
   contents: write
   pull-requests: write
   actions: write
+  issues: write
 
 jobs:
   release-please:
@@ -27,6 +28,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          skip-labeling: true
 
       # Generate changelog with git-cliff after release
       - name: Checkout code
