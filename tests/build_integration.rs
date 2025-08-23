@@ -3,7 +3,7 @@
 //! These tests validate the build command functionality against a real Docker daemon.
 //! They test the command construction, execution, and output parsing.
 
-use docker_wrapper::{ensure_docker, DockerCommand, BuildCommand};
+use docker_wrapper::{ensure_docker, BuildCommand, DockerCommand};
 use std::path::PathBuf;
 use tempfile::TempDir;
 
