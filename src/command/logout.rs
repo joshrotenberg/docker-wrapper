@@ -3,10 +3,9 @@
 //! This module provides functionality to log out from Docker registries.
 //! It supports logging out from specific registries or using the daemon default.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 use std::fmt;
 
 /// Command for logging out from Docker registries
@@ -31,7 +30,7 @@ pub struct LogoutCommand {
     /// Registry server URL (None for daemon default)
     server: Option<String>,
     /// Command executor for running the command
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 /// Output from a logout command execution
@@ -97,22 +96,22 @@ impl LogoutCommand {
         self
     }
 
-    /// Builds the command arguments for Docker logout
-    fn build_command_args(&self) -> Vec<String> {
-        let mut args = vec!["logout".to_string()];
-
-        // Add server if specified
-        if let Some(ref server) = self.server {
-            args.push(server.clone());
-        }
-
-        args
-    }
-
     /// Gets the server (if set)
     #[must_use]
     pub fn get_server(&self) -> Option<&str> {
         self.server.as_deref()
+    }
+
+    /// Get a reference to the command executor
+    #[must_use]
+    pub fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    /// Get a mutable reference to the command executor
+    #[must_use]
+    pub fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 }
 
@@ -160,48 +159,36 @@ impl LogoutOutput {
 }
 
 #[async_trait]
-impl DockerCommand for LogoutCommand {
+impl DockerCommandV2 for LogoutCommand {
     type Output = LogoutOutput;
 
-    fn command_name(&self) -> &'static str {
-        "logout"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        self.build_command_args()
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["logout".to_string()];
+
+        // Add server if specified
+        if let Some(ref server) = self.server {
+            args.push(server.clone());
+        }
+
+        // Add raw args from executor
+        args.extend(self.executor.raw_args.clone());
+
+        args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let output = self
-            .executor
-            .execute_command(self.command_name(), self.build_args())
-            .await?;
+        let args = self.build_command_args();
+        let output = self.executor.execute_command("docker", args).await?;
 
         Ok(LogoutOutput { output })
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -375,27 +362,6 @@ mod tests {
     }
 
     #[test]
-    fn test_logout_command_name() {
-        let logout = LogoutCommand::new();
-        assert_eq!(logout.command_name(), "logout");
-    }
-
-    #[test]
-    fn test_logout_command_extensibility() {
-        let mut logout = LogoutCommand::new();
-
-        // Test the extension methods for future compatibility
-        logout
-            .arg("extra")
-            .args(vec!["more", "args"])
-            .flag("--verbose")
-            .option("key", "value");
-
-        // Command should still work normally
-        assert_eq!(logout.command_name(), "logout");
-    }
-
-    #[test]
     fn test_logout_multiple_servers_concept() {
         // Test that we can create logout commands for different servers
         let daemon_default_logout = LogoutCommand::new();
@@ -412,7 +378,6 @@ mod tests {
         let logout = LogoutCommand::new().server("registry.example.com");
 
         assert_eq!(logout.get_server(), Some("registry.example.com"));
-        assert_eq!(logout.command_name(), "logout");
     }
 
     #[test]

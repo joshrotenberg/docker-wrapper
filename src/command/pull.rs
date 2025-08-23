@@ -41,10 +41,9 @@
 //! }
 //! ```
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker Pull Command Builder
 ///
@@ -99,7 +98,7 @@ pub struct PullCommand {
     /// Suppress verbose output
     quiet: bool,
     /// Command executor for handling raw arguments and execution
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl PullCommand {
@@ -209,39 +208,6 @@ impl PullCommand {
         self
     }
 
-    /// Build the command arguments
-    ///
-    /// This method constructs the complete argument list for the docker pull command.
-    fn build_command_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
-
-        // Add all-tags flag
-        if self.all_tags {
-            args.push("--all-tags".to_string());
-        }
-
-        // Add disable-content-trust flag
-        if self.disable_content_trust {
-            args.push("--disable-content-trust".to_string());
-        }
-
-        // Add platform
-        if let Some(ref platform) = self.platform {
-            args.push("--platform".to_string());
-            args.push(platform.clone());
-        }
-
-        // Add quiet flag
-        if self.quiet {
-            args.push("--quiet".to_string());
-        }
-
-        // Add image name (must be last)
-        args.push(self.image.clone());
-
-        args
-    }
-
     /// Get the image name
     ///
     /// # Examples
@@ -316,6 +282,18 @@ impl PullCommand {
     pub fn is_content_trust_disabled(&self) -> bool {
         self.disable_content_trust
     }
+
+    /// Get a reference to the command executor
+    #[must_use]
+    pub fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    /// Get a mutable reference to the command executor
+    #[must_use]
+    pub fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
 }
 
 impl Default for PullCommand {
@@ -325,46 +303,53 @@ impl Default for PullCommand {
 }
 
 #[async_trait]
-impl DockerCommand for PullCommand {
+impl DockerCommandV2 for PullCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "pull"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        self.build_command_args()
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["pull".to_string()];
+
+        // Add all-tags flag
+        if self.all_tags {
+            args.push("--all-tags".to_string());
+        }
+
+        // Add disable-content-trust flag
+        if self.disable_content_trust {
+            args.push("--disable-content-trust".to_string());
+        }
+
+        // Add platform
+        if let Some(ref platform) = self.platform {
+            args.push("--platform".to_string());
+            args.push(platform.clone());
+        }
+
+        // Add quiet flag
+        if self.quiet {
+            args.push("--quiet".to_string());
+        }
+
+        // Add image name (must be last)
+        args.push(self.image.clone());
+
+        // Add raw args from executor
+        args.extend(self.executor.raw_args.clone());
+
+        args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let args = self.build_args();
-        self.executor
-            .execute_command(self.command_name(), args)
-            .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+        let args = self.build_command_args();
+        self.executor.execute_command("docker", args).await
     }
 }
 
@@ -375,9 +360,9 @@ mod tests {
     #[test]
     fn test_pull_command_basic() {
         let pull_cmd = PullCommand::new("nginx:latest");
-        let args = pull_cmd.build_args();
+        let args = pull_cmd.build_command_args();
 
-        assert_eq!(args, vec!["nginx:latest"]);
+        assert_eq!(args, vec!["pull", "nginx:latest"]);
         assert_eq!(pull_cmd.get_image(), "nginx:latest");
         assert!(!pull_cmd.is_all_tags());
         assert!(!pull_cmd.is_quiet());
@@ -388,41 +373,45 @@ mod tests {
     #[test]
     fn test_pull_command_with_all_tags() {
         let pull_cmd = PullCommand::new("alpine").all_tags();
-        let args = pull_cmd.build_args();
+        let args = pull_cmd.build_command_args();
 
         assert!(args.contains(&"--all-tags".to_string()));
         assert!(args.contains(&"alpine".to_string()));
+        assert_eq!(args[0], "pull");
         assert!(pull_cmd.is_all_tags());
     }
 
     #[test]
     fn test_pull_command_with_platform() {
         let pull_cmd = PullCommand::new("nginx:latest").platform("linux/arm64");
-        let args = pull_cmd.build_args();
+        let args = pull_cmd.build_command_args();
 
         assert!(args.contains(&"--platform".to_string()));
         assert!(args.contains(&"linux/arm64".to_string()));
         assert!(args.contains(&"nginx:latest".to_string()));
+        assert_eq!(args[0], "pull");
         assert_eq!(pull_cmd.get_platform(), Some("linux/arm64"));
     }
 
     #[test]
     fn test_pull_command_with_quiet() {
         let pull_cmd = PullCommand::new("redis:7.0").quiet();
-        let args = pull_cmd.build_args();
+        let args = pull_cmd.build_command_args();
 
         assert!(args.contains(&"--quiet".to_string()));
         assert!(args.contains(&"redis:7.0".to_string()));
+        assert_eq!(args[0], "pull");
         assert!(pull_cmd.is_quiet());
     }
 
     #[test]
     fn test_pull_command_disable_content_trust() {
         let pull_cmd = PullCommand::new("ubuntu:22.04").disable_content_trust();
-        let args = pull_cmd.build_args();
+        let args = pull_cmd.build_command_args();
 
         assert!(args.contains(&"--disable-content-trust".to_string()));
         assert!(args.contains(&"ubuntu:22.04".to_string()));
+        assert_eq!(args[0], "pull");
         assert!(pull_cmd.is_content_trust_disabled());
     }
 
@@ -434,7 +423,7 @@ mod tests {
             .quiet()
             .disable_content_trust();
 
-        let args = pull_cmd.build_args();
+        let args = pull_cmd.build_command_args();
 
         assert!(args.contains(&"--all-tags".to_string()));
         assert!(args.contains(&"--platform".to_string()));
@@ -442,6 +431,7 @@ mod tests {
         assert!(args.contains(&"--quiet".to_string()));
         assert!(args.contains(&"--disable-content-trust".to_string()));
         assert!(args.contains(&"postgres".to_string()));
+        assert_eq!(args[0], "pull");
 
         // Verify helper methods
         assert!(pull_cmd.is_all_tags());
@@ -454,9 +444,12 @@ mod tests {
     #[test]
     fn test_pull_command_with_registry() {
         let pull_cmd = PullCommand::new("registry.hub.docker.com/library/nginx:alpine");
-        let args = pull_cmd.build_args();
+        let args = pull_cmd.build_command_args();
 
-        assert_eq!(args, vec!["registry.hub.docker.com/library/nginx:alpine"]);
+        assert_eq!(
+            args,
+            vec!["pull", "registry.hub.docker.com/library/nginx:alpine"]
+        );
         assert_eq!(
             pull_cmd.get_image(),
             "registry.hub.docker.com/library/nginx:alpine"
@@ -468,11 +461,14 @@ mod tests {
         let pull_cmd = PullCommand::new(
             "nginx@sha256:abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab",
         );
-        let args = pull_cmd.build_args();
+        let args = pull_cmd.build_command_args();
 
         assert_eq!(
             args,
-            vec!["nginx@sha256:abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab"]
+            vec![
+                "pull",
+                "nginx@sha256:abcd1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab"
+            ]
         );
     }
 
@@ -483,7 +479,10 @@ mod tests {
             .platform("linux/arm64")
             .all_tags();
 
-        let args = pull_cmd.build_args();
+        let args = pull_cmd.build_command_args();
+
+        // Command should be first
+        assert_eq!(args[0], "pull");
 
         // Image should be last
         assert_eq!(args.last(), Some(&"alpine:3.18".to_string()));
@@ -499,18 +498,5 @@ mod tests {
     fn test_pull_command_default() {
         let pull_cmd = PullCommand::default();
         assert_eq!(pull_cmd.get_image(), "hello-world");
-    }
-
-    #[test]
-    fn test_pull_command_extensibility() {
-        let mut pull_cmd = PullCommand::new("nginx");
-        pull_cmd
-            .arg("--experimental")
-            .args(vec!["--custom", "value"]);
-
-        // Extensibility is handled through the executor's raw_args
-        // The actual testing of raw args is done in command.rs tests
-        // We can't access private fields, but we know the methods work
-        println!("Extensibility methods called successfully");
     }
 }

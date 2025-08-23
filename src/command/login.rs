@@ -3,10 +3,9 @@
 //! This module provides functionality to authenticate with Docker registries.
 //! It supports both Docker Hub and private registries with various authentication methods.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 use std::fmt;
 
 /// Command for authenticating with Docker registries
@@ -42,7 +41,7 @@ pub struct LoginCommand {
     /// Whether to read password from stdin
     password_stdin: bool,
     /// Command executor for running the command
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 /// Output from a login command execution
@@ -132,30 +131,6 @@ impl LoginCommand {
         self
     }
 
-    /// Builds the command arguments for Docker login
-    fn build_command_args(&self) -> Vec<String> {
-        let mut args = vec!["login".to_string()];
-
-        // Add username
-        args.push("--username".to_string());
-        args.push(self.username.clone());
-
-        // Add password option
-        if self.password_stdin {
-            args.push("--password-stdin".to_string());
-        } else {
-            args.push("--password".to_string());
-            args.push(self.password.clone());
-        }
-
-        // Add registry if specified
-        if let Some(ref registry) = self.registry {
-            args.push(registry.clone());
-        }
-
-        args
-    }
-
     /// Gets the username
     #[must_use]
     pub fn get_username(&self) -> &str {
@@ -172,6 +147,18 @@ impl LoginCommand {
     #[must_use]
     pub fn is_password_stdin(&self) -> bool {
         self.password_stdin
+    }
+
+    /// Get a reference to the command executor
+    #[must_use]
+    pub fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    /// Get a mutable reference to the command executor
+    #[must_use]
+    pub fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 }
 
@@ -208,48 +195,48 @@ impl LoginOutput {
 }
 
 #[async_trait]
-impl DockerCommand for LoginCommand {
+impl DockerCommandV2 for LoginCommand {
     type Output = LoginOutput;
 
-    fn command_name(&self) -> &'static str {
-        "login"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        self.build_command_args()
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["login".to_string()];
+
+        // Add username
+        args.push("--username".to_string());
+        args.push(self.username.clone());
+
+        // Add password option
+        if self.password_stdin {
+            args.push("--password-stdin".to_string());
+        } else {
+            args.push("--password".to_string());
+            args.push(self.password.clone());
+        }
+
+        // Add registry if specified
+        if let Some(ref registry) = self.registry {
+            args.push(registry.clone());
+        }
+
+        // Add raw args from executor
+        args.extend(self.executor.raw_args.clone());
+
+        args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let output = self
-            .executor
-            .execute_command(self.command_name(), self.build_args())
-            .await?;
+        let args = self.build_command_args();
+        let output = self.executor.execute_command("docker", args).await?;
 
         Ok(LoginOutput { output })
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -439,26 +426,5 @@ mod tests {
 
         assert!(!login_output.success());
         assert!(!login_output.is_authenticated());
-    }
-
-    #[test]
-    fn test_login_command_name() {
-        let login = LoginCommand::new("user", "pass");
-        assert_eq!(login.command_name(), "login");
-    }
-
-    #[test]
-    fn test_login_command_extensibility() {
-        let mut login = LoginCommand::new("user", "pass");
-
-        // Test the extension methods (even though they're no-ops for login)
-        login
-            .arg("extra")
-            .args(vec!["more", "args"])
-            .flag("--verbose")
-            .option("key", "value");
-
-        // Command should still work normally
-        assert_eq!(login.command_name(), "login");
     }
 }
