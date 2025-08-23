@@ -159,7 +159,7 @@ impl ExecuteWithExecutor for PullCommand {
     async fn execute_with_executor(&self, executor: &DebugExecutor) -> docker_wrapper::Result<()> {
         // PullCommand doesn't implement DockerCommandV2 yet, so create args manually
         let mut args = vec!["pull".to_string()];
-        args.push(self.image().to_string());
+        args.push(self.get_image().to_string());
         let _ = executor.execute_command("pull", args).await?;
         Ok(())
     }

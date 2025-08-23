@@ -4,7 +4,7 @@
 //! and gracefully handle cases where Docker is not available.
 
 use docker_wrapper::prerequisites::ensure_docker;
-use docker_wrapper::BakeCommand;
+use docker_wrapper::{BakeCommand, DockerCommand};
 use std::fs;
 use tempfile::TempDir;
 

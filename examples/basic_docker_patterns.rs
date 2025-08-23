@@ -4,7 +4,7 @@
 //! use daily, with simple and clear demonstrations.
 
 use docker_wrapper::command::DockerCommandV2;
-use docker_wrapper::VersionCommand;
+use docker_wrapper::{DockerCommand, VersionCommand};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
