@@ -224,25 +224,28 @@ async fn test_push_all_tags() {
 async fn test_push_registry_formats() {
     // This test doesn't require Docker - just validates various registry formats
     let test_cases = vec![
-        ("myapp:latest", vec!["myapp:latest"]),
-        ("username/myapp:v1.0", vec!["username/myapp:v1.0"]),
+        ("myapp:latest", vec!["push", "myapp:latest"]),
+        ("username/myapp:v1.0", vec!["push", "username/myapp:v1.0"]),
         (
             "registry.com/myapp:latest",
-            vec!["registry.com/myapp:latest"],
+            vec!["push", "registry.com/myapp:latest"],
         ),
         (
             "registry.com:5000/namespace/myapp:v2.0",
-            vec!["registry.com:5000/namespace/myapp:v2.0"],
+            vec!["push", "registry.com:5000/namespace/myapp:v2.0"],
         ),
-        ("localhost:5000/test:dev", vec!["localhost:5000/test:dev"]),
+        (
+            "localhost:5000/test:dev",
+            vec!["push", "localhost:5000/test:dev"],
+        ),
     ];
 
-    for (image, expected_end) in test_cases {
+    for (image, expected_args) in test_cases {
         let push_cmd = PushCommand::new(image);
         let args = push_cmd.build_command_args();
 
-        // Image should be at the end
-        assert_eq!(args, expected_end);
+        // Verify command structure
+        assert_eq!(args, expected_args);
         assert_eq!(push_cmd.get_image(), image);
     }
 
