@@ -32,24 +32,3 @@ git_tag_name = "v{{ version }}"
 
 # Changelog handled by git-cliff in separate workflow
 changelog_update = false
-
-# PR body template
-pr_body_template = """
-## Release {{ version }}
-
-This PR was automatically created by release-plz.
-
-### Changes
-
-See commit history for detailed changes.
-
-### Checklist
-- [ ] CI passes
-- [ ] Version bump looks correct
-- [ ] Changelog entries are accurate
-
-Once merged, this will:
-- Create a GitHub release with tag v{{ version }}
-- Publish to crates.io
-- Update CHANGELOG.md with git-cliff
-"""
