@@ -60,7 +60,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: release-please
     if: needs.release-please.outputs.release_created
-    environment: release
 
     steps:
       - name: Checkout code
