@@ -5,7 +5,7 @@
 
 use docker_wrapper::command::DockerCommandV2;
 use docker_wrapper::prerequisites::ensure_docker;
-use docker_wrapper::{PsCommand, RunCommand};
+use docker_wrapper::{DockerCommand, PsCommand, RunCommand};
 use std::time::Duration;
 use tokio::time::sleep;
 
