@@ -9,6 +9,7 @@ use crate::platform::PlatformInfo;
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::ffi::OsStr;
+use std::path::PathBuf;
 use std::process::Stdio;
 use tokio::process::Command as TokioCommand;
 
@@ -17,6 +18,9 @@ pub mod attach;
 pub mod bake;
 pub mod build;
 pub mod commit;
+pub mod compose_attach;
+pub mod compose_ls;
+pub mod compose_ps;
 pub mod container_prune;
 pub mod cp;
 pub mod create;
@@ -60,7 +64,7 @@ pub mod version;
 pub mod volume;
 pub mod wait;
 
-/// Base trait for all Docker commands
+/// Base trait for all Docker commands (original pattern - preserved for compatibility)
 #[async_trait]
 pub trait DockerCommand {
     /// The output type this command produces
@@ -89,6 +93,346 @@ pub trait DockerCommand {
 
     /// Add a key-value option (e.g., --name value, --env key=value)
     fn option(&mut self, key: &str, value: &str) -> &mut Self;
+}
+
+/// Unified trait for all Docker commands (both regular and compose) - NEW PATTERN
+#[async_trait]
+pub trait DockerCommandV2 {
+    /// The output type this command produces
+    type Output;
+
+    /// Get the command executor for extensibility
+    fn get_executor(&self) -> &CommandExecutor;
+
+    /// Get mutable command executor for extensibility
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor;
+
+    /// Build the complete command arguments including subcommands
+    fn build_command_args(&self) -> Vec<String>;
+
+    /// Execute the command and return the typed output
+    async fn execute(&self) -> Result<Self::Output>;
+
+    /// Helper method to execute the command with proper error handling
+    async fn execute_command(&self, command_args: Vec<String>) -> Result<CommandOutput> {
+        let executor = self.get_executor();
+
+        // For compose commands, we need to handle "docker compose <subcommand>"
+        // For regular commands, we handle "docker <command>"
+        if command_args.first() == Some(&"compose".to_string()) {
+            // This is a compose command - args are already formatted correctly
+            executor.execute_command("docker", command_args).await
+        } else {
+            // Regular docker command - first arg is the command name
+            let command_name = command_args
+                .first()
+                .unwrap_or(&"docker".to_string())
+                .clone();
+            let remaining_args = command_args.iter().skip(1).cloned().collect();
+            executor
+                .execute_command(&command_name, remaining_args)
+                .await
+        }
+    }
+
+    /// Add a raw argument to the command (escape hatch)
+    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
+        self.get_executor_mut().add_arg(arg);
+        self
+    }
+
+    /// Add multiple raw arguments to the command (escape hatch)
+    fn args<I, S>(&mut self, args: I) -> &mut Self
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<OsStr>,
+    {
+        self.get_executor_mut().add_args(args);
+        self
+    }
+
+    /// Add a flag option (e.g., --detach, --rm)
+    fn flag(&mut self, flag: &str) -> &mut Self {
+        self.get_executor_mut().add_flag(flag);
+        self
+    }
+
+    /// Add a key-value option (e.g., --name value, --env key=value)
+    fn option(&mut self, key: &str, value: &str) -> &mut Self {
+        self.get_executor_mut().add_option(key, value);
+        self
+    }
+}
+
+/// Base configuration for all compose commands
+#[derive(Debug, Clone, Default)]
+pub struct ComposeConfig {
+    /// Compose file paths (-f, --file)
+    pub files: Vec<PathBuf>,
+    /// Project name (-p, --project-name)
+    pub project_name: Option<String>,
+    /// Project directory (--project-directory)
+    pub project_directory: Option<PathBuf>,
+    /// Profiles to enable (--profile)
+    pub profiles: Vec<String>,
+    /// Environment file (--env-file)
+    pub env_file: Option<PathBuf>,
+    /// Run in compatibility mode
+    pub compatibility: bool,
+    /// Execute in dry run mode
+    pub dry_run: bool,
+    /// Progress output type
+    pub progress: Option<ProgressType>,
+    /// ANSI control characters
+    pub ansi: Option<AnsiMode>,
+    /// Max parallelism (-1 for unlimited)
+    pub parallel: Option<i32>,
+}
+
+/// Progress output type for compose commands
+#[derive(Debug, Clone, Copy)]
+pub enum ProgressType {
+    /// Auto-detect
+    Auto,
+    /// TTY output
+    Tty,
+    /// Plain text output
+    Plain,
+    /// JSON output
+    Json,
+    /// Quiet mode
+    Quiet,
+}
+
+impl std::fmt::Display for ProgressType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Auto => write!(f, "auto"),
+            Self::Tty => write!(f, "tty"),
+            Self::Plain => write!(f, "plain"),
+            Self::Json => write!(f, "json"),
+            Self::Quiet => write!(f, "quiet"),
+        }
+    }
+}
+
+/// ANSI control character mode
+#[derive(Debug, Clone, Copy)]
+pub enum AnsiMode {
+    /// Never print ANSI
+    Never,
+    /// Always print ANSI
+    Always,
+    /// Auto-detect
+    Auto,
+}
+
+impl std::fmt::Display for AnsiMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Never => write!(f, "never"),
+            Self::Always => write!(f, "always"),
+            Self::Auto => write!(f, "auto"),
+        }
+    }
+}
+
+impl ComposeConfig {
+    /// Create a new compose configuration
+    #[must_use]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Add a compose file
+    #[must_use]
+    pub fn file(mut self, path: impl Into<PathBuf>) -> Self {
+        self.files.push(path.into());
+        self
+    }
+
+    /// Set project name
+    #[must_use]
+    pub fn project_name(mut self, name: impl Into<String>) -> Self {
+        self.project_name = Some(name.into());
+        self
+    }
+
+    /// Set project directory
+    #[must_use]
+    pub fn project_directory(mut self, dir: impl Into<PathBuf>) -> Self {
+        self.project_directory = Some(dir.into());
+        self
+    }
+
+    /// Add a profile
+    #[must_use]
+    pub fn profile(mut self, profile: impl Into<String>) -> Self {
+        self.profiles.push(profile.into());
+        self
+    }
+
+    /// Set environment file
+    #[must_use]
+    pub fn env_file(mut self, path: impl Into<PathBuf>) -> Self {
+        self.env_file = Some(path.into());
+        self
+    }
+
+    /// Enable compatibility mode
+    #[must_use]
+    pub fn compatibility(mut self) -> Self {
+        self.compatibility = true;
+        self
+    }
+
+    /// Enable dry run mode
+    #[must_use]
+    pub fn dry_run(mut self) -> Self {
+        self.dry_run = true;
+        self
+    }
+
+    /// Set progress output type
+    #[must_use]
+    pub fn progress(mut self, progress: ProgressType) -> Self {
+        self.progress = Some(progress);
+        self
+    }
+
+    /// Set ANSI mode
+    #[must_use]
+    pub fn ansi(mut self, ansi: AnsiMode) -> Self {
+        self.ansi = Some(ansi);
+        self
+    }
+
+    /// Set max parallelism
+    #[must_use]
+    pub fn parallel(mut self, parallel: i32) -> Self {
+        self.parallel = Some(parallel);
+        self
+    }
+
+    /// Build global compose arguments
+    #[must_use]
+    pub fn build_global_args(&self) -> Vec<String> {
+        let mut args = Vec::new();
+
+        // Add compose files
+        for file in &self.files {
+            args.push("--file".to_string());
+            args.push(file.to_string_lossy().to_string());
+        }
+
+        // Add project name
+        if let Some(ref name) = self.project_name {
+            args.push("--project-name".to_string());
+            args.push(name.clone());
+        }
+
+        // Add project directory
+        if let Some(ref dir) = self.project_directory {
+            args.push("--project-directory".to_string());
+            args.push(dir.to_string_lossy().to_string());
+        }
+
+        // Add profiles
+        for profile in &self.profiles {
+            args.push("--profile".to_string());
+            args.push(profile.clone());
+        }
+
+        // Add environment file
+        if let Some(ref env_file) = self.env_file {
+            args.push("--env-file".to_string());
+            args.push(env_file.to_string_lossy().to_string());
+        }
+
+        // Add flags
+        if self.compatibility {
+            args.push("--compatibility".to_string());
+        }
+
+        if self.dry_run {
+            args.push("--dry-run".to_string());
+        }
+
+        // Add progress type
+        if let Some(progress) = self.progress {
+            args.push("--progress".to_string());
+            args.push(progress.to_string());
+        }
+
+        // Add ANSI mode
+        if let Some(ansi) = self.ansi {
+            args.push("--ansi".to_string());
+            args.push(ansi.to_string());
+        }
+
+        // Add parallel limit
+        if let Some(parallel) = self.parallel {
+            args.push("--parallel".to_string());
+            args.push(parallel.to_string());
+        }
+
+        args
+    }
+}
+
+/// Extended trait for Docker Compose commands
+pub trait ComposeCommand: DockerCommandV2 {
+    /// Get the compose configuration
+    fn get_config(&self) -> &ComposeConfig;
+
+    /// Get mutable compose configuration for builder pattern
+    fn get_config_mut(&mut self) -> &mut ComposeConfig;
+
+    /// Get the compose subcommand name (e.g., "up", "down", "ps")
+    fn subcommand(&self) -> &'static str;
+
+    /// Build command-specific arguments (without global compose args)
+    fn build_subcommand_args(&self) -> Vec<String>;
+
+    /// Build complete command arguments including "compose" and global args\
+    /// (This provides the implementation for `DockerCommandV2::build_command_args`)
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["compose".to_string()];
+
+        // Add global compose arguments
+        args.extend(self.get_config().build_global_args());
+
+        // Add the subcommand
+        args.push(self.subcommand().to_string());
+
+        // Add command-specific arguments
+        args.extend(self.build_subcommand_args());
+
+        // Add raw arguments from executor
+        args.extend(self.get_executor().raw_args.clone());
+
+        args
+    }
+
+    /// Helper builder methods for common compose config options
+    #[must_use]
+    fn file<P: Into<PathBuf>>(mut self, file: P) -> Self
+    where
+        Self: Sized,
+    {
+        self.get_config_mut().files.push(file.into());
+        self
+    }
+
+    /// Set project name for compose command
+    #[must_use]
+    fn project_name(mut self, name: impl Into<String>) -> Self
+    where
+        Self: Sized,
+    {
+        self.get_config_mut().project_name = Some(name.into());
+        self
+    }
 }
 
 /// Common functionality for executing Docker commands
