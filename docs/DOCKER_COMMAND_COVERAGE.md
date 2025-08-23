@@ -4,17 +4,18 @@ This document tracks which Docker commands are implemented in docker-wrapper.
 
 ## Coverage Summary
 
-- **Common Commands**: 12/14 implemented (86%)
 - **Container Commands**: 23/23 implemented (100%)
 - **Image Commands**: 10/10 implemented (100%)
 - **Network Commands**: 7/7 implemented (100%)
 - **Volume Commands**: 5/5 implemented (100%)
-- **Management Commands**: Limited support
-- **Swarm Commands**: Not implemented (0%)
+- **Docker Compose**: 43/43 implemented (100%) - via `compose` feature flag
+- **System Commands**: 2/2 implemented (100%)
+- **Common Commands**: Most implemented
+- **Advanced Features**: Limited support (buildx, manifest, swarm)
 
 ## Detailed Command Coverage
 
-### ✅ Common Commands (12/14)
+### ✅ Common Commands
 | Command | Status | Notes |
 |---------|--------|-------|
 | run | ✅ Implemented | Full support with builder pattern |
@@ -56,6 +57,7 @@ This document tracks which Docker commands are implemented in docker-wrapper.
 | unpause | ✅ Implemented | Unpause container processes |
 | update | ✅ Implemented | Update container config |
 | wait | ✅ Implemented | Wait for container to stop |
+| container prune | ✅ Implemented | Remove stopped containers |
 
 ### ✅ Image Management (10/10)
 | Command | Status | Notes |
@@ -66,6 +68,7 @@ This document tracks which Docker commands are implemented in docker-wrapper.
 | rmi | ✅ Implemented | Remove images |
 | save | ✅ Implemented | Save images to tar |
 | tag | ✅ Implemented | Tag images |
+| image prune | ✅ Implemented | Remove unused images |
 
 ### ✅ Network Management (7/7)
 | Command | Status | Notes |
@@ -87,38 +90,59 @@ This document tracks which Docker commands are implemented in docker-wrapper.
 | volume inspect | ✅ Implemented | Inspect volumes |
 | volume prune | ✅ Implemented | Remove unused volumes |
 
-### ⚠️ Partial Management Commands
+### ✅ System Management (2/2)
 | Command | Status | Notes |
 |---------|--------|-------|
-| compose | ✅ Partial | Via compose feature flag |
-| builder | ❌ Not implemented | Use build command |
-| buildx | ❌ Not implemented | Advanced build features |
-| container | ✅ Indirect | Via individual commands |
-| context | ❌ Not implemented | Context management |
-| image | ✅ Indirect | Via individual commands |
-| manifest | ❌ Not implemented | Manifest management |
-| plugin | ❌ Not implemented | Plugin management |
-| system | ❌ Not implemented | System management |
-| trust | ❌ Not implemented | Image signing |
+| system df | ✅ Implemented | Show disk usage |
+| system prune | ✅ Implemented | Remove unused data |
 
-### ❌ Not Implemented
-| Category | Commands | Reason |
-|----------|----------|--------|
-| Swarm | swarm, node, service, stack, config, secret | Swarm mode not in scope |
-| Extensions | ai, cloud, debug, desktop, extension, init, mcp, model, offload, sbom, scout | Docker Desktop specific |
+### ✅ Docker Compose (43/43 via `compose` feature)
+All Docker Compose commands are fully implemented when the `compose` feature is enabled.
 
-## Implementation Priority
+## Not Implemented - Planned Features
 
-Based on common usage patterns, here are commands that might be worth adding:
+### High Priority (Multi-Architecture Support)
+| Command | Issue | Use Case |
+|---------|-------|----------|
+| manifest | #76 | Multi-platform image manifests |
+| buildx | #77 | Extended build capabilities |
 
-1. **system prune** - Clean up unused resources (related to issue #50)
-2. **buildx** - Multi-platform builds are increasingly common
-3. **manifest** - For multi-arch image management
-4. **context** - For managing multiple Docker endpoints
+### Medium Priority (Advanced Features)
+| Command | Issue | Use Case |
+|---------|-------|----------|
+| context | #78 | Remote Docker management |
+| builder | #79 | Build cache management |
+| container/* | #80 | CLI compatibility aliases |
+| image/* | #80 | CLI compatibility aliases |
 
-## Notes
+### Low Priority (Specialized Features)
+| Command | Issue | Use Case |
+|---------|-------|----------|
+| plugin | #85 | Plugin management |
+| trust | #86 | Content trust/signing |
+| swarm | #84 | Swarm orchestration |
+| init | #88 | Project initialization |
 
-- All implemented commands use the builder pattern for ergonomic API
-- Commands support both structured methods and raw argument escape hatches
+## Not Planned (Out of Scope)
+
+These commands are specific to Docker Desktop, cloud services, or experimental features:
+- **Docker Desktop**: desktop, extension
+- **Cloud Services**: cloud, scout, sbom, offload
+- **Experimental**: debug, ai, model, mcp
+
+## Implementation Notes
+
+- All implemented commands use the unified `DockerCommand` trait pattern
+- Commands support both typed builder methods and raw argument escape hatches
 - Async/await support throughout with Tokio
 - Real-time output streaming available for long-running commands
+- Comprehensive test coverage for all implemented commands
+
+## Contributing
+
+To add a new command:
+1. Check if there's an existing issue for the command
+2. Implement using the `DockerCommand` trait pattern
+3. Add builder methods for all command options
+4. Include comprehensive tests
+5. Update this coverage document

@@ -62,7 +62,7 @@ docker-wrapper is ideal for:
 - **Shell script migration** - Type-safe Rust alternative to bash scripts
 - **Cross-platform support** - Works with Docker, Podman, Colima, etc.
 
-**Choosing between Docker Rust libraries?** See our comprehensive [**Comparison Guide**](COMPARISON.md) comparing docker-wrapper vs bollard vs testcontainers-rs.
+**Choosing between Docker Rust libraries?** See our comprehensive [**Comparison Guide**](docs/COMPARISON.md) comparing docker-wrapper vs bollard vs testcontainers-rs.
 
 ## Documentation
 
@@ -70,7 +70,8 @@ For comprehensive documentation, examples, and API reference:
 
 - **[API Documentation](https://docs.rs/docker-wrapper)** - Complete API reference with examples
 - **[Examples](examples/)** - Working examples for common use cases
-- **[Comparison Guide](COMPARISON.md)** - docker-wrapper vs other Docker Rust libraries
+- **[Comparison Guide](docs/COMPARISON.md)** - docker-wrapper vs other Docker Rust libraries
+- **[Command Coverage](docs/DOCKER_COMMAND_COVERAGE.md)** - Docker CLI command implementation status
 - **[GitHub Repository](https://github.com/joshrotenberg/docker-wrapper)** - Source code and issue tracking
 
 ## Examples
