@@ -4,7 +4,7 @@
 //! and gracefully handle cases where Docker is not available.
 
 use docker_wrapper::prerequisites::ensure_docker;
-use docker_wrapper::{BakeCommand, DockerCommand};
+use docker_wrapper::{BakeCommand, DockerCommandV2};
 use std::fs;
 use tempfile::TempDir;
 
@@ -110,7 +110,7 @@ async fn test_bake_command_builder() {
         .no_cache()
         .progress("plain");
 
-    let args = bake_cmd.build_args();
+    let args = bake_cmd.build_command_args();
 
     // Verify critical components are present (bake command name is handled separately)
     assert!(args.contains(&"--file".to_string()));
