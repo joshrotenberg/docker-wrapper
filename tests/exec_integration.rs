@@ -3,9 +3,9 @@
 //! These tests validate the docker exec command implementation
 //! with real Docker commands and containers.
 
-use docker_wrapper::prerequisites::ensure_docker;
 use docker_wrapper::command::DockerCommandV2;
-use docker_wrapper::{ ExecCommand, RunCommand};
+use docker_wrapper::prerequisites::ensure_docker;
+use docker_wrapper::{ExecCommand, RunCommand};
 use std::time::Duration;
 use tokio::time::sleep;
 

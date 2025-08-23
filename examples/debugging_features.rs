@@ -2,11 +2,11 @@
 //!
 //! This example shows how to use dry-run mode, retry logic, and verbose debugging.
 
-use docker_wrapper::{
-    BackoffStrategy, DebugConfig, DebugExecutor, DryRunPreview, PsCommand,
-    PullCommand, RetryPolicy, RunCommand,
-};
 use docker_wrapper::command::DockerCommandV2;
+use docker_wrapper::{
+    BackoffStrategy, DebugConfig, DebugExecutor, DryRunPreview, PsCommand, PullCommand,
+    RetryPolicy, RunCommand,
+};
 use std::time::Duration;
 
 #[tokio::main]

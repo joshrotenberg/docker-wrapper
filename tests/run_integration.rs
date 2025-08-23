@@ -3,8 +3,8 @@
 //! These tests validate the docker run command implementation
 //! with real Docker commands and containers.
 
-use docker_wrapper::prerequisites::ensure_docker;
 use docker_wrapper::command::DockerCommandV2;
+use docker_wrapper::prerequisites::ensure_docker;
 use docker_wrapper::RunCommand;
 
 /// Helper to check if Docker is available, skip test if not

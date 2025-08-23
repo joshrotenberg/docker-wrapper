@@ -7,7 +7,7 @@
 //! programming language, achieving perfect feature parity with the Docker CLI.
 
 use docker_wrapper::command::DockerCommandV2;
-use docker_wrapper::{ RunCommand};
+use docker_wrapper::RunCommand;
 use std::path::PathBuf;
 
 #[tokio::main]
@@ -30,7 +30,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .entrypoint("/bin/sh")
         .cmd(vec!["-c".to_string(), "echo 'Basic demo'".to_string()]);
 
-    println!("Command: docker {}", basic_example.build_command_args().join(" "));
+    println!(
+        "Command: docker {}",
+        basic_example.build_command_args().join(" ")
+    );
     println!("✅ Basic operations with container lifecycle management\n");
 
     // Example 2: Resource Management & Performance
@@ -141,7 +144,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .link_local_ip("169.254.1.1")
         .link_local_ip("fe80::1");
 
-    println!("Command: docker {}", network_example.build_command_args().join(" "));
+    println!(
+        "Command: docker {}",
+        network_example.build_command_args().join(" ")
+    );
     println!("✅ Complete networking with DNS, IPv4/IPv6, and service discovery\n");
 
     // Example 5: Storage & Filesystem
@@ -170,7 +176,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Volume Driver
         .volume_driver("local");
 
-    println!("Command: docker {}", storage_example.build_command_args().join(" "));
+    println!(
+        "Command: docker {}",
+        storage_example.build_command_args().join(" ")
+    );
     println!("✅ Complete storage management with advanced mounting options\n");
 
     // Example 6: Environment & Metadata
@@ -204,7 +213,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .group_add("docker")
         .group_add("developers");
 
-    println!("Command: docker {}", env_example.build_command_args().join(" "));
+    println!(
+        "Command: docker {}",
+        env_example.build_command_args().join(" ")
+    );
     println!("✅ Complete environment and metadata configuration\n");
 
     // Example 7: Health Monitoring & Lifecycle
@@ -235,7 +247,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .domainname("nginx.local")
         .mac_address("02:42:ac:11:00:02");
 
-    println!("Command: docker {}", health_example.build_command_args().join(" "));
+    println!(
+        "Command: docker {}",
+        health_example.build_command_args().join(" ")
+    );
     println!("✅ Complete health monitoring and lifecycle management\n");
 
     // Example 8: Logging & Monitoring
@@ -260,7 +275,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .ulimit("nproc=4096:4096")
         .ulimit("memlock=-1:-1");
 
-    println!("Command: docker {}", logging_example.build_command_args().join(" "));
+    println!(
+        "Command: docker {}",
+        logging_example.build_command_args().join(" ")
+    );
     println!("✅ Complete logging and monitoring configuration\n");
 
     // Example 9: GPU & Advanced Hardware
@@ -282,7 +300,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .env("NVIDIA_VISIBLE_DEVICES", "all")
         .env("NVIDIA_DRIVER_CAPABILITIES", "compute,utility");
 
-    println!("Command: docker {}", gpu_example.build_command_args().join(" "));
+    println!(
+        "Command: docker {}",
+        gpu_example.build_command_args().join(" ")
+    );
     println!("✅ Complete GPU and advanced hardware support\n");
 
     // Example 10: Ultimate Enterprise Configuration
