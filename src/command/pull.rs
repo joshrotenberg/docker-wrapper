@@ -9,7 +9,7 @@
 //!
 //! ```no_run
 //! use docker_wrapper::PullCommand;
-//! use docker_wrapper::DockerCommand;
+//! use docker_wrapper::DockerCommandV2;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,7 +25,7 @@
 //!
 //! ```no_run
 //! use docker_wrapper::PullCommand;
-//! use docker_wrapper::DockerCommand;
+//! use docker_wrapper::DockerCommandV2;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -72,7 +72,7 @@ use async_trait::async_trait;
 ///
 /// ```no_run
 /// use docker_wrapper::PullCommand;
-/// use docker_wrapper::DockerCommand;
+/// use docker_wrapper::DockerCommandV2;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {

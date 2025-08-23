@@ -9,7 +9,7 @@
 //!
 //! ```no_run
 //! use docker_wrapper::BakeCommand;
-//! use docker_wrapper::DockerCommand;
+//! use docker_wrapper::DockerCommandV2;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,7 +25,7 @@
 //!
 //! ```no_run
 //! use docker_wrapper::BakeCommand;
-//! use docker_wrapper::DockerCommand;
+//! use docker_wrapper::DockerCommandV2;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -77,7 +77,7 @@ use std::collections::HashMap;
 ///
 /// ```no_run
 /// use docker_wrapper::BakeCommand;
-/// use docker_wrapper::DockerCommand;
+/// use docker_wrapper::DockerCommandV2;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {

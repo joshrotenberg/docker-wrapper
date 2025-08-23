@@ -9,7 +9,7 @@
 //!
 //! ```no_run
 //! use docker_wrapper::ImagesCommand;
-//! use docker_wrapper::DockerCommand;
+//! use docker_wrapper::DockerCommandV2;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,7 +25,7 @@
 //!
 //! ```no_run
 //! use docker_wrapper::ImagesCommand;
-//! use docker_wrapper::DockerCommand;
+//! use docker_wrapper::DockerCommandV2;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -76,7 +76,7 @@ use serde_json::Value;
 ///
 /// ```no_run
 /// use docker_wrapper::ImagesCommand;
-/// use docker_wrapper::DockerCommand;
+/// use docker_wrapper::DockerCommandV2;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -705,7 +705,7 @@ impl ImagesOutput {
     ///
     /// ```no_run
     /// # use docker_wrapper::ImagesCommand;
-    /// # use docker_wrapper::DockerCommand;
+    /// # use docker_wrapper::DockerCommandV2;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let output = ImagesCommand::new().execute().await?;
     /// if output.success() {
@@ -725,7 +725,7 @@ impl ImagesOutput {
     ///
     /// ```no_run
     /// # use docker_wrapper::ImagesCommand;
-    /// # use docker_wrapper::DockerCommand;
+    /// # use docker_wrapper::DockerCommandV2;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let output = ImagesCommand::new().execute().await?;
     /// println!("Found {} images", output.image_count());
@@ -743,7 +743,7 @@ impl ImagesOutput {
     ///
     /// ```no_run
     /// # use docker_wrapper::ImagesCommand;
-    /// # use docker_wrapper::DockerCommand;
+    /// # use docker_wrapper::DockerCommandV2;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let output = ImagesCommand::new().execute().await?;
     /// let ids = output.image_ids();
@@ -765,7 +765,7 @@ impl ImagesOutput {
     ///
     /// ```no_run
     /// # use docker_wrapper::ImagesCommand;
-    /// # use docker_wrapper::DockerCommand;
+    /// # use docker_wrapper::DockerCommandV2;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let output = ImagesCommand::new().execute().await?;
     /// let nginx_images = output.filter_by_repository("nginx");
@@ -787,7 +787,7 @@ impl ImagesOutput {
     ///
     /// ```no_run
     /// # use docker_wrapper::ImagesCommand;
-    /// # use docker_wrapper::DockerCommand;
+    /// # use docker_wrapper::DockerCommandV2;
     /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// let output = ImagesCommand::new().execute().await?;
     /// if output.is_empty() {
