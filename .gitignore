@@ -60,3 +60,5 @@ docker-test-*
 # Context
 CLAUDE.md
 .claude/
+# Temporary/experimental directories
+docker-engine-api/
