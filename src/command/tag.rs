@@ -2,10 +2,9 @@
 //!
 //! This module provides the `docker tag` command for creating tags for images.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker tag command builder
 ///
@@ -36,7 +35,7 @@ pub struct TagCommand {
     /// Target image (name:tag)
     target_image: String,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl TagCommand {
@@ -94,48 +93,44 @@ impl TagCommand {
             target_image: self.target_image.clone(),
         })
     }
+
+    /// Get a reference to the command executor
+    #[must_use]
+    pub fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    /// Get a mutable reference to the command executor
+    #[must_use]
+    pub fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
 }
 
 #[async_trait]
-impl DockerCommand for TagCommand {
+impl DockerCommandV2 for TagCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "tag"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        vec![self.source_image.clone(), self.target_image.clone()]
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["tag".to_string()];
+        args.push(self.source_image.clone());
+        args.push(self.target_image.clone());
+        // Add raw args from executor
+        args.extend(self.executor.raw_args.clone());
+        args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        self.executor
-            .execute_command(self.command_name(), self.build_args())
-            .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+        let args = self.build_command_args();
+        self.executor.execute_command("docker", args).await
     }
 }
 
@@ -177,28 +172,31 @@ mod tests {
     #[test]
     fn test_tag_basic() {
         let cmd = TagCommand::new("alpine:latest", "my-alpine:latest");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["alpine:latest", "my-alpine:latest"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["tag", "alpine:latest", "my-alpine:latest"]);
     }
 
     #[test]
     fn test_tag_with_registry() {
         let cmd = TagCommand::new("myapp:latest", "docker.io/myuser/myapp:v1.0.0");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["myapp:latest", "docker.io/myuser/myapp:v1.0.0"]);
+        let args = cmd.build_command_args();
+        assert_eq!(
+            args,
+            vec!["tag", "myapp:latest", "docker.io/myuser/myapp:v1.0.0"]
+        );
     }
 
     #[test]
     fn test_tag_with_image_id() {
         let cmd = TagCommand::new("sha256:abc123", "myimage:tagged");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["sha256:abc123", "myimage:tagged"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["tag", "sha256:abc123", "myimage:tagged"]);
     }
 
     #[test]
     fn test_tag_same_repo_different_tag() {
         let cmd = TagCommand::new("nginx:1.21", "nginx:stable");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["nginx:1.21", "nginx:stable"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["tag", "nginx:1.21", "nginx:stable"]);
     }
 }

@@ -3,10 +3,9 @@
 //! This module provides functionality to search for Docker images on Docker Hub.
 //! It supports filtering, limiting results, and extracting detailed information about repositories.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
-use std::ffi::OsStr;
 use std::fmt;
 
 /// Command for searching Docker Hub repositories
@@ -41,7 +40,7 @@ pub struct SearchCommand {
     /// Don't truncate output
     no_trunc: bool,
     /// Command executor for running the command
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 /// Information about a Docker Hub repository from search results
@@ -248,6 +247,9 @@ impl SearchCommand {
         // Add search term
         args.push(self.term.clone());
 
+        // Add raw args from executor
+        args.extend(self.executor.raw_args.clone());
+
         args
     }
 
@@ -395,6 +397,18 @@ impl SearchCommand {
     pub fn is_no_trunc(&self) -> bool {
         self.no_trunc
     }
+
+    /// Get a reference to the command executor
+    #[must_use]
+    pub fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    /// Get a mutable reference to the command executor
+    #[must_use]
+    pub fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
 }
 
 impl Default for SearchCommand {
@@ -457,22 +471,24 @@ impl SearchOutput {
 }
 
 #[async_trait]
-impl DockerCommand for SearchCommand {
+impl DockerCommandV2 for SearchCommand {
     type Output = SearchOutput;
 
-    fn command_name(&self) -> &'static str {
-        "search"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
         self.build_command_args()
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let output = self
-            .executor
-            .execute_command(self.command_name(), self.build_args())
-            .await?;
+        let args = self.build_command_args();
+        let output = self.executor.execute_command("docker", args).await?;
 
         let repositories = self.parse_output(&output)?;
 
@@ -480,52 +496,6 @@ impl DockerCommand for SearchCommand {
             output,
             repositories,
         })
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        match flag {
-            "--no-trunc" | "no-trunc" => {
-                self.no_trunc = true;
-            }
-            _ => {
-                self.executor.add_flag(flag);
-            }
-        }
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        match key {
-            "--limit" | "limit" => {
-                if let Ok(limit) = value.parse::<u32>() {
-                    self.limit = Some(limit);
-                }
-            }
-            "--format" | "format" => {
-                self.format = Some(value.to_string());
-            }
-            "--filter" | "filter" => {
-                self.filters.push(value.to_string());
-            }
-            _ => {
-                self.executor.add_option(key, value);
-            }
-        }
-        self
     }
 }
 
@@ -738,32 +708,6 @@ mod tests {
         assert!(display.contains("--no-trunc"));
         assert!(display.contains("--format json"));
         assert!(display.contains("alpine"));
-    }
-
-    #[test]
-    fn test_search_command_name() {
-        let search = SearchCommand::new("test");
-        assert_eq!(search.command_name(), "search");
-    }
-
-    #[test]
-    fn test_search_command_extensibility() {
-        let mut search = SearchCommand::new("node");
-
-        // Test the extension methods
-        search
-            .arg("extra")
-            .args(vec!["more", "args"])
-            .flag("--no-trunc")
-            .option("--limit", "5")
-            .option("--format", "json")
-            .option("--filter", "stars=10");
-
-        // Verify the options were applied
-        assert!(search.is_no_trunc());
-        assert_eq!(search.get_limit(), Some(5));
-        assert_eq!(search.get_format(), Some("json"));
-        assert!(search.get_filters().contains(&"stars=10".to_string()));
     }
 
     #[test]
