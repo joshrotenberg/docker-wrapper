@@ -1,6 +1,6 @@
 //! Docker Compose ls command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommandV2};
+use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -117,7 +117,7 @@ impl ComposeLsCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ComposeLsCommand {
+impl DockerCommand for ComposeLsCommand {
     type Output = LsResult;
 
     fn get_executor(&self) -> &CommandExecutor {

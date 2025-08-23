@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker wait` command for waiting until containers stop.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -126,7 +126,7 @@ impl WaitCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for WaitCommand {
+impl DockerCommand for WaitCommand {
     type Output = CommandOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

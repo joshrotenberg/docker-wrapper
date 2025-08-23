@@ -3,7 +3,7 @@
 //! This module provides functionality to retrieve Docker system information,
 //! including daemon configuration, storage details, and runtime information.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
 use std::fmt;
@@ -530,7 +530,7 @@ impl InfoOutput {
 }
 
 #[async_trait]
-impl DockerCommandV2 for InfoCommand {
+impl DockerCommand for InfoCommand {
     type Output = InfoOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker rename` command for renaming containers.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -94,7 +94,7 @@ impl RenameCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for RenameCommand {
+impl DockerCommand for RenameCommand {
     type Output = CommandOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

@@ -9,7 +9,7 @@
 //!
 //! ```no_run
 //! use docker_wrapper::BakeCommand;
-//! use docker_wrapper::DockerCommandV2;
+//! use docker_wrapper::DockerCommand;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,7 +25,7 @@
 //!
 //! ```no_run
 //! use docker_wrapper::BakeCommand;
-//! use docker_wrapper::DockerCommandV2;
+//! use docker_wrapper::DockerCommand;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -46,7 +46,7 @@
 //! }
 //! ```
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -77,7 +77,7 @@ use std::collections::HashMap;
 ///
 /// ```no_run
 /// use docker_wrapper::BakeCommand;
-/// use docker_wrapper::DockerCommandV2;
+/// use docker_wrapper::DockerCommand;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -655,7 +655,7 @@ impl Default for BakeCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for BakeCommand {
+impl DockerCommand for BakeCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

@@ -4,7 +4,7 @@
 //! with real Docker commands and containers.
 
 use docker_wrapper::prerequisites::ensure_docker;
-use docker_wrapper::DockerCommandV2;
+use docker_wrapper::DockerCommand;
 use docker_wrapper::{ExecCommand, RunCommand};
 use std::time::Duration;
 use tokio::time::sleep;

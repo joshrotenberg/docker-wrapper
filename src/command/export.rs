@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker export` command for exporting containers to tarballs.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -112,7 +112,7 @@ impl ExportCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ExportCommand {
+impl DockerCommand for ExportCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

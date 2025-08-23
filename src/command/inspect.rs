@@ -3,7 +3,7 @@
 //! This module provides the `docker inspect` command for getting detailed information
 //! about Docker objects (containers, images, volumes, networks, etc.).
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde_json::Value;
@@ -177,7 +177,7 @@ impl InspectCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for InspectCommand {
+impl DockerCommand for InspectCommand {
     type Output = CommandOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

@@ -9,7 +9,7 @@
 //!
 //! ```no_run
 //! use docker_wrapper::PullCommand;
-//! use docker_wrapper::DockerCommandV2;
+//! use docker_wrapper::DockerCommand;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,7 +25,7 @@
 //!
 //! ```no_run
 //! use docker_wrapper::PullCommand;
-//! use docker_wrapper::DockerCommandV2;
+//! use docker_wrapper::DockerCommand;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -41,7 +41,7 @@
 //! }
 //! ```
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -72,7 +72,7 @@ use async_trait::async_trait;
 ///
 /// ```no_run
 /// use docker_wrapper::PullCommand;
-/// use docker_wrapper::DockerCommandV2;
+/// use docker_wrapper::DockerCommand;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -303,7 +303,7 @@ impl Default for PullCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for PullCommand {
+impl DockerCommand for PullCommand {
     type Output = CommandOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

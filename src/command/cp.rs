@@ -3,7 +3,7 @@
 //! This module provides the `docker cp` command for copying files/folders between
 //! a container and the local filesystem.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use std::path::Path;
@@ -163,7 +163,7 @@ impl CpCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for CpCommand {
+impl DockerCommand for CpCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

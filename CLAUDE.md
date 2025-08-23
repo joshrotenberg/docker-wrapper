@@ -102,3 +102,4 @@ When migrating commands from `DockerCommand` to `DockerCommandV2`:
 - Integration tests in `tests/` directory (require Docker daemon)
 - Doc tests for all examples
 - Test both builder logic and command execution
+- no emojis

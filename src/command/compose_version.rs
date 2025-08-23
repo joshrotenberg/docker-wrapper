@@ -1,6 +1,6 @@
 //! Docker Compose version command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommandV2};
+use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -105,7 +105,7 @@ impl Default for ComposeVersionCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ComposeVersionCommand {
+impl DockerCommand for ComposeVersionCommand {
     type Output = ComposeVersionResult;
 
     fn get_executor(&self) -> &CommandExecutor {

@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker rm` command for removing stopped containers.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
 
@@ -98,7 +98,7 @@ impl RmCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for RmCommand {
+impl DockerCommand for RmCommand {
     type Output = CommandOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

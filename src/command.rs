@@ -78,40 +78,9 @@ pub mod version;
 pub mod volume;
 pub mod wait;
 
-/// Base trait for all Docker commands (original pattern - preserved for compatibility)
+/// Unified trait for all Docker commands (both regular and compose)
 #[async_trait]
 pub trait DockerCommand {
-    /// The output type this command produces
-    type Output;
-
-    /// Get the command name (e.g., "run", "exec", "ps")
-    fn command_name(&self) -> &'static str;
-
-    /// Build the command arguments
-    fn build_args(&self) -> Vec<String>;
-
-    /// Execute the command and return the typed output
-    async fn execute(&self) -> Result<Self::Output>;
-
-    /// Add a raw argument to the command (escape hatch)
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self;
-
-    /// Add multiple raw arguments to the command (escape hatch)
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>;
-
-    /// Add a flag option (e.g., --detach, --rm)
-    fn flag(&mut self, flag: &str) -> &mut Self;
-
-    /// Add a key-value option (e.g., --name value, --env key=value)
-    fn option(&mut self, key: &str, value: &str) -> &mut Self;
-}
-
-/// Unified trait for all Docker commands (both regular and compose) - NEW PATTERN
-#[async_trait]
-pub trait DockerCommandV2 {
     /// The output type this command produces
     type Output;
 
@@ -395,7 +364,7 @@ impl ComposeConfig {
 }
 
 /// Extended trait for Docker Compose commands
-pub trait ComposeCommand: DockerCommandV2 {
+pub trait ComposeCommand: DockerCommand {
     /// Get the compose configuration
     fn get_config(&self) -> &ComposeConfig;
 

@@ -1,6 +1,6 @@
 //! Docker network ls command implementation.
 
-use crate::command::{CommandExecutor, CommandOutput, DockerCommandV2};
+use crate::command::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -121,7 +121,7 @@ impl Default for NetworkLsCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for NetworkLsCommand {
+impl DockerCommand for NetworkLsCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

@@ -1,6 +1,6 @@
 //! Docker Compose stop command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommandV2};
+use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use std::time::Duration;
@@ -76,7 +76,7 @@ impl Default for ComposeStopCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ComposeStopCommand {
+impl DockerCommand for ComposeStopCommand {
     type Output = ComposeStopResult;
 
     fn get_executor(&self) -> &CommandExecutor {

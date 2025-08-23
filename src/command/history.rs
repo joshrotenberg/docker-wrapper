@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker history` command for showing image layer history.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -233,7 +233,7 @@ impl HistoryCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for HistoryCommand {
+impl DockerCommand for HistoryCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

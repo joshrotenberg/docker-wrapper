@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker port` command for listing port mappings.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -146,7 +146,7 @@ impl PortCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for PortCommand {
+impl DockerCommand for PortCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

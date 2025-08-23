@@ -1,6 +1,6 @@
 //! Docker network disconnect command implementation.
 
-use crate::command::{CommandExecutor, CommandOutput, DockerCommandV2};
+use crate::command::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -47,7 +47,7 @@ impl NetworkDisconnectCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for NetworkDisconnectCommand {
+impl DockerCommand for NetworkDisconnectCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

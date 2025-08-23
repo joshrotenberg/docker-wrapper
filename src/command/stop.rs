@@ -3,7 +3,7 @@
 //! This module provides a comprehensive implementation of the `docker stop` command
 //! with support for all native options and an extensible architecture.
 
-use super::{CommandExecutor, DockerCommandV2};
+use super::{CommandExecutor, DockerCommand};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
 use std::time::Duration;
@@ -131,7 +131,7 @@ impl StopCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for StopCommand {
+impl DockerCommand for StopCommand {
     type Output = StopResult;
 
     fn get_executor(&self) -> &CommandExecutor {

@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker unpause` command for unpausing all processes within containers.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -112,7 +112,7 @@ impl UnpauseCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for UnpauseCommand {
+impl DockerCommand for UnpauseCommand {
     type Output = CommandOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

@@ -3,7 +3,7 @@
 //! This module provides a comprehensive implementation of the `docker run` command
 //! with support for common options and an extensible architecture for any additional options.
 
-use super::{CommandExecutor, DockerCommandV2, EnvironmentBuilder, PortBuilder};
+use super::{CommandExecutor, DockerCommand, EnvironmentBuilder, PortBuilder};
 use crate::error::{Error, Result};
 use crate::stream::{OutputLine, StreamResult, StreamableCommand};
 use async_trait::async_trait;
@@ -1243,7 +1243,7 @@ impl RunCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for RunCommand {
+impl DockerCommand for RunCommand {
     type Output = ContainerId;
 
     fn get_executor(&self) -> &CommandExecutor {

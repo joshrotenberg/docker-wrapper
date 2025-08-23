@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker attach` command for attaching to a running container.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -146,7 +146,7 @@ impl AttachCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for AttachCommand {
+impl DockerCommand for AttachCommand {
     type Output = CommandOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

@@ -3,7 +3,7 @@
 //! This module provides a comprehensive implementation of the `docker start` command
 //! with support for all native options and an extensible architecture.
 
-use super::{CommandExecutor, DockerCommandV2};
+use super::{CommandExecutor, DockerCommand};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
 
@@ -187,7 +187,7 @@ impl StartCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for StartCommand {
+impl DockerCommand for StartCommand {
     type Output = StartResult;
 
     fn get_executor(&self) -> &CommandExecutor {

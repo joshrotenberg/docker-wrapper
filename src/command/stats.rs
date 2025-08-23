@@ -3,7 +3,7 @@
 //! This module provides the `docker stats` command for displaying real-time
 //! resource usage statistics of containers.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -229,7 +229,7 @@ impl Default for StatsCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for StatsCommand {
+impl DockerCommand for StatsCommand {
     type Output = CommandOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

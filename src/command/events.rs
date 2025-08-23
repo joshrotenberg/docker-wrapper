@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker events` command for getting real-time events from the Docker daemon.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -192,7 +192,7 @@ impl Default for EventsCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for EventsCommand {
+impl DockerCommand for EventsCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

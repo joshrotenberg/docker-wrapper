@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker kill` command for sending signals to running containers.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
 
@@ -80,7 +80,7 @@ impl KillCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for KillCommand {
+impl DockerCommand for KillCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

@@ -1,6 +1,6 @@
 //! Docker Compose ps command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommandV2};
+use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
@@ -195,7 +195,7 @@ impl Default for ComposePsCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ComposePsCommand {
+impl DockerCommand for ComposePsCommand {
     type Output = ComposePsResult;
 
     fn get_executor(&self) -> &CommandExecutor {

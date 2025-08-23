@@ -1,6 +1,6 @@
 //! Example demonstrating container lifecycle commands including rm, kill, and logs
 
-use docker_wrapper::command::DockerCommandV2;
+use docker_wrapper::command::DockerCommand;
 use docker_wrapper::{KillCommand, LogsCommand, RmCommand, RunCommand};
 use std::time::Duration;
 use tokio::time::sleep;

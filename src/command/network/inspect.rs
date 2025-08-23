@@ -1,6 +1,6 @@
 //! Docker network inspect command implementation.
 
-use crate::command::{CommandExecutor, CommandOutput, DockerCommandV2};
+use crate::command::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde_json::Value;
@@ -73,7 +73,7 @@ impl NetworkInspectCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for NetworkInspectCommand {
+impl DockerCommand for NetworkInspectCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

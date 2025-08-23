@@ -1,6 +1,6 @@
 //! Docker Compose cp command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommandV2};
+use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
@@ -76,7 +76,7 @@ impl ComposeCpCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for ComposeCpCommand {
+impl DockerCommand for ComposeCpCommand {
     type Output = ComposeCpResult;
 
     fn get_executor(&self) -> &CommandExecutor {

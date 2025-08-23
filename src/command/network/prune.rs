@@ -1,6 +1,6 @@
 //! Docker network prune command implementation.
 
-use crate::command::{CommandExecutor, CommandOutput, DockerCommandV2};
+use crate::command::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -74,7 +74,7 @@ impl Default for NetworkPruneCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for NetworkPruneCommand {
+impl DockerCommand for NetworkPruneCommand {
     type Output = CommandOutput;
 
     fn build_command_args(&self) -> Vec<String> {

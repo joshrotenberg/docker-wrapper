@@ -3,7 +3,7 @@
 //! This module provides functionality to search for Docker images on Docker Hub.
 //! It supports filtering, limiting results, and extracting detailed information about repositories.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
 use std::fmt;
@@ -471,7 +471,7 @@ impl SearchOutput {
 }
 
 #[async_trait]
-impl DockerCommandV2 for SearchCommand {
+impl DockerCommand for SearchCommand {
     type Output = SearchOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

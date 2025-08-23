@@ -3,7 +3,7 @@
 //! This module provides functionality to log out from Docker registries.
 //! It supports logging out from specific registries or using the daemon default.
 
-use super::{CommandExecutor, CommandOutput, DockerCommandV2};
+use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use std::fmt;
@@ -159,7 +159,7 @@ impl LogoutOutput {
 }
 
 #[async_trait]
-impl DockerCommandV2 for LogoutCommand {
+impl DockerCommand for LogoutCommand {
     type Output = LogoutOutput;
 
     fn get_executor(&self) -> &CommandExecutor {

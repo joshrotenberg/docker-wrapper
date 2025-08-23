@@ -1,6 +1,6 @@
 //! Docker system df command implementation.
 
-use crate::command::{CommandExecutor, DockerCommandV2};
+use crate::command::{CommandExecutor, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -319,7 +319,7 @@ impl Default for SystemDfCommand {
 }
 
 #[async_trait]
-impl DockerCommandV2 for SystemDfCommand {
+impl DockerCommand for SystemDfCommand {
     type Output = DiskUsage;
 
     fn build_command_args(&self) -> Vec<String> {
