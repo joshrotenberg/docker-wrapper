@@ -2,10 +2,9 @@
 //!
 //! This module provides the `docker rm` command for removing stopped containers.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::{Error, Result};
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker rm command builder
 #[derive(Debug, Clone)]
@@ -19,7 +18,7 @@ pub struct RmCommand {
     /// Remove the specified link
     link: bool,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl RmCommand {
@@ -99,15 +98,19 @@ impl RmCommand {
 }
 
 #[async_trait]
-impl DockerCommand for RmCommand {
+impl DockerCommandV2 for RmCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "rm"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["rm".to_string()];
 
         if self.force {
             args.push("--force".to_string());
@@ -123,6 +126,7 @@ impl DockerCommand for RmCommand {
 
         // Add container names/IDs
         args.extend(self.containers.clone());
+        args.extend(self.executor.raw_args.clone());
 
         args
     }
@@ -132,33 +136,12 @@ impl DockerCommand for RmCommand {
             return Err(Error::invalid_config("No containers specified for removal"));
         }
 
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command(self.command_name(), self.build_args())
+            .execute_command(&command_name, command_args)
             .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -192,38 +175,38 @@ mod tests {
     #[test]
     fn test_rm_single_container() {
         let cmd = RmCommand::new("test-container");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["rm", "test-container"]);
     }
 
     #[test]
     fn test_rm_multiple_containers() {
         let cmd = RmCommand::new_multiple(vec!["container1", "container2", "container3"]);
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["container1", "container2", "container3"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["rm", "container1", "container2", "container3"]);
     }
 
     #[test]
     fn test_rm_with_force() {
         let cmd = RmCommand::new("test-container").force();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--force", "test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["rm", "--force", "test-container"]);
     }
 
     #[test]
     fn test_rm_with_volumes() {
         let cmd = RmCommand::new("test-container").volumes();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--volumes", "test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["rm", "--volumes", "test-container"]);
     }
 
     #[test]
     fn test_rm_with_all_options() {
         let cmd = RmCommand::new("test-container").force().volumes().link();
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
-            vec!["--force", "--volumes", "--link", "test-container"]
+            vec!["rm", "--force", "--volumes", "--link", "test-container"]
         );
     }
 
@@ -234,10 +217,11 @@ mod tests {
             .container("container3")
             .force()
             .volumes();
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "rm",
                 "--force",
                 "--volumes",
                 "container1",

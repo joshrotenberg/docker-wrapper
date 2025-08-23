@@ -2,10 +2,9 @@
 //!
 //! This module provides the `docker pause` command for pausing all processes within containers.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker pause command builder
 ///
@@ -34,7 +33,7 @@ pub struct PauseCommand {
     /// Container names or IDs to pause
     containers: Vec<String>,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl PauseCommand {
@@ -113,15 +112,22 @@ impl PauseCommand {
 }
 
 #[async_trait]
-impl DockerCommand for PauseCommand {
+impl DockerCommandV2 for PauseCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "pause"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        self.containers.clone()
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["pause".to_string()];
+        args.extend(self.containers.clone());
+        args.extend(self.executor.raw_args.clone());
+        args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
@@ -131,33 +137,12 @@ impl DockerCommand for PauseCommand {
             ));
         }
 
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command(self.command_name(), self.build_args())
+            .execute_command(&command_name, command_args)
             .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -197,21 +182,21 @@ mod tests {
     #[test]
     fn test_pause_single_container() {
         let cmd = PauseCommand::new("test-container");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["pause", "test-container"]);
     }
 
     #[test]
     fn test_pause_multiple_containers() {
         let cmd = PauseCommand::new_multiple(vec!["web", "db", "cache"]);
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["web", "db", "cache"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["pause", "web", "db", "cache"]);
     }
 
     #[test]
     fn test_pause_add_container() {
         let cmd = PauseCommand::new("web").container("db").container("cache");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["web", "db", "cache"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["pause", "web", "db", "cache"]);
     }
 }

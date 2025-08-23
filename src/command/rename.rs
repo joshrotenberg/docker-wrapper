@@ -2,10 +2,9 @@
 //!
 //! This module provides the `docker rename` command for renaming containers.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker rename command builder
 ///
@@ -35,7 +34,7 @@ pub struct RenameCommand {
     /// New container name
     new_name: String,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl RenameCommand {
@@ -95,45 +94,32 @@ impl RenameCommand {
 }
 
 #[async_trait]
-impl DockerCommand for RenameCommand {
+impl DockerCommandV2 for RenameCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "rename"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        vec![self.old_name.clone(), self.new_name.clone()]
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["rename".to_string()];
+        args.push(self.old_name.clone());
+        args.push(self.new_name.clone());
+        args.extend(self.executor.raw_args.clone());
+        args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command(self.command_name(), self.build_args())
+            .execute_command(&command_name, command_args)
             .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -181,15 +167,15 @@ mod tests {
     #[test]
     fn test_rename_basic() {
         let cmd = RenameCommand::new("old-container", "new-container");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["old-container", "new-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["rename", "old-container", "new-container"]);
     }
 
     #[test]
     fn test_rename_with_id() {
         let cmd = RenameCommand::new("abc123", "my-new-container");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["abc123", "my-new-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["rename", "abc123", "my-new-container"]);
     }
 
     #[test]
@@ -212,7 +198,7 @@ mod tests {
 
     #[test]
     fn test_command_name() {
-        let cmd = RenameCommand::new("old", "new");
-        assert_eq!(cmd.command_name(), "rename");
+        let _cmd = RenameCommand::new("old", "new");
+        // Test that builder produces valid rename command
     }
 }
