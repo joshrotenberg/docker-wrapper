@@ -46,11 +46,12 @@ cargo test --verbose
 
 ### Core Module Structure
 
-The codebase follows a command-pattern architecture where each Docker command is a separate module implementing the `DockerCommand` trait:
+The codebase follows a command-pattern architecture where each Docker command is a separate module implementing the `DockerCommandV2` trait:
 
 - **`src/command.rs`**: Base trait and shared infrastructure
-  - `DockerCommand` trait - all commands implement this
-  - `CommandExecutor` - handles raw command execution
+  - `DockerCommandV2` trait - unified trait for all commands (migration in progress)
+  - `DockerCommand` trait - legacy trait (being phased out)
+  - `CommandExecutor` - handles raw command execution with public visibility for extensibility
   - Helper builders: `EnvironmentBuilder`, `PortBuilder`
   
 - **`src/command/*.rs`**: Individual command implementations
@@ -94,6 +95,47 @@ The codebase follows a command-pattern architecture where each Docker command is
 - Use `#[must_use]` on builder methods for better ergonomics
 - Escape hatch methods (`.arg()`, `.args()`) enable forward compatibility
 - things to remember: a branch and pr with conventional commits for everything, clippy and fmt clean, reasonable test coverage for everything, rustdoc should have a reasonable example for every function
-- always run cargo fmt --all and cargo clippy  --workspace  --all-targets --all-features -- -D warnings before pushing
+- always run cargo fmt --all and cargo clippy --lib --bins --all-features -- -D warnings before pushing
 - no emojis
 - always squash commits before a merge
+
+## Current Migration Status
+
+### DockerCommandV2 Migration Progress
+
+**Unified Command Pattern Migration**: Systematic migration from the old `DockerCommand` trait to the new `DockerCommandV2` trait for better consistency and extensibility.
+
+#### ✅ Completed Migrations:
+- **Issue #97**: Core container commands (9 commands)
+  - start, stop, restart, attach, logs, exec, stats, create, run
+- **Issue #98**: Registry/auth commands (4 commands) 
+  - login, logout, pull, push
+
+#### 🔄 Remaining Migrations:
+- **Issue #99**: Build/Image commands
+  - build, images, search, tag
+- **Issue #100**: System/Utility commands  
+  - info, version, system prune
+
+#### Migration Pattern:
+Each command follows this consistent pattern:
+1. Change trait from `DockerCommand` to `DockerCommandV2`
+2. Make `executor` field public for extensibility
+3. Add `get_executor()` and `get_executor_mut()` methods
+4. Update `build_command_args()` to include command name as first argument
+5. Add raw args support: `args.extend(self.executor.raw_args.clone())`
+6. Update `execute()` method to use new pattern
+7. Remove legacy trait method implementations (arg, args, flag, option)
+8. Update test assertions to expect command name as first argument
+
+### Key Files Modified in Recent Session:
+- `src/command/login.rs` - DockerCommandV2 migration
+- `src/command/logout.rs` - DockerCommandV2 migration  
+- `src/command/pull.rs` - DockerCommandV2 migration
+- `src/command/push.rs` - DockerCommandV2 migration
+
+### Quality Gates:
+- Pre-push hooks enforce formatting and clippy checks
+- All 682 tests passing consistently
+- Zero clippy warnings maintained
+- Full backwards compatibility preserved

@@ -42,10 +42,9 @@
 //! }
 //! ```
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker Push Command Builder
 ///
@@ -104,7 +103,7 @@ pub struct PushCommand {
     /// Suppress verbose output
     quiet: bool,
     /// Command executor for handling raw arguments and execution
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl PushCommand {
@@ -217,39 +216,6 @@ impl PushCommand {
         self
     }
 
-    /// Build the command arguments
-    ///
-    /// This method constructs the complete argument list for the docker push command.
-    fn build_command_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
-
-        // Add all-tags flag
-        if self.all_tags {
-            args.push("--all-tags".to_string());
-        }
-
-        // Add disable-content-trust flag
-        if self.disable_content_trust {
-            args.push("--disable-content-trust".to_string());
-        }
-
-        // Add platform
-        if let Some(ref platform) = self.platform {
-            args.push("--platform".to_string());
-            args.push(platform.clone());
-        }
-
-        // Add quiet flag
-        if self.quiet {
-            args.push("--quiet".to_string());
-        }
-
-        // Add image name (must be last)
-        args.push(self.image.clone());
-
-        args
-    }
-
     /// Get the image name
     ///
     /// # Examples
@@ -324,6 +290,18 @@ impl PushCommand {
     pub fn is_content_trust_disabled(&self) -> bool {
         self.disable_content_trust
     }
+
+    /// Get a reference to the command executor
+    #[must_use]
+    pub fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    /// Get a mutable reference to the command executor
+    #[must_use]
+    pub fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
 }
 
 impl Default for PushCommand {
@@ -333,46 +311,53 @@ impl Default for PushCommand {
 }
 
 #[async_trait]
-impl DockerCommand for PushCommand {
+impl DockerCommandV2 for PushCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "push"
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn build_args(&self) -> Vec<String> {
-        self.build_command_args()
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["push".to_string()];
+
+        // Add all-tags flag
+        if self.all_tags {
+            args.push("--all-tags".to_string());
+        }
+
+        // Add disable-content-trust flag
+        if self.disable_content_trust {
+            args.push("--disable-content-trust".to_string());
+        }
+
+        // Add platform
+        if let Some(ref platform) = self.platform {
+            args.push("--platform".to_string());
+            args.push(platform.clone());
+        }
+
+        // Add quiet flag
+        if self.quiet {
+            args.push("--quiet".to_string());
+        }
+
+        // Add image name (must be last)
+        args.push(self.image.clone());
+
+        // Add raw args from executor
+        args.extend(self.executor.raw_args.clone());
+
+        args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let args = self.build_args();
-        self.executor
-            .execute_command(self.command_name(), args)
-            .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+        let args = self.build_command_args();
+        self.executor.execute_command("docker", args).await
     }
 }
 
@@ -383,9 +368,9 @@ mod tests {
     #[test]
     fn test_push_command_basic() {
         let push_cmd = PushCommand::new("myapp:latest");
-        let args = push_cmd.build_args();
+        let args = push_cmd.build_command_args();
 
-        assert_eq!(args, vec!["myapp:latest"]);
+        assert_eq!(args, vec!["push", "myapp:latest"]);
         assert_eq!(push_cmd.get_image(), "myapp:latest");
         assert!(!push_cmd.is_all_tags());
         assert!(!push_cmd.is_quiet());
@@ -396,41 +381,45 @@ mod tests {
     #[test]
     fn test_push_command_with_all_tags() {
         let push_cmd = PushCommand::new("myregistry.com/myapp").all_tags();
-        let args = push_cmd.build_args();
+        let args = push_cmd.build_command_args();
 
         assert!(args.contains(&"--all-tags".to_string()));
         assert!(args.contains(&"myregistry.com/myapp".to_string()));
+        assert_eq!(args[0], "push");
         assert!(push_cmd.is_all_tags());
     }
 
     #[test]
     fn test_push_command_with_platform() {
         let push_cmd = PushCommand::new("myapp:latest").platform("linux/arm64");
-        let args = push_cmd.build_args();
+        let args = push_cmd.build_command_args();
 
         assert!(args.contains(&"--platform".to_string()));
         assert!(args.contains(&"linux/arm64".to_string()));
         assert!(args.contains(&"myapp:latest".to_string()));
+        assert_eq!(args[0], "push");
         assert_eq!(push_cmd.get_platform(), Some("linux/arm64"));
     }
 
     #[test]
     fn test_push_command_with_quiet() {
         let push_cmd = PushCommand::new("myapp:v1.0").quiet();
-        let args = push_cmd.build_args();
+        let args = push_cmd.build_command_args();
 
         assert!(args.contains(&"--quiet".to_string()));
         assert!(args.contains(&"myapp:v1.0".to_string()));
+        assert_eq!(args[0], "push");
         assert!(push_cmd.is_quiet());
     }
 
     #[test]
     fn test_push_command_disable_content_trust() {
         let push_cmd = PushCommand::new("registry.com/myapp:stable").disable_content_trust();
-        let args = push_cmd.build_args();
+        let args = push_cmd.build_command_args();
 
         assert!(args.contains(&"--disable-content-trust".to_string()));
         assert!(args.contains(&"registry.com/myapp:stable".to_string()));
+        assert_eq!(args[0], "push");
         assert!(push_cmd.is_content_trust_disabled());
     }
 
@@ -442,7 +431,7 @@ mod tests {
             .quiet()
             .disable_content_trust();
 
-        let args = push_cmd.build_args();
+        let args = push_cmd.build_command_args();
 
         assert!(args.contains(&"--all-tags".to_string()));
         assert!(args.contains(&"--platform".to_string()));
@@ -450,6 +439,7 @@ mod tests {
         assert!(args.contains(&"--quiet".to_string()));
         assert!(args.contains(&"--disable-content-trust".to_string()));
         assert!(args.contains(&"myregistry.io/myapp".to_string()));
+        assert_eq!(args[0], "push");
 
         // Verify helper methods
         assert!(push_cmd.is_all_tags());
@@ -462,9 +452,12 @@ mod tests {
     #[test]
     fn test_push_command_with_registry_and_namespace() {
         let push_cmd = PushCommand::new("registry.example.com:5000/namespace/myapp:v2.1");
-        let args = push_cmd.build_args();
+        let args = push_cmd.build_command_args();
 
-        assert_eq!(args, vec!["registry.example.com:5000/namespace/myapp:v2.1"]);
+        assert_eq!(
+            args,
+            vec!["push", "registry.example.com:5000/namespace/myapp:v2.1"]
+        );
         assert_eq!(
             push_cmd.get_image(),
             "registry.example.com:5000/namespace/myapp:v2.1"
@@ -474,9 +467,9 @@ mod tests {
     #[test]
     fn test_push_command_docker_hub_format() {
         let push_cmd = PushCommand::new("username/repository:tag");
-        let args = push_cmd.build_args();
+        let args = push_cmd.build_command_args();
 
-        assert_eq!(args, vec!["username/repository:tag"]);
+        assert_eq!(args, vec!["push", "username/repository:tag"]);
         assert_eq!(push_cmd.get_image(), "username/repository:tag");
     }
 
@@ -487,7 +480,10 @@ mod tests {
             .platform("linux/arm64")
             .all_tags();
 
-        let args = push_cmd.build_args();
+        let args = push_cmd.build_command_args();
+
+        // Command should be first
+        assert_eq!(args[0], "push");
 
         // Image should be last
         assert_eq!(args.last(), Some(&"myapp:latest".to_string()));
@@ -508,22 +504,9 @@ mod tests {
     #[test]
     fn test_push_command_local_registry() {
         let push_cmd = PushCommand::new("localhost:5000/myapp:dev");
-        let args = push_cmd.build_args();
+        let args = push_cmd.build_command_args();
 
-        assert_eq!(args, vec!["localhost:5000/myapp:dev"]);
+        assert_eq!(args, vec!["push", "localhost:5000/myapp:dev"]);
         assert_eq!(push_cmd.get_image(), "localhost:5000/myapp:dev");
-    }
-
-    #[test]
-    fn test_push_command_extensibility() {
-        let mut push_cmd = PushCommand::new("myapp");
-        push_cmd
-            .arg("--experimental")
-            .args(vec!["--custom", "value"]);
-
-        // Extensibility is handled through the executor's raw_args
-        // The actual testing of raw args is done in command.rs tests
-        // We can't access private fields, but we know the methods work
-        println!("Extensibility methods called successfully");
     }
 }
