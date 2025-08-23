@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.3](https://github.com/joshrotenberg/docker-wrapper/compare/v0.2.2...v0.2.3) (2025-08-23)
+
+
+### Bug Fixes
+
+* Add issues permission and skip-labeling for release-please ([#74](https://github.com/joshrotenberg/docker-wrapper/issues/74)) ([a19fb78](https://github.com/joshrotenberg/docker-wrapper/commit/a19fb78cb2250dacb956b18ff5ad292dff4580b2))
+
 ## [0.2.2](https://github.com/joshrotenberg/docker-wrapper/compare/v0.2.1...v0.2.2) (2025-08-22)
 
 
