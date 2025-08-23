@@ -2,10 +2,9 @@
 //!
 //! This module provides the `docker load` command for loading Docker images from tar archives.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 use std::path::Path;
 
 /// Docker load command builder
@@ -36,7 +35,7 @@ pub struct LoadCommand {
     /// Suppress progress output during load
     quiet: bool,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl LoadCommand {
@@ -156,15 +155,11 @@ impl Default for LoadCommand {
 }
 
 #[async_trait]
-impl DockerCommand for LoadCommand {
+impl DockerCommandV2 for LoadCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "load"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["load".to_string()];
 
         if let Some(ref input_file) = self.input {
             args.push("--input".to_string());
@@ -175,37 +170,25 @@ impl DockerCommand for LoadCommand {
             args.push("--quiet".to_string());
         }
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
     async fn execute(&self) -> Result<Self::Output> {
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command(self.command_name(), self.build_args())
+            .execute_command(&command_name, command_args)
             .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -245,22 +228,22 @@ mod tests {
     #[test]
     fn test_load_basic() {
         let cmd = LoadCommand::new();
-        let args = cmd.build_args();
-        assert!(args.is_empty());
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["load"]);
     }
 
     #[test]
     fn test_load_with_input() {
         let cmd = LoadCommand::new().input(Path::new("images.tar"));
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--input", "images.tar"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["load", "--input", "images.tar"]);
     }
 
     #[test]
     fn test_load_with_quiet() {
         let cmd = LoadCommand::new().quiet();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--quiet"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["load", "--quiet"]);
     }
 
     #[test]
@@ -268,8 +251,8 @@ mod tests {
         let cmd = LoadCommand::new()
             .input(Path::new("/tmp/alpine.tar"))
             .quiet();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--input", "/tmp/alpine.tar", "--quiet"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["load", "--input", "/tmp/alpine.tar", "--quiet"]);
     }
 
     #[test]

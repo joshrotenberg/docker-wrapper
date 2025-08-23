@@ -2,10 +2,9 @@
 //!
 //! This module provides the `docker save` command for saving Docker images to tar archives.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 use std::path::Path;
 
 /// Docker save command builder
@@ -40,7 +39,7 @@ pub struct SaveCommand {
     /// Output file path
     output: Option<String>,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl SaveCommand {
@@ -141,15 +140,11 @@ impl SaveCommand {
 }
 
 #[async_trait]
-impl DockerCommand for SaveCommand {
+impl DockerCommandV2 for SaveCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "save"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["save".to_string()];
 
         if let Some(ref output_file) = self.output {
             args.push("--output".to_string());
@@ -159,37 +154,25 @@ impl DockerCommand for SaveCommand {
         // Add image names
         args.extend(self.images.clone());
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
+    }
+
     async fn execute(&self) -> Result<Self::Output> {
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command(self.command_name(), self.build_args())
+            .execute_command(&command_name, command_args)
             .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -231,22 +214,28 @@ mod tests {
     #[test]
     fn test_save_single_image() {
         let cmd = SaveCommand::new("alpine:latest");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["alpine:latest"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["save", "alpine:latest"]);
     }
 
     #[test]
     fn test_save_multiple_images() {
         let cmd = SaveCommand::new_multiple(vec!["alpine:latest", "nginx:latest", "redis:latest"]);
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["alpine:latest", "nginx:latest", "redis:latest"]);
+        let args = cmd.build_command_args();
+        assert_eq!(
+            args,
+            vec!["save", "alpine:latest", "nginx:latest", "redis:latest"]
+        );
     }
 
     #[test]
     fn test_save_with_output() {
         let cmd = SaveCommand::new("alpine:latest").output(Path::new("alpine.tar"));
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--output", "alpine.tar", "alpine:latest"]);
+        let args = cmd.build_command_args();
+        assert_eq!(
+            args,
+            vec!["save", "--output", "alpine.tar", "alpine:latest"]
+        );
     }
 
     #[test]
@@ -254,10 +243,17 @@ mod tests {
         let cmd = SaveCommand::new_multiple(vec!["alpine", "nginx"])
             .image("redis")
             .output(Path::new("/tmp/images.tar"));
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
-            vec!["--output", "/tmp/images.tar", "alpine", "nginx", "redis"]
+            vec![
+                "save",
+                "--output",
+                "/tmp/images.tar",
+                "alpine",
+                "nginx",
+                "redis"
+            ]
         );
     }
 }

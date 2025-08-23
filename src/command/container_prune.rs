@@ -1,6 +1,6 @@
 //! Docker container prune command implementation.
 
-use crate::command::{CommandExecutor, DockerCommand};
+use crate::command::{CommandExecutor, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -31,7 +31,7 @@ pub struct ContainerPruneCommand {
     filter: HashMap<String, String>,
 
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl ContainerPruneCommand {
@@ -96,15 +96,11 @@ impl Default for ContainerPruneCommand {
 }
 
 #[async_trait]
-impl DockerCommand for ContainerPruneCommand {
+impl DockerCommandV2 for ContainerPruneCommand {
     type Output = ContainerPruneResult;
 
-    fn command_name(&self) -> &'static str {
-        "container"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = vec!["prune".to_string()];
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["container".to_string(), "prune".to_string()];
 
         if self.force {
             args.push("--force".to_string());
@@ -119,34 +115,25 @@ impl DockerCommand for ContainerPruneCommand {
             }
         }
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
-    fn arg<S: AsRef<std::ffi::OsStr>>(&mut self, _arg: S) -> &mut Self {
-        self
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn args<I, S>(&mut self, _args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<std::ffi::OsStr>,
-    {
-        self
-    }
-
-    fn flag(&mut self, _flag: &str) -> &mut Self {
-        self
-    }
-
-    fn option(&mut self, _key: &str, _value: &str) -> &mut Self {
-        self
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let args = self.build_args();
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         let output = self
             .executor
-            .execute_command(self.command_name(), args)
+            .execute_command(&command_name, command_args)
             .await?;
         let stdout = &output.stdout;
 
@@ -225,7 +212,8 @@ mod tests {
             .until("24h")
             .with_label("temp", Some("true"));
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
+        assert_eq!(args[0], "container");
         assert!(args.contains(&"prune".to_string()));
         assert!(args.contains(&"--force".to_string()));
         assert!(args.contains(&"--filter".to_string()));

@@ -1,6 +1,6 @@
 //! Docker system df command implementation.
 
-use crate::command::{CommandExecutor, DockerCommand};
+use crate::command::{CommandExecutor, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -274,7 +274,7 @@ pub struct SystemDfCommand {
     format: Option<String>,
 
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl SystemDfCommand {
@@ -319,15 +319,11 @@ impl Default for SystemDfCommand {
 }
 
 #[async_trait]
-impl DockerCommand for SystemDfCommand {
+impl DockerCommandV2 for SystemDfCommand {
     type Output = DiskUsage;
 
-    fn command_name(&self) -> &'static str {
-        "system"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = vec!["df".to_string()];
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["system".to_string(), "df".to_string()];
 
         if self.verbose {
             args.push("--verbose".to_string());
@@ -337,34 +333,25 @@ impl DockerCommand for SystemDfCommand {
         args.push("--format".to_string());
         args.push("json".to_string());
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
-    fn arg<S: AsRef<std::ffi::OsStr>>(&mut self, _arg: S) -> &mut Self {
-        self
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn args<I, S>(&mut self, _args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<std::ffi::OsStr>,
-    {
-        self
-    }
-
-    fn flag(&mut self, _flag: &str) -> &mut Self {
-        self
-    }
-
-    fn option(&mut self, _key: &str, _value: &str) -> &mut Self {
-        self
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let args = self.build_args();
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         let output = self
             .executor
-            .execute_command(self.command_name(), args)
+            .execute_command(&command_name, command_args)
             .await?;
         let stdout = &output.stdout;
 
@@ -386,7 +373,8 @@ mod tests {
     fn test_system_df_builder() {
         let cmd = SystemDfCommand::new().verbose();
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
+        assert_eq!(args[0], "system");
         assert!(args.contains(&"df".to_string()));
         assert!(args.contains(&"--verbose".to_string()));
         assert!(args.contains(&"--format".to_string()));

@@ -2,10 +2,9 @@
 //!
 //! This module provides the `docker update` command for updating container configurations.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
-use std::ffi::OsStr;
 
 /// Docker update command builder
 ///
@@ -60,7 +59,7 @@ pub struct UpdateCommand {
     /// PID limit
     pids_limit: Option<i64>,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl UpdateCommand {
@@ -376,15 +375,11 @@ impl UpdateCommand {
 }
 
 #[async_trait]
-impl DockerCommand for UpdateCommand {
+impl DockerCommandV2 for UpdateCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "update"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["update".to_string()];
 
         if let Some(ref memory) = self.memory {
             args.push("--memory".to_string());
@@ -452,7 +447,16 @@ impl DockerCommand for UpdateCommand {
         }
 
         args.extend(self.containers.clone());
+        args.extend(self.executor.raw_args.clone());
         args
+    }
+
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
+    }
+
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 
     async fn execute(&self) -> Result<Self::Output> {
@@ -462,33 +466,12 @@ impl DockerCommand for UpdateCommand {
             ));
         }
 
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command(self.command_name(), self.build_args())
+            .execute_command(&command_name, command_args)
             .await
-    }
-
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
-    }
-
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
     }
 }
 
@@ -534,22 +517,22 @@ mod tests {
     #[test]
     fn test_update_single_container() {
         let cmd = UpdateCommand::new("test-container");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["test-container"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["update", "test-container"]);
     }
 
     #[test]
     fn test_update_multiple_containers() {
         let cmd = UpdateCommand::new_multiple(vec!["web", "db", "cache"]);
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["web", "db", "cache"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["update", "web", "db", "cache"]);
     }
 
     #[test]
     fn test_update_add_container() {
         let cmd = UpdateCommand::new("web").container("db").container("cache");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["web", "db", "cache"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["update", "web", "db", "cache"]);
     }
 
     #[test]
@@ -558,10 +541,11 @@ mod tests {
             .memory("512m")
             .memory_reservation("256m")
             .memory_swap("1g");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "update",
                 "--memory",
                 "512m",
                 "--memory-reservation",
@@ -582,10 +566,11 @@ mod tests {
             .cpus("1.5")
             .cpuset_cpus("0,1")
             .cpuset_mems("0");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "update",
                 "--cpu-shares",
                 "512",
                 "--cpu-period",
@@ -612,10 +597,11 @@ mod tests {
             .kernel_memory("128m")
             .restart("unless-stopped")
             .pids_limit(100);
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "update",
                 "--memory",
                 "1g",
                 "--cpu-shares",
@@ -648,11 +634,5 @@ mod tests {
         assert!(result.success());
         assert_eq!(result.containers(), &["test-container"]);
         assert_eq!(result.container_count(), 1);
-    }
-
-    #[test]
-    fn test_command_name() {
-        let cmd = UpdateCommand::new("container");
-        assert_eq!(cmd.command_name(), "update");
     }
 }

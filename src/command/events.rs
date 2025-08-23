@@ -2,11 +2,10 @@
 //!
 //! This module provides the `docker events` command for getting real-time events from the Docker daemon.
 
-use super::{CommandExecutor, CommandOutput, DockerCommand};
+use super::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
-use std::ffi::OsStr;
 
 /// Docker events command builder
 ///
@@ -43,7 +42,7 @@ pub struct EventsCommand {
     /// Show events until timestamp  
     until: Option<String>,
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl EventsCommand {
@@ -193,15 +192,11 @@ impl Default for EventsCommand {
 }
 
 #[async_trait]
-impl DockerCommand for EventsCommand {
+impl DockerCommandV2 for EventsCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "events"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["events".to_string()];
 
         for (key, value) in &self.filters {
             args.push("--filter".to_string());
@@ -223,37 +218,25 @@ impl DockerCommand for EventsCommand {
             args.push(until.clone());
         }
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command(self.command_name(), self.build_args())
+            .execute_command(&command_name, command_args)
             .await
     }
 
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 }
 
@@ -329,8 +312,8 @@ mod tests {
     #[test]
     fn test_events_basic() {
         let cmd = EventsCommand::new();
-        let args = cmd.build_args();
-        assert!(args.is_empty());
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["events"]);
     }
 
     #[test]
@@ -338,18 +321,24 @@ mod tests {
         let cmd = EventsCommand::new()
             .filter("type", "container")
             .filter("event", "start");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
-            vec!["--filter", "type=container", "--filter", "event=start"]
+            vec![
+                "events",
+                "--filter",
+                "type=container",
+                "--filter",
+                "event=start"
+            ]
         );
     }
 
     #[test]
     fn test_events_with_format() {
         let cmd = EventsCommand::new().format("json");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["--format", "json"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["events", "--format", "json"]);
     }
 
     #[test]
@@ -357,10 +346,11 @@ mod tests {
         let cmd = EventsCommand::new()
             .since("2023-01-01T00:00:00")
             .until("2023-12-31T23:59:59");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "events",
                 "--since",
                 "2023-01-01T00:00:00",
                 "--until",
@@ -377,10 +367,11 @@ mod tests {
             .format("json")
             .since("1h")
             .until("now");
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
         assert_eq!(
             args,
             vec![
+                "events",
                 "--filter",
                 "type=container",
                 "--filter",

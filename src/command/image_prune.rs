@@ -1,6 +1,6 @@
 //! Docker image prune command implementation.
 
-use crate::command::{CommandExecutor, DockerCommand};
+use crate::command::{CommandExecutor, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::Deserialize;
@@ -46,7 +46,7 @@ pub struct ImagePruneCommand {
     filter: HashMap<String, String>,
 
     /// Command executor
-    executor: CommandExecutor,
+    pub executor: CommandExecutor,
 }
 
 impl ImagePruneCommand {
@@ -127,15 +127,11 @@ impl Default for ImagePruneCommand {
 }
 
 #[async_trait]
-impl DockerCommand for ImagePruneCommand {
+impl DockerCommandV2 for ImagePruneCommand {
     type Output = ImagePruneResult;
 
-    fn command_name(&self) -> &'static str {
-        "image"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = vec!["prune".to_string()];
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["image".to_string(), "prune".to_string()];
 
         if self.all {
             args.push("--all".to_string());
@@ -154,34 +150,25 @@ impl DockerCommand for ImagePruneCommand {
             }
         }
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
-    fn arg<S: AsRef<std::ffi::OsStr>>(&mut self, _arg: S) -> &mut Self {
-        self
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn args<I, S>(&mut self, _args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<std::ffi::OsStr>,
-    {
-        self
-    }
-
-    fn flag(&mut self, _flag: &str) -> &mut Self {
-        self
-    }
-
-    fn option(&mut self, _key: &str, _value: &str) -> &mut Self {
-        self
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        let args = self.build_args();
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         let output = self
             .executor
-            .execute_command(self.command_name(), args)
+            .execute_command(&command_name, command_args)
             .await?;
         let stdout = &output.stdout;
 
@@ -278,7 +265,8 @@ mod tests {
             .until("7d")
             .with_label("deprecated", None);
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
+        assert_eq!(args[0], "image");
         assert!(args.contains(&"prune".to_string()));
         assert!(args.contains(&"--all".to_string()));
         assert!(args.contains(&"--force".to_string()));
@@ -289,7 +277,8 @@ mod tests {
     fn test_dangling_only() {
         let cmd = ImagePruneCommand::new().dangling_only().force();
 
-        let args = cmd.build_args();
+        let args = cmd.build_command_args();
+        assert_eq!(args[0], "image");
         assert!(args.contains(&"prune".to_string()));
         assert!(args.contains(&"--force".to_string()));
         assert!(args.contains(&"dangling=true".to_string()));

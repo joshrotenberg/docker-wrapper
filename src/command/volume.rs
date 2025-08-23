@@ -2,13 +2,12 @@
 //!
 //! This module provides commands for managing Docker volumes.
 
-use crate::command::{CommandExecutor, CommandOutput, DockerCommand};
+use crate::command::{CommandExecutor, CommandOutput, DockerCommandV2};
 use crate::error::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::ffi::OsStr;
 
 /// Docker volume create command
 #[derive(Debug, Clone)]
@@ -17,7 +16,8 @@ pub struct VolumeCreateCommand {
     driver: Option<String>,
     driver_opts: HashMap<String, String>,
     labels: HashMap<String, String>,
-    executor: CommandExecutor,
+    /// Command executor
+    pub executor: CommandExecutor,
 }
 
 impl VolumeCreateCommand {
@@ -78,15 +78,11 @@ impl Default for VolumeCreateCommand {
 }
 
 #[async_trait]
-impl DockerCommand for VolumeCreateCommand {
+impl DockerCommandV2 for VolumeCreateCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "volume create"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = vec!["create".to_string()];
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["volume".to_string(), "create".to_string()];
 
         if let Some(ref driver) = self.driver {
             args.push("--driver".to_string());
@@ -107,37 +103,25 @@ impl DockerCommand for VolumeCreateCommand {
             args.push(name.clone());
         }
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command("volume", self.build_args())
+            .execute_command(&command_name, command_args)
             .await
     }
 
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 }
 
@@ -165,7 +149,8 @@ pub struct VolumeLsCommand {
     filters: HashMap<String, String>,
     format: Option<String>,
     quiet: bool,
-    executor: CommandExecutor,
+    /// Command executor
+    pub executor: CommandExecutor,
 }
 
 impl VolumeLsCommand {
@@ -218,15 +203,11 @@ impl Default for VolumeLsCommand {
 }
 
 #[async_trait]
-impl DockerCommand for VolumeLsCommand {
+impl DockerCommandV2 for VolumeLsCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "volume ls"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = vec!["ls".to_string()];
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["volume".to_string(), "ls".to_string()];
 
         for (key, value) in &self.filters {
             args.push("--filter".to_string());
@@ -242,37 +223,25 @@ impl DockerCommand for VolumeLsCommand {
             args.push("--quiet".to_string());
         }
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command("volume", self.build_args())
+            .execute_command(&command_name, command_args)
             .await
     }
 
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 }
 
@@ -326,7 +295,8 @@ impl From<CommandOutput> for VolumeLsOutput {
 pub struct VolumeRmCommand {
     volumes: Vec<String>,
     force: bool,
-    executor: CommandExecutor,
+    /// Command executor
+    pub executor: CommandExecutor,
 }
 
 impl VolumeRmCommand {
@@ -365,15 +335,11 @@ impl VolumeRmCommand {
 }
 
 #[async_trait]
-impl DockerCommand for VolumeRmCommand {
+impl DockerCommandV2 for VolumeRmCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "volume rm"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = vec!["rm".to_string()];
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["volume".to_string(), "rm".to_string()];
 
         if self.force {
             args.push("--force".to_string());
@@ -383,37 +349,25 @@ impl DockerCommand for VolumeRmCommand {
             args.push(volume.clone());
         }
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command("volume", self.build_args())
+            .execute_command(&command_name, command_args)
             .await
     }
 
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 }
 
@@ -447,7 +401,8 @@ impl From<CommandOutput> for VolumeRmResult {
 pub struct VolumeInspectCommand {
     volumes: Vec<String>,
     format: Option<String>,
-    executor: CommandExecutor,
+    /// Command executor
+    pub executor: CommandExecutor,
 }
 
 impl VolumeInspectCommand {
@@ -479,15 +434,11 @@ impl VolumeInspectCommand {
 }
 
 #[async_trait]
-impl DockerCommand for VolumeInspectCommand {
+impl DockerCommandV2 for VolumeInspectCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "volume inspect"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = vec!["inspect".to_string()];
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["volume".to_string(), "inspect".to_string()];
 
         if let Some(ref format) = self.format {
             args.push("--format".to_string());
@@ -498,37 +449,25 @@ impl DockerCommand for VolumeInspectCommand {
             args.push(volume.clone());
         }
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command("volume", self.build_args())
+            .execute_command(&command_name, command_args)
             .await
     }
 
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 }
 
@@ -557,7 +496,8 @@ pub struct VolumePruneCommand {
     all: bool,
     filters: HashMap<String, String>,
     force: bool,
-    executor: CommandExecutor,
+    /// Command executor
+    pub executor: CommandExecutor,
 }
 
 impl VolumePruneCommand {
@@ -610,15 +550,11 @@ impl Default for VolumePruneCommand {
 }
 
 #[async_trait]
-impl DockerCommand for VolumePruneCommand {
+impl DockerCommandV2 for VolumePruneCommand {
     type Output = CommandOutput;
 
-    fn command_name(&self) -> &'static str {
-        "volume prune"
-    }
-
-    fn build_args(&self) -> Vec<String> {
-        let mut args = vec!["prune".to_string()];
+    fn build_command_args(&self) -> Vec<String> {
+        let mut args = vec!["volume".to_string(), "prune".to_string()];
 
         if self.all {
             args.push("--all".to_string());
@@ -633,37 +569,25 @@ impl DockerCommand for VolumePruneCommand {
             args.push("--force".to_string());
         }
 
+        args.extend(self.executor.raw_args.clone());
         args
     }
 
     async fn execute(&self) -> Result<Self::Output> {
+        let args = self.build_command_args();
+        let command_name = args[0].clone();
+        let command_args = args[1..].to_vec();
         self.executor
-            .execute_command("volume", self.build_args())
+            .execute_command(&command_name, command_args)
             .await
     }
 
-    fn arg<S: AsRef<OsStr>>(&mut self, arg: S) -> &mut Self {
-        self.executor.add_arg(arg);
-        self
+    fn get_executor(&self) -> &CommandExecutor {
+        &self.executor
     }
 
-    fn args<I, S>(&mut self, args: I) -> &mut Self
-    where
-        I: IntoIterator<Item = S>,
-        S: AsRef<OsStr>,
-    {
-        self.executor.add_args(args);
-        self
-    }
-
-    fn flag(&mut self, flag: &str) -> &mut Self {
-        self.executor.add_flag(flag);
-        self
-    }
-
-    fn option(&mut self, key: &str, value: &str) -> &mut Self {
-        self.executor.add_option(key, value);
-        self
+    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+        &mut self.executor
     }
 }
 
@@ -696,35 +620,35 @@ mod tests {
     #[test]
     fn test_volume_create() {
         let cmd = VolumeCreateCommand::new().name("my-volume");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["create", "my-volume"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["volume", "create", "my-volume"]);
     }
 
     #[test]
     fn test_volume_ls() {
         let cmd = VolumeLsCommand::new();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["ls"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["volume", "ls"]);
     }
 
     #[test]
     fn test_volume_rm() {
         let cmd = VolumeRmCommand::new("my-volume");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["rm", "my-volume"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["volume", "rm", "my-volume"]);
     }
 
     #[test]
     fn test_volume_inspect() {
         let cmd = VolumeInspectCommand::new("my-volume");
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["inspect", "my-volume"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["volume", "inspect", "my-volume"]);
     }
 
     #[test]
     fn test_volume_prune() {
         let cmd = VolumePruneCommand::new().force();
-        let args = cmd.build_args();
-        assert_eq!(args, vec!["prune", "--force"]);
+        let args = cmd.build_command_args();
+        assert_eq!(args, vec!["volume", "prune", "--force"]);
     }
 }
