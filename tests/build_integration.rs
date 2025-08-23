@@ -3,7 +3,7 @@
 //! These tests validate the build command functionality against a real Docker daemon.
 //! They test the command construction, execution, and output parsing.
 
-use docker_wrapper::{ensure_docker, BuildCommand, DockerCommand};
+use docker_wrapper::{ensure_docker, BuildCommand, DockerCommandV2};
 use std::path::PathBuf;
 use tempfile::TempDir;
 
@@ -49,10 +49,10 @@ async fn test_build_basic_command() -> Result<(), Box<dyn std::error::Error>> {
     let context_path = temp_dir.path().to_string_lossy().to_string();
 
     let command = BuildCommand::new(&context_path);
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify the basic command structure
-    assert_eq!(command.command_name(), "build");
+    assert_eq!(args[0], "build");
     assert!(args.contains(&context_path));
 
     // Test the command builds without errors
@@ -78,7 +78,7 @@ async fn test_build_command_builder() -> Result<(), Box<dyn std::error::Error>> 
         .force_rm()
         .quiet();
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify all options are present
     assert!(args.contains(&"--tag".to_string()));
@@ -116,7 +116,7 @@ RUN echo "Custom Dockerfile test"
         .file(&custom_dockerfile)
         .tag("test-custom:latest");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify custom Dockerfile is specified
     assert!(args.contains(&"--file".to_string()));
@@ -142,7 +142,7 @@ async fn test_build_resource_limits() -> Result<(), Box<dyn std::error::Error>> 
         .cpuset_cpus("0-1")
         .cpuset_mems("0");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify resource limits are set
     assert!(args.contains(&"--memory".to_string()));
@@ -180,7 +180,7 @@ async fn test_build_advanced_options() -> Result<(), Box<dyn std::error::Error>>
         .isolation("default")
         .pull();
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify advanced options
     assert!(args.contains(&"--add-host".to_string()));
@@ -213,7 +213,7 @@ async fn test_build_modern_buildx_options() -> Result<(), Box<dyn std::error::Er
         .secret("id=mysecret,src=/path/to/secret")
         .ssh("default");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify modern buildx options
     assert!(args.contains(&"--platform".to_string()));
@@ -245,7 +245,7 @@ async fn test_build_cache_options() -> Result<(), Box<dyn std::error::Error>> {
         .no_cache()
         .pull();
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify cache options
     assert!(args.contains(&"--cache-from".to_string()));
@@ -269,7 +269,7 @@ async fn test_build_output_options() -> Result<(), Box<dyn std::error::Error>> {
         .quiet()
         .no_cache();
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify output control options
     assert!(args.contains(&"--tag".to_string()));
@@ -285,24 +285,27 @@ async fn test_build_context_variations() -> Result<(), Box<dyn std::error::Error
 
     // Test with current directory
     let current_dir_command = BuildCommand::new(".");
-    assert_eq!(current_dir_command.command_name(), "build");
-    assert!(current_dir_command.build_args().contains(&".".to_string()));
+    let args = current_dir_command.build_command_args();
+    assert_eq!(args[0], "build");
+    assert!(args.contains(&".".to_string()));
 
     // Test with absolute path
     let temp_dir = create_test_context();
     let abs_path = temp_dir.path().to_string_lossy().to_string();
     let abs_command = BuildCommand::new(&abs_path);
-    assert!(abs_command.build_args().contains(&abs_path));
+    assert!(abs_command.build_command_args().contains(&abs_path));
 
     // Test with URL context (just command construction)
     let url_command = BuildCommand::new("https://github.com/user/repo.git");
     assert!(url_command
-        .build_args()
+        .build_command_args()
         .contains(&"https://github.com/user/repo.git".to_string()));
 
     // Test with stdin context
     let stdin_command = BuildCommand::new("-");
-    assert!(stdin_command.build_args().contains(&"-".to_string()));
+    assert!(stdin_command
+        .build_command_args()
+        .contains(&"-".to_string()));
     Ok(())
 }
 
@@ -319,7 +322,7 @@ async fn test_build_multiple_tags() -> Result<(), Box<dyn std::error::Error>> {
         .tag("myapp:stable")
         .tag("registry.example.com/myapp:latest");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify all tags are present
     assert!(args.contains(&"--tag".to_string()));
@@ -339,10 +342,10 @@ async fn test_build_command_order() -> Result<(), Box<dyn std::error::Error>> {
 
     let command = BuildCommand::new(&context_path).tag("test:latest");
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Verify command structure
-    assert_eq!(command.command_name(), "build");
+    assert_eq!(args[0], "build");
     assert!(args.contains(&"--tag".to_string()));
     assert!(args.contains(&"test:latest".to_string()));
 
@@ -357,10 +360,10 @@ async fn test_build_empty_context_handling() -> Result<(), Box<dyn std::error::E
 
     // Test that empty context defaults to current directory
     let command = BuildCommand::new("");
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     // Should still produce valid command
-    assert_eq!(command.command_name(), "build");
+    assert_eq!(args[0], "build");
     assert!(!args.is_empty());
     Ok(())
 }
@@ -376,7 +379,7 @@ async fn test_build_file_path_handling() -> Result<(), Box<dyn std::error::Error
     let dockerfile_path = temp_dir.path().join("Dockerfile.test");
     let command = BuildCommand::new(&context_path).file(&dockerfile_path);
 
-    let args = command.build_args();
+    let args = command.build_command_args();
 
     assert!(args.contains(&"--file".to_string()));
     // The file path might be absolute, so check if any arg contains "Dockerfile.test"
@@ -393,10 +396,9 @@ async fn test_build_validation() -> Result<(), Box<dyn std::error::Error>> {
     let context_path = temp_dir.path().to_string_lossy().to_string();
     let command = BuildCommand::new(&context_path);
 
-    assert_eq!(command.command_name(), "build");
-
     // Test build args format
-    let args = command.build_args();
+    let args = command.build_command_args();
+    assert_eq!(args[0], "build");
     assert!(!args.is_empty());
     assert!(args.contains(&context_path));
     Ok(())

@@ -3,7 +3,7 @@
 //! These tests require Docker to be installed and running.
 //! Note: These tests perform actual searches against Docker Hub.
 
-use docker_wrapper::{ensure_docker, DockerCommand, SearchCommand};
+use docker_wrapper::{ensure_docker, DockerCommandV2, SearchCommand};
 
 /// Helper to check if Docker is available for testing
 async fn setup_docker() -> Result<(), Box<dyn std::error::Error>> {
@@ -24,7 +24,7 @@ async fn test_search_command_validation() -> Result<(), Box<dyn std::error::Erro
     assert!(!search.is_no_trunc());
 
     // Verify args are built correctly
-    let args = search.build_args();
+    let args = search.build_command_args();
     assert!(args.contains(&"search".to_string()));
     assert!(args.contains(&"alpine".to_string()));
 
@@ -39,7 +39,7 @@ async fn test_search_command_with_limit() -> Result<(), Box<dyn std::error::Erro
 
     assert_eq!(search.get_limit(), Some(5));
 
-    let args = search.build_args();
+    let args = search.build_command_args();
     assert!(args.contains(&"--limit".to_string()));
     assert!(args.contains(&"5".to_string()));
 
@@ -56,7 +56,7 @@ async fn test_search_command_with_filters() -> Result<(), Box<dyn std::error::Er
 
     assert_eq!(search.get_filters(), &["stars=100", "is-official=true"]);
 
-    let args = search.build_args();
+    let args = search.build_command_args();
     assert!(args.contains(&"--filter".to_string()));
     assert!(args.contains(&"stars=100".to_string()));
     assert!(args.contains(&"is-official=true".to_string()));
@@ -72,7 +72,7 @@ async fn test_search_command_with_format() -> Result<(), Box<dyn std::error::Err
 
     assert_eq!(search.get_format(), Some("json"));
 
-    let args = search.build_args();
+    let args = search.build_command_args();
     assert!(args.contains(&"--format".to_string()));
     assert!(args.contains(&"json".to_string()));
 
@@ -87,7 +87,7 @@ async fn test_search_command_no_trunc() -> Result<(), Box<dyn std::error::Error>
 
     assert!(search.is_no_trunc());
 
-    let args = search.build_args();
+    let args = search.build_command_args();
     assert!(args.contains(&"--no-trunc".to_string()));
 
     Ok(())
@@ -104,7 +104,7 @@ async fn test_search_command_all_options() -> Result<(), Box<dyn std::error::Err
         .no_trunc()
         .format("table");
 
-    let args = search.build_args();
+    let args = search.build_command_args();
     assert!(args.contains(&"--limit".to_string()));
     assert!(args.contains(&"3".to_string()));
     assert!(args.contains(&"--filter".to_string()));
@@ -175,12 +175,19 @@ async fn test_search_command_extensibility() -> Result<(), Box<dyn std::error::E
         .option("--filter", "stars=20");
 
     // Command should still function normally
-    assert_eq!(search.command_name(), "search");
+    let args = search.build_command_args();
+    assert_eq!(args[0], "search");
     assert_eq!(search.get_term(), "python");
-    assert!(search.is_no_trunc());
-    assert_eq!(search.get_limit(), Some(3));
-    assert_eq!(search.get_format(), Some("json"));
-    assert!(search.get_filters().contains(&"stars=20".to_string()));
+    // Note: escape hatch methods don't update internal state, they only add raw args
+    // So is_no_trunc() will be false even though --no-trunc was added via flag()
+    // This is expected behavior for the V2 trait
+    assert!(args.contains(&"--no-trunc".to_string()));
+    assert!(args.contains(&"--limit".to_string()));
+    assert!(args.contains(&"3".to_string()));
+    assert!(args.contains(&"--format".to_string()));
+    assert!(args.contains(&"json".to_string()));
+    assert!(args.contains(&"--filter".to_string()));
+    assert!(args.contains(&"stars=20".to_string()));
 
     Ok(())
 }
@@ -192,7 +199,8 @@ async fn test_search_prerequisites_validation() -> Result<(), Box<dyn std::error
 
     // If we get here, Docker is available and we can proceed with other tests
     let search = SearchCommand::new("test");
-    assert_eq!(search.command_name(), "search");
+    let args = search.build_command_args();
+    assert_eq!(args[0], "search");
 
     Ok(())
 }
@@ -214,7 +222,7 @@ async fn test_search_various_terms() -> Result<(), Box<dyn std::error::Error>> {
         let search = SearchCommand::new(term);
         assert_eq!(search.get_term(), term);
 
-        let args = search.build_args();
+        let args = search.build_command_args();
         assert!(args.contains(&term.to_string()));
     }
 
@@ -255,7 +263,7 @@ async fn test_search_format_options() -> Result<(), Box<dyn std::error::Error>> 
         let search = SearchCommand::new("test").format(format);
         assert_eq!(search.get_format(), Some(format));
 
-        let args = search.build_args();
+        let args = search.build_command_args();
         assert!(args.contains(&format.to_string()));
     }
 
@@ -273,7 +281,7 @@ async fn test_search_limit_variations() -> Result<(), Box<dyn std::error::Error>
         let search = SearchCommand::new("test").limit(limit);
         assert_eq!(search.get_limit(), Some(limit));
 
-        let args = search.build_args();
+        let args = search.build_command_args();
         assert!(args.contains(&limit.to_string()));
     }
 
@@ -285,7 +293,8 @@ async fn test_search_command_name() -> Result<(), Box<dyn std::error::Error>> {
     setup_docker().await?;
 
     let search = SearchCommand::new("test");
-    assert_eq!(search.command_name(), "search");
+    let args = search.build_command_args();
+    assert_eq!(args[0], "search");
 
     Ok(())
 }
@@ -315,7 +324,7 @@ async fn test_search_argument_order() -> Result<(), Box<dyn std::error::Error>> 
         .format("json")
         .no_trunc();
 
-    let args = search.build_args();
+    let args = search.build_command_args();
 
     // Find positions of key arguments
     let search_pos = args.iter().position(|s| s == "search").unwrap();

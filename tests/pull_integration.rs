@@ -4,7 +4,7 @@
 //! and gracefully handle cases where Docker is not available.
 
 use docker_wrapper::prerequisites::ensure_docker;
-use docker_wrapper::{DockerCommand, PullCommand};
+use docker_wrapper::{DockerCommandV2, PullCommand};
 
 /// Helper to check if Docker is available, skip test if not
 async fn ensure_docker_or_skip() {
@@ -53,7 +53,7 @@ async fn test_pull_command_builder() {
         .quiet()
         .disable_content_trust();
 
-    let args = pull_cmd.build_args();
+    let args = pull_cmd.build_command_args();
 
     // Verify critical components are present
     assert!(args.contains(&"--all-tags".to_string()));
@@ -301,7 +301,7 @@ async fn test_pull_command_validation() {
 
     for (image, expected_end) in test_cases {
         let pull_cmd = PullCommand::new(image);
-        let args = pull_cmd.build_args();
+        let args = pull_cmd.build_command_args();
 
         // Image should be at the end
         assert_eq!(args, expected_end);

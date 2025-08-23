@@ -3,7 +3,7 @@
 //! These tests validate the docker exec command implementation
 //! with real Docker commands and containers.
 
-use docker_wrapper::command::DockerCommandV2;
+use docker_wrapper::DockerCommandV2;
 use docker_wrapper::prerequisites::ensure_docker;
 use docker_wrapper::{ExecCommand, RunCommand};
 use std::time::Duration;
@@ -220,7 +220,7 @@ async fn test_exec_command_builder() {
     .workdir("/app")
     .privileged();
 
-    let args = complex_exec.build_args();
+    let args = complex_exec.build_command_args();
 
     // Verify critical components are present (build_args doesn't include "exec" command itself)
     assert!(args.contains(&"--interactive".to_string()));
@@ -262,7 +262,7 @@ async fn test_exec_it_convenience() {
     // Test the it() convenience method
     let exec_cmd = ExecCommand::new("test-container", vec!["bash".to_string()]).it();
 
-    let args = exec_cmd.build_args();
+    let args = exec_cmd.build_command_args();
 
     assert!(args.contains(&"--interactive".to_string()));
     assert!(args.contains(&"--tty".to_string()));
@@ -277,7 +277,7 @@ async fn test_exec_multiple_env_files() {
         .env_file("/path/to/env1.file")
         .env_file("/path/to/env2.file");
 
-    let args = exec_cmd.build_args();
+    let args = exec_cmd.build_command_args();
 
     // Count occurrences of --env-file
     let env_file_count = args.iter().filter(|&arg| arg == "--env-file").count();

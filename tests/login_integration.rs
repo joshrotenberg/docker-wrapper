@@ -3,7 +3,7 @@
 //! These tests require Docker to be installed and running.
 //! Note: These tests do NOT perform actual authentication to avoid requiring credentials.
 
-use docker_wrapper::{ensure_docker, DockerCommand, LoginCommand};
+use docker_wrapper::{ensure_docker, DockerCommandV2, LoginCommand};
 
 /// Helper to check if Docker is available for testing
 async fn setup_docker() -> Result<(), Box<dyn std::error::Error>> {
@@ -23,8 +23,8 @@ async fn test_login_command_validation() -> Result<(), Box<dyn std::error::Error
     assert_eq!(login.get_registry(), None);
 
     // Verify args are built correctly
-    let args = login.build_args();
-    assert!(args.contains(&"login".to_string()));
+    let args = login.build_command_args();
+    assert_eq!(args[0], "login");
     assert!(args.contains(&"--username".to_string()));
     assert!(args.contains(&"testuser".to_string()));
     assert!(args.contains(&"--password".to_string()));
@@ -41,7 +41,7 @@ async fn test_login_command_with_registry() -> Result<(), Box<dyn std::error::Er
 
     assert_eq!(login.get_registry(), Some("my-registry.com"));
 
-    let args = login.build_args();
+    let args = login.build_command_args();
     assert!(args.contains(&"my-registry.com".to_string()));
 
     Ok(())
@@ -55,7 +55,7 @@ async fn test_login_command_password_stdin() -> Result<(), Box<dyn std::error::E
 
     assert!(login.is_password_stdin());
 
-    let args = login.build_args();
+    let args = login.build_command_args();
     assert!(args.contains(&"--password-stdin".to_string()));
     assert!(!args.contains(&"--password".to_string()));
 
@@ -71,7 +71,7 @@ async fn test_login_command_docker_hub_default() -> Result<(), Box<dyn std::erro
     // No registry specified should default to Docker Hub
     assert_eq!(login.get_registry(), None);
 
-    let args = login.build_args();
+    let args = login.build_command_args();
     // Should not contain any registry URL when using Docker Hub
     assert!(!args.iter().any(|arg| arg.contains("docker.io")));
 
@@ -94,7 +94,7 @@ async fn test_login_command_multiple_registries() -> Result<(), Box<dyn std::err
         let login = LoginCommand::new("user", "pass").registry(registry);
         assert_eq!(login.get_registry(), Some(registry));
 
-        let args = login.build_args();
+        let args = login.build_command_args();
         assert!(args.contains(&registry.to_string()));
     }
 
@@ -159,7 +159,8 @@ async fn test_login_command_extensibility() -> Result<(), Box<dyn std::error::Er
         .option("--timeout", "30");
 
     // Command should still function normally
-    assert_eq!(login.command_name(), "login");
+    let args = login.build_command_args();
+    assert_eq!(args[0], "login");
     assert_eq!(login.get_username(), "user");
 
     Ok(())
@@ -172,7 +173,8 @@ async fn test_login_prerequisites_validation() -> Result<(), Box<dyn std::error:
 
     // If we get here, Docker is available and we can proceed with other tests
     let login = LoginCommand::new("test", "test");
-    assert_eq!(login.command_name(), "login");
+    let args = login.build_command_args();
+    assert_eq!(args[0], "login");
 
     Ok(())
 }
@@ -193,7 +195,7 @@ async fn test_login_command_security_considerations() -> Result<(), Box<dyn std:
     let login_stdin = LoginCommand::new("user", "").password_stdin();
     assert!(login_stdin.is_password_stdin());
 
-    let args = login_stdin.build_args();
+    let args = login_stdin.build_command_args();
     assert!(args.contains(&"--password-stdin".to_string()));
 
     Ok(())
@@ -225,7 +227,8 @@ async fn test_login_command_name() -> Result<(), Box<dyn std::error::Error>> {
     setup_docker().await?;
 
     let login = LoginCommand::new("user", "pass");
-    assert_eq!(login.command_name(), "login");
+    let args = login.build_command_args();
+    assert_eq!(args[0], "login");
 
     Ok(())
 }
@@ -236,7 +239,7 @@ async fn test_login_command_argument_order() -> Result<(), Box<dyn std::error::E
 
     // Test that arguments are in the correct order for Docker CLI
     let login = LoginCommand::new("testuser", "testpass").registry("example.com");
-    let args = login.build_args();
+    let args = login.build_command_args();
 
     // Find positions of key arguments
     let login_pos = args.iter().position(|s| s == "login").unwrap();
@@ -267,7 +270,7 @@ async fn test_login_various_registry_formats() -> Result<(), Box<dyn std::error:
 
     for (registry, _description) in test_cases {
         let login = LoginCommand::new("user", "pass").registry(registry);
-        let args = login.build_args();
+        let args = login.build_command_args();
         assert!(args.contains(&registry.to_string()));
     }
 

@@ -4,7 +4,7 @@
 //! and gracefully handle cases where Docker is not available or registry access is limited.
 
 use docker_wrapper::prerequisites::ensure_docker;
-use docker_wrapper::{DockerCommand, PushCommand};
+use docker_wrapper::{DockerCommandV2, PushCommand};
 
 /// Helper to check if Docker is available, skip test if not
 async fn ensure_docker_or_skip() {
@@ -66,7 +66,7 @@ async fn test_push_command_builder() {
         .quiet()
         .disable_content_trust();
 
-    let args = push_cmd.build_args();
+    let args = push_cmd.build_command_args();
 
     // Verify critical components are present
     assert!(args.contains(&"--all-tags".to_string()));
@@ -239,7 +239,7 @@ async fn test_push_registry_formats() {
 
     for (image, expected_end) in test_cases {
         let push_cmd = PushCommand::new(image);
-        let args = push_cmd.build_args();
+        let args = push_cmd.build_command_args();
 
         // Image should be at the end
         assert_eq!(args, expected_end);
@@ -370,7 +370,7 @@ async fn test_push_command_validation() {
             push_cmd = push_cmd.quiet();
         }
 
-        let args = push_cmd.build_args();
+        let args = push_cmd.build_command_args();
 
         // Image should be at the end
         assert_eq!(args.last(), Some(&image.to_string()));

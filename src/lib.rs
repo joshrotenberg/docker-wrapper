@@ -39,7 +39,7 @@
 //! ### Running a Container
 //!
 //! ```rust,no_run
-//! use docker_wrapper::{DockerCommand, RunCommand};
+//! use docker_wrapper::{DockerCommandV2, RunCommand};
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -59,7 +59,7 @@
 //! ### Building an Image
 //!
 //! ```rust,no_run
-//! use docker_wrapper::{DockerCommand, BuildCommand};
+//! use docker_wrapper::{DockerCommandV2, BuildCommand};
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -80,7 +80,7 @@
 //! ### Listing Containers
 //!
 //! ```rust,no_run
-//! use docker_wrapper::{DockerCommand, PsCommand};
+//! use docker_wrapper::{DockerCommandV2, PsCommand};
 //!
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -439,8 +439,8 @@ pub use command::{
         VolumePruneResult, VolumeRmCommand, VolumeRmResult,
     },
     wait::{WaitCommand, WaitResult},
-    CommandExecutor, CommandOutput, DockerCommand, EnvironmentBuilder, PortBuilder, PortMapping,
-    Protocol,
+    CommandExecutor, CommandOutput, DockerCommand, DockerCommandV2, EnvironmentBuilder,
+    PortBuilder, PortMapping, Protocol,
 };
 pub use debug::{BackoffStrategy, DebugConfig, DebugExecutor, DryRunPreview, RetryPolicy};
 pub use error::{Error, Result};
