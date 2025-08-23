@@ -68,6 +68,8 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@439cf607258077187679211f12aa6f19af4a0af7
+        with:
+          toolchain: stable
 
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
@@ -104,6 +106,8 @@ jobs:
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@439cf607258077187679211f12aa6f19af4a0af7
+        with:
+          toolchain: stable
 
       - name: Build documentation
         run: |
