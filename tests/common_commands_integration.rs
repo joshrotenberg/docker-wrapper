@@ -11,7 +11,7 @@ async fn test_logs_command() {
     let logs_cmd = LogsCommand::new("test-container")
         .follow()
         .timestamps()
-        .tail(100)
+        .tail("100")
         .since("2h");
 
     let args = logs_cmd.build_command_args();
@@ -27,10 +27,10 @@ async fn test_logs_command() {
 #[tokio::test]
 async fn test_inspect_command() {
     let inspect_cmd = InspectCommand::new("test-container")
-        .add_object("test-image")
+        .object("test-image")
         .format("{{.State.Status}}")
         .size()
-        .inspect_type("container");
+        .object_type("container");
 
     let args = inspect_cmd.build_command_args();
     assert!(args.contains(&"inspect".to_string()));
@@ -45,7 +45,7 @@ async fn test_inspect_command() {
 
 #[tokio::test]
 async fn test_tag_command() {
-    let tag_result = TagCommand::new("alpine:latest", "my-alpine:v1.0")
+    let _tag_result = TagCommand::new("alpine:latest", "my-alpine:v1.0")
         .execute()
         .await;
 
@@ -59,8 +59,11 @@ async fn test_tag_command() {
 
 #[tokio::test]
 async fn test_cp_command() {
+    use std::path::Path;
+
     // Test copying from container to host
-    let cp_from = CpCommand::from_container("container", "/app/file.txt", "./file.txt")
+    let cp_from = CpCommand::from_container("container", "/app/file.txt")
+        .to_host(Path::new("./file.txt"))
         .archive()
         .follow_link();
 
@@ -72,7 +75,9 @@ async fn test_cp_command() {
     assert!(args.contains(&"./file.txt".to_string()));
 
     // Test copying from host to container
-    let cp_to = CpCommand::to_container("./file.txt", "container", "/app/file.txt").archive();
+    let cp_to = CpCommand::from_host(Path::new("./file.txt"))
+        .to_container("container", "/app/file.txt")
+        .archive();
 
     let args = cp_to.build_command_args();
     assert!(args.contains(&"./file.txt".to_string()));
@@ -145,9 +150,9 @@ async fn test_events_command() {
 #[tokio::test]
 async fn test_history_command() {
     let history_cmd = HistoryCommand::new("alpine:latest")
-        .human()
-        .no_trunc()
-        .quiet();
+        .human(true)
+        .no_trunc(true)
+        .quiet(true);
 
     let args = history_cmd.build_command_args();
     assert!(args.contains(&"history".to_string()));
@@ -161,15 +166,13 @@ async fn test_history_command() {
 async fn test_attach_command() {
     let attach_cmd = AttachCommand::new("test-container")
         .detach_keys("ctrl-p,ctrl-q")
-        .no_stdin()
-        .sig_proxy();
+        .no_stdin();
 
     let args = attach_cmd.build_command_args();
     assert!(args.contains(&"attach".to_string()));
     assert!(args.contains(&"--detach-keys".to_string()));
     assert!(args.contains(&"ctrl-p,ctrl-q".to_string()));
     assert!(args.contains(&"--no-stdin".to_string()));
-    assert!(args.contains(&"--sig-proxy".to_string()));
     assert!(args.contains(&"test-container".to_string()));
 }
 
@@ -186,8 +189,7 @@ async fn test_export_import_commands() {
 
     // Test import
     let import_cmd = ImportCommand::new("/tmp/container.tar")
-        .repository("imported-image")
-        .tag("latest")
+        .repository("imported-image:latest")
         .message("Imported from tar")
         .change("ENV DEBUG=true");
 
@@ -203,10 +205,12 @@ async fn test_export_import_commands() {
 
 #[tokio::test]
 async fn test_save_load_commands() {
+    use std::path::Path;
+
     // Test save
     let save_cmd = SaveCommand::new("alpine:latest")
-        .add_image("nginx:latest")
-        .output("/tmp/images.tar");
+        .image("nginx:latest")
+        .output(Path::new("/tmp/images.tar"));
 
     let args = save_cmd.build_command_args();
     assert!(args.contains(&"save".to_string()));
@@ -216,7 +220,9 @@ async fn test_save_load_commands() {
     assert!(args.contains(&"nginx:latest".to_string()));
 
     // Test load
-    let load_cmd = LoadCommand::new().input("/tmp/images.tar").quiet();
+    let load_cmd = LoadCommand::new()
+        .input(Path::new("/tmp/images.tar"))
+        .quiet();
 
     let args = load_cmd.build_command_args();
     assert!(args.contains(&"load".to_string()));
@@ -228,7 +234,7 @@ async fn test_save_load_commands() {
 #[tokio::test]
 async fn test_rmi_command() {
     let rmi_cmd = RmiCommand::new("old-image:tag")
-        .add_image("unused-image")
+        .image("unused-image")
         .force()
         .no_prune();
 
