@@ -1,6 +1,53 @@
 //! Docker rm command implementation.
 //!
 //! This module provides the `docker rm` command for removing stopped containers.
+//!
+//! # Example
+//!
+//! ```rust,no_run
+//! use docker_wrapper::{DockerCommand, RmCommand, RunCommand, StopCommand};
+//!
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // Create and run a container
+//! let output = RunCommand::new("alpine:latest")
+//!     .name("test-rm")
+//!     .detach()
+//!     .cmd(vec!["sleep".to_string(), "10".to_string()])
+//!     .execute()
+//!     .await?;
+//!
+//! // Stop the container first
+//! StopCommand::new("test-rm")
+//!     .execute()
+//!     .await?;
+//!
+//! // Remove the stopped container
+//! RmCommand::new("test-rm")
+//!     .execute()
+//!     .await?;
+//!
+//! // Force remove a running container (stops and removes)
+//! let output2 = RunCommand::new("nginx:alpine")
+//!     .name("test-force-rm")
+//!     .detach()
+//!     .execute()
+//!     .await?;
+//!
+//! RmCommand::new("test-force-rm")
+//!     .force()  // Force removal even if running
+//!     .volumes()  // Also remove associated volumes
+//!     .execute()
+//!     .await?;
+//!
+//! // Remove multiple containers
+//! RmCommand::new_multiple(vec!["container1", "container2", "container3"])
+//!     .force()
+//!     .execute()
+//!     .await?;
+//! # Ok(())
+//! # }
+//! ```
 
 use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::{Error, Result};

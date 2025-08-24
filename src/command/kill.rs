@@ -1,6 +1,48 @@
 //! Docker kill command implementation.
 //!
 //! This module provides the `docker kill` command for sending signals to running containers.
+//!
+//! # Example
+//!
+//! ```rust,no_run
+//! use docker_wrapper::{DockerCommand, KillCommand, RunCommand};
+//!
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // Start a long-running container
+//! let output = RunCommand::new("alpine:latest")
+//!     .name("test-kill")
+//!     .detach()
+//!     .cmd(vec!["sleep".to_string(), "300".to_string()])
+//!     .execute()
+//!     .await?;
+//!
+//! // Kill the container with default signal (SIGKILL)
+//! KillCommand::new("test-kill")
+//!     .execute()
+//!     .await?;
+//!
+//! // You can also send specific signals
+//! let output2 = RunCommand::new("nginx:alpine")
+//!     .name("test-nginx")
+//!     .detach()
+//!     .execute()
+//!     .await?;
+//!
+//! // Gracefully stop with SIGTERM
+//! KillCommand::new("test-nginx")
+//!     .signal("SIGTERM")
+//!     .execute()
+//!     .await?;
+//!
+//! // Kill multiple containers at once
+//! KillCommand::new_multiple(vec!["container1", "container2"])
+//!     .signal("9")  // Numeric signal
+//!     .execute()
+//!     .await?;
+//! # Ok(())
+//! # }
+//! ```
 
 use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::{Error, Result};
