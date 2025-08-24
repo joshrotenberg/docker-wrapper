@@ -36,7 +36,7 @@ pub struct ContextInfo {
 /// # Example
 ///
 /// ```no_run
-/// use docker_wrapper::command::context::ContextLsCommand;
+/// use docker_wrapper::{ContextLsCommand, DockerCommand};
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// let contexts = ContextLsCommand::new()

@@ -11,7 +11,7 @@ use async_trait::async_trait;
 /// # Example
 ///
 /// ```no_run
-/// use docker_wrapper::command::context::ContextRmCommand;
+/// use docker_wrapper::{ContextRmCommand, DockerCommand};
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// // Remove a context

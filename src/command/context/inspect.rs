@@ -12,7 +12,7 @@ use serde_json::Value;
 /// # Example
 ///
 /// ```no_run
-/// use docker_wrapper::command::context::ContextInspectCommand;
+/// use docker_wrapper::{ContextInspectCommand, DockerCommand};
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// // Inspect a context

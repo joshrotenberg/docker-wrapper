@@ -11,7 +11,7 @@ use async_trait::async_trait;
 /// # Example
 ///
 /// ```no_run
-/// use docker_wrapper::command::context::ContextUseCommand;
+/// use docker_wrapper::{ContextUseCommand, DockerCommand};
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
 /// // Switch to production context
