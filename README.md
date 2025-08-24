@@ -79,6 +79,51 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
+### Container Templates (Feature: `templates`)
+
+Pre-configured templates for common containers with sensible defaults:
+
+```rust
+use docker_wrapper::{RedisTemplate, PostgresTemplate, Template};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Start Redis with persistence
+    let redis = RedisTemplate::new("my-redis")
+        .port(6379)
+        .password("secret")
+        .with_persistence("redis-data");
+    
+    let redis_id = redis.start().await?;
+    
+    // Start PostgreSQL with custom configuration
+    let postgres = PostgresTemplate::new("my-postgres")
+        .database("myapp")
+        .user("appuser")
+        .password("apppass")
+        .with_persistence("postgres-data");
+        
+    let postgres_id = postgres.start().await?;
+    
+    Ok(())
+}
+```
+
+Available templates:
+- `RedisTemplate` - Redis key-value store
+- `PostgresTemplate` - PostgreSQL database
+- `MysqlTemplate` - MySQL database
+- `MongodbTemplate` - MongoDB document database
+- `NginxTemplate` - Nginx web server
+
+Enable with granular feature flags:
+```toml
+[dependencies]
+docker-wrapper = { version = "0.4", features = ["template-redis", "template-postgres"] }
+# Or enable all templates:
+docker-wrapper = { version = "0.4", features = ["templates"] }
+```
+
 ## When to Use docker-wrapper
 
 docker-wrapper is ideal for:
@@ -115,6 +160,7 @@ The `examples/` directory contains practical examples:
 - `debugging_features.rs` - Debugging and inspection features
 - `system_cleanup.rs` - System maintenance and cleanup
 - `complete_run_coverage.rs` - Comprehensive run command options
+- `template_usage.rs` - Container templates usage (requires `templates` feature)
 
 Run examples:
 

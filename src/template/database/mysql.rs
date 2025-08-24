@@ -7,7 +7,7 @@
 #![allow(clippy::format_push_string)]
 #![allow(clippy::uninlined_format_args)]
 
-use super::{HealthCheck, Template, TemplateConfig, VolumeMount};
+use crate::template::{HealthCheck, Template, TemplateConfig, VolumeMount};
 use async_trait::async_trait;
 use std::collections::HashMap;
 

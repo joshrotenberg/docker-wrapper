@@ -1,4 +1,4 @@
-//! Redis template for quick Redis container setup
+//! Basic Redis template for quick Redis container setup
 
 #![allow(clippy::doc_markdown)]
 #![allow(clippy::must_use_candidate)]
@@ -6,7 +6,11 @@
 #![allow(clippy::needless_borrows_for_generic_args)]
 #![allow(clippy::unnecessary_get_then_check)]
 
-use super::{HealthCheck, Template, TemplateConfig, VolumeMount};
+use super::common::{
+    default_redis_health_check, redis_config_volume, redis_data_volume, DEFAULT_REDIS_IMAGE,
+    DEFAULT_REDIS_TAG,
+};
+use crate::template::{Template, TemplateConfig};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
@@ -24,19 +28,13 @@ impl RedisTemplate {
         // Default Redis configuration
         let config = TemplateConfig {
             name: name.clone(),
-            image: "redis".to_string(),
-            tag: "7-alpine".to_string(),
+            image: DEFAULT_REDIS_IMAGE.to_string(),
+            tag: DEFAULT_REDIS_TAG.to_string(),
             ports: vec![(6379, 6379)],
             env,
             volumes: Vec::new(),
             network: None,
-            health_check: Some(HealthCheck {
-                test: vec!["redis-cli".to_string(), "ping".to_string()],
-                interval: "10s".to_string(),
-                timeout: "5s".to_string(),
-                retries: 3,
-                start_period: "10s".to_string(),
-            }),
+            health_check: Some(default_redis_health_check()),
             auto_remove: false,
             memory_limit: None,
             cpu_limit: None,
@@ -62,21 +60,13 @@ impl RedisTemplate {
 
     /// Enable persistence with a volume
     pub fn with_persistence(mut self, volume_name: impl Into<String>) -> Self {
-        self.config.volumes.push(VolumeMount {
-            source: volume_name.into(),
-            target: "/data".to_string(),
-            read_only: false,
-        });
+        self.config.volumes.push(redis_data_volume(volume_name));
         self
     }
 
     /// Set custom Redis configuration file
     pub fn config_file(mut self, config_path: impl Into<String>) -> Self {
-        self.config.volumes.push(VolumeMount {
-            source: config_path.into(),
-            target: "/usr/local/etc/redis/redis.conf".to_string(),
-            read_only: true,
-        });
+        self.config.volumes.push(redis_config_volume(config_path));
         self
     }
 
