@@ -2,8 +2,8 @@
 
 use docker_wrapper::{
     CommitCommand, CreateCommand, DockerCommand, KillCommand, PauseCommand, RenameCommand,
-    RestartCommand, RmCommand, RmiCommand, StartCommand, StopCommand, UnpauseCommand,
-    UpdateCommand, WaitCommand,
+    RestartCommand, RmCommand, StartCommand, StopCommand, UnpauseCommand, UpdateCommand,
+    WaitCommand,
 };
 
 #[tokio::test]
@@ -29,7 +29,7 @@ async fn test_container_basic_lifecycle() {
 
     // Start the container
     let start_result = StartCommand::new(&container_name).execute().await.unwrap();
-    assert!(!start_result.stdout.is_empty() || start_result.started_containers.len() > 0);
+    assert!(!start_result.stdout.is_empty() || !start_result.started_containers.is_empty());
 
     // Stop the container
     let stop_result = StopCommand::new(&container_name)
@@ -37,7 +37,7 @@ async fn test_container_basic_lifecycle() {
         .execute()
         .await
         .unwrap();
-    assert!(!stop_result.stdout.is_empty() || stop_result.stopped_containers.len() > 0);
+    assert!(!stop_result.stdout.is_empty() || !stop_result.stopped_containers.is_empty());
 
     // Remove the container
     let rm_result = RmCommand::new(&container_name)
@@ -53,11 +53,12 @@ async fn test_container_pause_unpause() {
     let container_name = format!("test-pause-{}", uuid::Uuid::new_v4());
 
     // Create and start a container
-    if let Ok(_) = CreateCommand::new("alpine:latest")
+    if CreateCommand::new("alpine:latest")
         .name(&container_name)
         .cmd(vec!["sleep", "300"])
         .execute()
         .await
+        .is_ok()
     {
         let _ = StartCommand::new(&container_name).execute().await;
 
@@ -84,11 +85,12 @@ async fn test_container_restart() {
     let container_name = format!("test-restart-{}", uuid::Uuid::new_v4());
 
     // Create and start a container
-    if let Ok(_) = CreateCommand::new("alpine:latest")
+    if CreateCommand::new("alpine:latest")
         .name(&container_name)
         .cmd(vec!["sleep", "300"])
         .execute()
         .await
+        .is_ok()
     {
         let _ = StartCommand::new(&container_name).execute().await;
 
@@ -113,11 +115,12 @@ async fn test_container_rename() {
     let new_name = format!("test-rename-new-{}", uuid::Uuid::new_v4());
 
     // Create a container
-    if let Ok(_) = CreateCommand::new("alpine:latest")
+    if CreateCommand::new("alpine:latest")
         .name(&old_name)
         .cmd(vec!["sleep", "10"])
         .execute()
         .await
+        .is_ok()
     {
         // Rename the container
         let rename_result = RenameCommand::new(&old_name, &new_name).execute().await;
@@ -138,11 +141,12 @@ async fn test_container_kill() {
     let container_name = format!("test-kill-{}", uuid::Uuid::new_v4());
 
     // Create and start a container
-    if let Ok(_) = CreateCommand::new("alpine:latest")
+    if CreateCommand::new("alpine:latest")
         .name(&container_name)
         .cmd(vec!["sleep", "300"])
         .execute()
         .await
+        .is_ok()
     {
         let _ = StartCommand::new(&container_name).execute().await;
 
@@ -166,11 +170,12 @@ async fn test_container_update() {
     let container_name = format!("test-update-{}", uuid::Uuid::new_v4());
 
     // Create a container
-    if let Ok(_) = CreateCommand::new("alpine:latest")
+    if CreateCommand::new("alpine:latest")
         .name(&container_name)
         .cmd(vec!["sleep", "300"])
         .execute()
         .await
+        .is_ok()
     {
         // Update container resources
         let update_result = UpdateCommand::new(&container_name)
@@ -193,11 +198,12 @@ async fn test_container_wait() {
     let container_name = format!("test-wait-{}", uuid::Uuid::new_v4());
 
     // Create and start a short-lived container
-    if let Ok(_) = CreateCommand::new("alpine:latest")
+    if CreateCommand::new("alpine:latest")
         .name(&container_name)
         .cmd(vec!["sleep", "1"])
         .execute()
         .await
+        .is_ok()
     {
         let _ = StartCommand::new(&container_name).execute().await;
 
@@ -221,11 +227,12 @@ async fn test_container_commit() {
     let image_name = format!("test-image-{}", uuid::Uuid::new_v4());
 
     // Create a container
-    if let Ok(_) = CreateCommand::new("alpine:latest")
+    if CreateCommand::new("alpine:latest")
         .name(&container_name)
         .cmd(vec!["sh"])
         .execute()
         .await
+        .is_ok()
     {
         // Commit the container to a new image
         let commit_result = CommitCommand::new(&container_name)
@@ -240,7 +247,7 @@ async fn test_container_commit() {
             assert!(!commit_result.unwrap().stdout.is_empty());
 
             // Clean up the image
-            let _ = docker_wrapper::RmiCommand::new(&format!("{}:latest", image_name))
+            let _ = docker_wrapper::RmiCommand::new(format!("{}:latest", image_name))
                 .force()
                 .execute()
                 .await;

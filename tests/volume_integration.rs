@@ -72,7 +72,7 @@ async fn test_volume_create_with_options() {
     assert!(args.contains(&volume_name));
 
     // Clean up if actually created
-    if let Ok(_) = create_cmd.execute().await {
+    if create_cmd.execute().await.is_ok() {
         let _ = VolumeRmCommand::new(&volume_name).execute().await;
     }
 }
@@ -141,10 +141,11 @@ async fn test_volume_create_and_use() {
     let volume_name = format!("test-volume-use-{}", uuid::Uuid::new_v4());
 
     // Create volume
-    if let Ok(_) = VolumeCreateCommand::new()
+    if VolumeCreateCommand::new()
         .name(&volume_name)
         .execute()
         .await
+        .is_ok()
     {
         // Verify it exists in list
         let ls_result = VolumeLsCommand::new().quiet().execute().await.unwrap();

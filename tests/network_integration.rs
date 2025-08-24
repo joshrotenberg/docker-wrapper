@@ -77,7 +77,7 @@ async fn test_network_create_with_options() {
     assert!(args.contains(&"--ipv6".to_string()));
 
     // Clean up if actually created
-    if let Ok(_) = create_cmd.execute().await {
+    if create_cmd.execute().await.is_ok() {
         let _ = NetworkRmCommand::new(&network_name).execute().await;
     }
 }
