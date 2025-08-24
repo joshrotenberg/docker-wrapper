@@ -37,6 +37,7 @@ pub mod compose_stop;
 pub mod compose_unpause;
 pub mod compose_up;
 pub mod container_prune;
+pub mod context;
 pub mod cp;
 pub mod create;
 pub mod diff;

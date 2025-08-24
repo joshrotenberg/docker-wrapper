@@ -386,6 +386,10 @@ pub use command::{
     builder::{BuilderBuildCommand, BuilderPruneCommand, BuilderPruneResult},
     commit::{CommitCommand, CommitResult},
     container_prune::{ContainerPruneCommand, ContainerPruneResult},
+    context::{
+        ContextCreateCommand, ContextInspectCommand, ContextLsCommand, ContextRmCommand,
+        ContextUpdateCommand, ContextUseCommand,
+    },
     cp::{CpCommand, CpResult},
     create::{CreateCommand, CreateResult},
     diff::{DiffCommand, DiffResult, FilesystemChange, FilesystemChangeType},
