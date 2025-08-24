@@ -242,16 +242,31 @@ jobs:
           cache-directories: |
             ~/.cargo/bin/
 
-      - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@main
+      - name: Cache cargo-machete
+        id: cache-cargo-machete
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-machete
+          key: cargo-machete-${{ runner.os }}
 
-      - name: Install dependency tools with binstall
-        run: |
-          cargo binstall cargo-machete cargo-outdated --no-confirm --locked
+      - name: Install cargo-machete if not cached
+        if: steps.cache-cargo-machete.outputs.cache-hit != 'true'
+        run: cargo install cargo-machete --locked
 
       - name: Check for unused dependencies
         run: cargo machete
         continue-on-error: true
+
+      - name: Cache cargo-outdated
+        id: cache-cargo-outdated
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-outdated
+          key: cargo-outdated-${{ runner.os }}
+
+      - name: Install cargo-outdated if not cached
+        if: steps.cache-cargo-outdated.outputs.cache-hit != 'true'
+        run: cargo install cargo-outdated --locked
 
       - name: Check for outdated dependencies
         run: cargo outdated --exit-code 1 || true
