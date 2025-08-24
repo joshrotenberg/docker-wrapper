@@ -376,7 +376,14 @@ pub mod error;
 pub mod platform;
 pub mod prerequisites;
 pub mod stream;
-#[cfg(feature = "templates")]
+#[cfg(any(
+    feature = "templates",
+    feature = "template-redis",
+    feature = "template-postgres",
+    feature = "template-mysql",
+    feature = "template-mongodb",
+    feature = "template-nginx"
+))]
 pub mod template;
 
 pub use stream::{OutputLine, StreamHandler, StreamResult, StreamableCommand};
@@ -454,15 +461,33 @@ pub use error::{Error, Result};
 pub use platform::{Platform, PlatformInfo, Runtime};
 pub use prerequisites::{ensure_docker, DockerInfo, DockerPrerequisites};
 
-#[cfg(feature = "templates")]
-pub use template::{
-    mongodb::{MongodbConnectionString, MongodbTemplate},
-    mysql::{MysqlConnectionString, MysqlTemplate},
-    nginx::NginxTemplate,
-    postgres::{PostgresConnectionString, PostgresTemplate},
-    redis::RedisTemplate,
-    Template, TemplateBuilder, TemplateConfig, TemplateError,
-};
+#[cfg(any(
+    feature = "templates",
+    feature = "template-redis",
+    feature = "template-postgres",
+    feature = "template-mysql",
+    feature = "template-mongodb",
+    feature = "template-nginx"
+))]
+pub use template::{Template, TemplateBuilder, TemplateConfig, TemplateError};
+
+// Redis templates
+#[cfg(feature = "template-redis")]
+pub use template::redis::RedisTemplate;
+
+// Database templates
+#[cfg(feature = "template-postgres")]
+pub use template::database::{PostgresConnectionString, PostgresTemplate};
+
+#[cfg(feature = "template-mysql")]
+pub use template::database::{MysqlConnectionString, MysqlTemplate};
+
+#[cfg(feature = "template-mongodb")]
+pub use template::database::{MongodbConnectionString, MongodbTemplate};
+
+// Web server templates
+#[cfg(feature = "template-nginx")]
+pub use template::web::NginxTemplate;
 
 /// The version of this crate
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

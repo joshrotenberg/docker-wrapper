@@ -16,7 +16,28 @@ documentation = "https://docs.rs/docker-wrapper"
 [features]
 default = []
 compose = []
-templates = []
+
+# Template features
+templates = [
+    "template-redis",
+    "template-postgres", 
+    "template-mysql",
+    "template-mongodb",
+    "template-nginx",
+]
+
+# Individual template features
+template-redis = []
+template-postgres = []
+template-mysql = []
+template-mongodb = []
+template-nginx = []
+
+# Future Redis variants
+template-redis-cluster = ["template-redis"]
+template-redis-sentinel = ["template-redis"]
+template-redis-stack = ["template-redis"]
+template-redis-enterprise = ["template-redis"]
 
 [dependencies]
 tokio = { version = "1.46", features = [

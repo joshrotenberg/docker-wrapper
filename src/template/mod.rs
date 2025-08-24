@@ -14,11 +14,21 @@ use crate::{DockerCommand, RunCommand};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
-pub mod mongodb;
-pub mod mysql;
-pub mod nginx;
-pub mod postgres;
+// Redis templates
+#[cfg(feature = "template-redis")]
 pub mod redis;
+
+// Database templates
+#[cfg(any(
+    feature = "template-postgres",
+    feature = "template-mysql",
+    feature = "template-mongodb"
+))]
+pub mod database;
+
+// Web server templates
+#[cfg(feature = "template-nginx")]
+pub mod web;
 
 /// Result type for template operations
 pub type Result<T> = std::result::Result<T, TemplateError>;
@@ -367,3 +377,20 @@ impl Template for CustomTemplate {
         &mut self.config
     }
 }
+
+// Compatibility re-exports for backward compatibility
+// These allow users to still import directly from template::
+#[cfg(feature = "template-redis")]
+pub use redis::RedisTemplate;
+
+#[cfg(feature = "template-postgres")]
+pub use database::postgres::{PostgresConnectionString, PostgresTemplate};
+
+#[cfg(feature = "template-mysql")]
+pub use database::mysql::{MysqlConnectionString, MysqlTemplate};
+
+#[cfg(feature = "template-mongodb")]
+pub use database::mongodb::{MongodbConnectionString, MongodbTemplate};
+
+#[cfg(feature = "template-nginx")]
+pub use web::nginx::NginxTemplate;
