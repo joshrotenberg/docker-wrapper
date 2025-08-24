@@ -37,12 +37,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let result = replicated_cluster.start().await?;
     println!("   {}", result);
 
-    // Example 3: Advanced cluster configuration
-    println!("\n3. Starting advanced Redis Cluster...");
+    // Example 3: Redis Stack cluster with RedisInsight
+    println!("\n3. Starting Redis Stack Cluster with RedisInsight...");
+    let stack_cluster = RedisClusterTemplate::new("example-cluster-stack")
+        .num_masters(3)
+        .num_replicas(1)
+        .port_base(9000)
+        .with_redis_stack() // Use Redis Stack for additional modules
+        .with_redis_insight() // Enable RedisInsight UI
+        .redis_insight_port(8001)
+        .password("stack-password")
+        .with_persistence("redis-stack-data");
+
+    let result = stack_cluster.start().await?;
+    println!("   {}", result);
+    println!("   RedisInsight is available at http://localhost:8001");
+    println!("   Redis Stack includes: JSON, Search, Graph, TimeSeries, Bloom modules");
+
+    // Example 4: Advanced cluster configuration
+    println!("\n4. Starting advanced Redis Cluster...");
     let advanced_cluster = RedisClusterTemplate::new("example-cluster-advanced")
         .num_masters(5)
         .num_replicas(2) // 2 replicas per master = 15 total nodes
-        .port_base(9000)
+        .port_base(10000)
         .password("secure-password")
         .cluster_announce_ip("192.168.1.100")
         .cluster_node_timeout(10000)
@@ -54,7 +71,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   {}", result);
 
     // Check cluster status (for basic cluster)
-    println!("\n4. Checking cluster status...");
+    println!("\n5. Checking cluster status...");
     match basic_cluster.cluster_info().await {
         Ok(info) => {
             println!("   Cluster state: {}", info.cluster_state);
@@ -65,7 +82,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Clean up
-    println!("\n5. Cleaning up clusters...");
+    println!("\n6. Cleaning up clusters...");
 
     println!("   Stopping basic cluster...");
     basic_cluster.stop().await?;
@@ -74,6 +91,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("   Stopping replicated cluster...");
     replicated_cluster.stop().await?;
     replicated_cluster.remove().await?;
+
+    println!("   Stopping stack cluster...");
+    stack_cluster.stop().await?;
+    stack_cluster.remove().await?;
 
     println!("   Stopping advanced cluster...");
     advanced_cluster.stop().await?;

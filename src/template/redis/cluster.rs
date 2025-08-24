@@ -35,6 +35,12 @@ pub struct RedisClusterTemplate {
     node_timeout: u32,
     /// Whether to remove containers on stop
     auto_remove: bool,
+    /// Whether to use Redis Stack instead of standard Redis
+    use_redis_stack: bool,
+    /// Whether to include RedisInsight GUI
+    with_redis_insight: bool,
+    /// Port for RedisInsight UI
+    redis_insight_port: u16,
 }
 
 impl RedisClusterTemplate {
@@ -55,6 +61,9 @@ impl RedisClusterTemplate {
             memory_limit: None,
             node_timeout: 5000,
             auto_remove: false,
+            use_redis_stack: false,
+            with_redis_insight: false,
+            redis_insight_port: 8001,
         }
     }
 
@@ -112,6 +121,24 @@ impl RedisClusterTemplate {
         self
     }
 
+    /// Use Redis Stack instead of standard Redis (includes modules like JSON, Search, Graph, TimeSeries, Bloom)
+    pub fn with_redis_stack(mut self) -> Self {
+        self.use_redis_stack = true;
+        self
+    }
+
+    /// Enable RedisInsight GUI for cluster visualization and management
+    pub fn with_redis_insight(mut self) -> Self {
+        self.with_redis_insight = true;
+        self
+    }
+
+    /// Set the port for RedisInsight UI (default: 8001)
+    pub fn redis_insight_port(mut self, port: u16) -> Self {
+        self.redis_insight_port = port;
+        self
+    }
+
     /// Get the total number of nodes
     fn total_nodes(&self) -> usize {
         self.num_masters + (self.num_masters * self.num_replicas)
@@ -134,7 +161,14 @@ impl RedisClusterTemplate {
         let port = self.port_base + node_index as u16;
         let cluster_port = port + 10000;
 
-        let mut cmd = RunCommand::new("redis:7-alpine")
+        // Choose image based on whether Redis Stack is requested
+        let image = if self.use_redis_stack {
+            "redis/redis-stack-server:latest"
+        } else {
+            "redis:7-alpine"
+        };
+
+        let mut cmd = RunCommand::new(image)
             .name(&node_name)
             .network(&self.network_name)
             .port(port, 6379)
@@ -191,6 +225,34 @@ impl RedisClusterTemplate {
         }
 
         cmd = cmd.cmd(redis_args);
+
+        let output = cmd.execute().await?;
+        Ok(output.0)
+    }
+
+    /// Start RedisInsight container
+    async fn start_redis_insight(&self) -> Result<String, TemplateError> {
+        let insight_name = format!("{}-insight", self.name);
+
+        let mut cmd = RunCommand::new("redislabs/redisinsight:latest")
+            .name(&insight_name)
+            .network(&self.network_name)
+            .port(self.redis_insight_port, 8001)
+            .detach();
+
+        // Add volume for RedisInsight data persistence
+        if let Some(ref prefix) = self.volume_prefix {
+            let volume_name = format!("{}-insight", prefix);
+            cmd = cmd.volume(&volume_name, "/db");
+        }
+
+        // Auto-remove
+        if self.auto_remove {
+            cmd = cmd.remove();
+        }
+
+        // Environment variables for RedisInsight
+        cmd = cmd.env("RITRUSTEDORIGINS", "http://localhost");
 
         let output = cmd.execute().await?;
         Ok(output.0)
@@ -302,13 +364,25 @@ impl Template for RedisClusterTemplate {
         // Initialize the cluster
         self.initialize_cluster(&container_ids).await?;
 
+        // Start RedisInsight if enabled
+        let insight_info = if self.with_redis_insight {
+            let _insight_id = self.start_redis_insight().await?;
+            format!(
+                ", RedisInsight UI at http://localhost:{}",
+                self.redis_insight_port
+            )
+        } else {
+            String::new()
+        };
+
         // Return a summary
         Ok(format!(
-            "Redis Cluster '{}' started with {} nodes ({} masters, {} replicas)",
+            "Redis Cluster '{}' started with {} nodes ({} masters, {} replicas){}",
             self.name,
             self.total_nodes(),
             self.num_masters,
-            self.num_masters * self.num_replicas
+            self.num_masters * self.num_replicas,
+            insight_info
         ))
     }
 
@@ -321,6 +395,12 @@ impl Template for RedisClusterTemplate {
             let _ = StopCommand::new(&node_name).execute().await;
         }
 
+        // Stop RedisInsight if it was started
+        if self.with_redis_insight {
+            let insight_name = format!("{}-insight", self.name);
+            let _ = StopCommand::new(&insight_name).execute().await;
+        }
+
         Ok(())
     }
 
@@ -331,6 +411,16 @@ impl Template for RedisClusterTemplate {
         for i in 0..self.total_nodes() {
             let node_name = format!("{}-node-{}", self.name, i);
             let _ = RmCommand::new(&node_name).force().volumes().execute().await;
+        }
+
+        // Remove RedisInsight if it was started
+        if self.with_redis_insight {
+            let insight_name = format!("{}-insight", self.name);
+            let _ = RmCommand::new(&insight_name)
+                .force()
+                .volumes()
+                .execute()
+                .await;
         }
 
         // Remove the network
@@ -470,5 +560,18 @@ mod tests {
             conn.cluster_url(),
             "redis-cluster://:secret@localhost:7000,localhost:7001,localhost:7002"
         );
+    }
+
+    #[test]
+    fn test_redis_cluster_with_stack_and_insight() {
+        let template = RedisClusterTemplate::new("test-cluster")
+            .num_masters(3)
+            .with_redis_stack()
+            .with_redis_insight()
+            .redis_insight_port(8080);
+
+        assert!(template.use_redis_stack);
+        assert!(template.with_redis_insight);
+        assert_eq!(template.redis_insight_port, 8080);
     }
 }
