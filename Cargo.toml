@@ -49,3 +49,7 @@ path = "examples/exec_examples.rs"
 [[example]]
 name = "basic_docker_patterns"
 path = "examples/basic_docker_patterns.rs"
+
+[[example]]
+name = "network_volume_management"
+path = "examples/network_volume_management.rs"
