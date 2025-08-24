@@ -32,12 +32,38 @@ jobs:
         with:
           shared-key: "deps"
 
-      - name: Install cargo-binstall
-        uses: cargo-bins/cargo-binstall@main
+      - name: Cache cargo-machete
+        id: cache-cargo-machete
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-machete
+          key: cargo-machete-${{ runner.os }}
 
-      - name: Install dependency tools
-        run: |
-          cargo binstall cargo-machete cargo-outdated cargo-audit --no-confirm --locked
+      - name: Install cargo-machete if not cached
+        if: steps.cache-cargo-machete.outputs.cache-hit != 'true'
+        run: cargo install cargo-machete --locked
+
+      - name: Cache cargo-outdated
+        id: cache-cargo-outdated
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-outdated
+          key: cargo-outdated-${{ runner.os }}
+
+      - name: Install cargo-outdated if not cached
+        if: steps.cache-cargo-outdated.outputs.cache-hit != 'true'
+        run: cargo install cargo-outdated --locked
+
+      - name: Cache cargo-audit
+        id: cache-cargo-audit
+        uses: actions/cache@v4
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: cargo-audit-${{ runner.os }}
+
+      - name: Install cargo-audit if not cached
+        if: steps.cache-cargo-audit.outputs.cache-hit != 'true'
+        run: cargo install cargo-audit --locked
 
       - name: Check for unused dependencies
         run: cargo machete
