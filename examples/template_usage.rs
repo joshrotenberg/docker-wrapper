@@ -6,8 +6,8 @@
 
 #[cfg(feature = "templates")]
 use docker_wrapper::{
-    DockerCommand, MongodbConnectionString, MongodbTemplate, MysqlConnectionString, MysqlTemplate,
-    NginxTemplate, PostgresConnectionString, PostgresTemplate, RedisTemplate, Template,
+    MongodbConnectionString, MongodbTemplate, MysqlConnectionString, MysqlTemplate, NginxTemplate,
+    PostgresConnectionString, PostgresTemplate, RedisTemplate, Template,
 };
 
 #[cfg(feature = "templates")]
