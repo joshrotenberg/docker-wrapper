@@ -13,6 +13,7 @@ use docker_wrapper::compose::up::PullPolicy;
 use docker_wrapper::compose::{
     ComposeConfig, ComposeDownCommand, ComposeLogsCommand, ComposePsCommand, ComposeUpCommand,
 };
+#[cfg(feature = "compose")]
 use std::time::Duration;
 
 #[cfg(not(feature = "compose"))]
