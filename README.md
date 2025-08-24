@@ -9,27 +9,33 @@ A comprehensive, type-safe Docker CLI wrapper for Rust applications.
 
 ## Features
 
-- Complete Docker CLI coverage (35+ commands)
+- Comprehensive Docker CLI coverage (80+ commands implemented)
 - Type-safe builder pattern API
 - Async/await support with Tokio
 - Real-time output streaming
 - Docker Compose support (optional)
+- Docker builder commands for build cache management
+- Network and volume management
 - Zero unsafe code
-- Extensive test coverage
+- Extensive test coverage (680+ tests)
 
 ## Installation
 
+Add to your `Cargo.toml`:
+
 ```toml
 [dependencies]
-docker-wrapper = "0.2"
+docker-wrapper = "0.4"
 tokio = { version = "1", features = ["full"] }
 ```
+
+**Minimum Supported Rust Version (MSRV):** 1.78.0
 
 Enable Docker Compose support:
 
 ```toml
 [dependencies]
-docker-wrapper = { version = "0.2", features = ["compose"] }
+docker-wrapper = { version = "0.4", features = ["compose"] }
 ```
 
 ## Quick Start
@@ -48,6 +54,27 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     println!("Container started: {}", output.container_id);
+    Ok(())
+}
+```
+
+### Docker Builder Example
+
+```rust
+use docker_wrapper::{DockerCommand, BuilderPruneCommand};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Clean up build cache
+    let result = BuilderPruneCommand::new()
+        .all()
+        .keep_storage("5GB")
+        .force()
+        .execute()
+        .await?;
+
+    println!("Reclaimed {} bytes of disk space", 
+             result.space_reclaimed.unwrap_or(0));
     Ok(())
 }
 ```
@@ -79,10 +106,15 @@ For comprehensive documentation, examples, and API reference:
 The `examples/` directory contains practical examples:
 
 - `basic_usage.rs` - Common Docker operations
-- `container_lifecycle.rs` - Container management
+- `basic_docker_patterns.rs` - Essential Docker patterns and best practices
+- `exec_examples.rs` - Container command execution
+- `lifecycle_commands.rs` - Container lifecycle management
+- `run_examples.rs` - Advanced run command usage
 - `streaming.rs` - Real-time output streaming
 - `docker_compose.rs` - Docker Compose usage (requires `compose` feature)
-- `error_handling.rs` - Error handling patterns
+- `debugging_features.rs` - Debugging and inspection features
+- `system_cleanup.rs` - System maintenance and cleanup
+- `complete_run_coverage.rs` - Comprehensive run command options
 
 Run examples:
 
