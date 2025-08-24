@@ -376,6 +376,8 @@ pub mod error;
 pub mod platform;
 pub mod prerequisites;
 pub mod stream;
+#[cfg(feature = "templates")]
+pub mod template;
 
 pub use stream::{OutputLine, StreamHandler, StreamResult, StreamableCommand};
 
@@ -451,6 +453,16 @@ pub use debug::{BackoffStrategy, DebugConfig, DebugExecutor, DryRunPreview, Retr
 pub use error::{Error, Result};
 pub use platform::{Platform, PlatformInfo, Runtime};
 pub use prerequisites::{ensure_docker, DockerInfo, DockerPrerequisites};
+
+#[cfg(feature = "templates")]
+pub use template::{
+    mongodb::{MongodbConnectionString, MongodbTemplate},
+    mysql::{MysqlConnectionString, MysqlTemplate},
+    nginx::NginxTemplate,
+    postgres::{PostgresConnectionString, PostgresTemplate},
+    redis::RedisTemplate,
+    Template, TemplateBuilder, TemplateConfig, TemplateError,
+};
 
 /// The version of this crate
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
