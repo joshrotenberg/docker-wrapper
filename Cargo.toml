@@ -80,3 +80,8 @@ path = "examples/network_volume_management.rs"
 name = "template_usage"
 path = "examples/template_usage.rs"
 required-features = ["templates"]
+
+[[example]]
+name = "redis_cluster"
+path = "examples/redis_cluster.rs"
+required-features = ["template-redis-cluster"]

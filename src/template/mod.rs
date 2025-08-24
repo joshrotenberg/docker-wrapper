@@ -15,7 +15,7 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 
 // Redis templates
-#[cfg(feature = "template-redis")]
+#[cfg(any(feature = "template-redis", feature = "template-redis-cluster"))]
 pub mod redis;
 
 // Database templates
@@ -382,6 +382,9 @@ impl Template for CustomTemplate {
 // These allow users to still import directly from template::
 #[cfg(feature = "template-redis")]
 pub use redis::RedisTemplate;
+
+#[cfg(feature = "template-redis-cluster")]
+pub use redis::{ClusterInfo, NodeInfo, NodeRole, RedisClusterConnection, RedisClusterTemplate};
 
 #[cfg(feature = "template-postgres")]
 pub use database::postgres::{PostgresConnectionString, PostgresTemplate};

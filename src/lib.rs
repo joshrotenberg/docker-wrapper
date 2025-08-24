@@ -379,6 +379,7 @@ pub mod stream;
 #[cfg(any(
     feature = "templates",
     feature = "template-redis",
+    feature = "template-redis-cluster",
     feature = "template-postgres",
     feature = "template-mysql",
     feature = "template-mongodb",
@@ -464,6 +465,7 @@ pub use prerequisites::{ensure_docker, DockerInfo, DockerPrerequisites};
 #[cfg(any(
     feature = "templates",
     feature = "template-redis",
+    feature = "template-redis-cluster",
     feature = "template-postgres",
     feature = "template-mysql",
     feature = "template-mongodb",
@@ -474,6 +476,11 @@ pub use template::{Template, TemplateBuilder, TemplateConfig, TemplateError};
 // Redis templates
 #[cfg(feature = "template-redis")]
 pub use template::redis::RedisTemplate;
+
+#[cfg(feature = "template-redis-cluster")]
+pub use template::redis::{
+    ClusterInfo, NodeInfo, NodeRole, RedisClusterConnection, RedisClusterTemplate,
+};
 
 // Database templates
 #[cfg(feature = "template-postgres")]
