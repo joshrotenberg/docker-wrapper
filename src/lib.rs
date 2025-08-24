@@ -387,8 +387,8 @@ pub use command::{
     commit::{CommitCommand, CommitResult},
     container_prune::{ContainerPruneCommand, ContainerPruneResult},
     context::{
-        ContextCreateCommand, ContextInspectCommand, ContextLsCommand, ContextRmCommand,
-        ContextUpdateCommand, ContextUseCommand,
+        ContextCreateCommand, ContextInfo, ContextInspectCommand, ContextLsCommand,
+        ContextRmCommand, ContextUpdateCommand, ContextUseCommand,
     },
     cp::{CpCommand, CpResult},
     create::{CreateCommand, CreateResult},
