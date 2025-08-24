@@ -14,11 +14,11 @@ pub(crate) mod common;
 pub mod basic;
 pub use basic::RedisTemplate;
 
-// Future templates will be added here:
-// #[cfg(feature = "template-redis-cluster")]
-// pub mod cluster;
-// #[cfg(feature = "template-redis-cluster")]
-// pub use cluster::RedisClusterTemplate;
+// Redis Cluster template
+#[cfg(feature = "template-redis-cluster")]
+pub mod cluster;
+#[cfg(feature = "template-redis-cluster")]
+pub use cluster::{ClusterInfo, NodeInfo, NodeRole, RedisClusterConnection, RedisClusterTemplate};
 
 // #[cfg(feature = "template-redis-sentinel")]
 // pub mod sentinel;
