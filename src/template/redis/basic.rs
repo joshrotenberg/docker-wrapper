@@ -8,7 +8,7 @@
 
 use super::common::{
     default_redis_health_check, redis_config_volume, redis_data_volume, DEFAULT_REDIS_IMAGE,
-    DEFAULT_REDIS_TAG,
+    DEFAULT_REDIS_TAG, REDIS_STACK_IMAGE, REDIS_STACK_TAG,
 };
 use crate::template::{Template, TemplateConfig};
 use async_trait::async_trait;
@@ -17,6 +17,7 @@ use std::collections::HashMap;
 /// Redis container template with sensible defaults
 pub struct RedisTemplate {
     config: TemplateConfig,
+    use_redis_stack: bool,
 }
 
 impl RedisTemplate {
@@ -40,7 +41,10 @@ impl RedisTemplate {
             cpu_limit: None,
         };
 
-        Self { config }
+        Self {
+            config,
+            use_redis_stack: false,
+        }
     }
 
     /// Set a custom Redis port
@@ -109,6 +113,12 @@ impl RedisTemplate {
         self.config.auto_remove = true;
         self
     }
+
+    /// Use Redis Stack image instead of basic Redis
+    pub fn with_redis_stack(mut self) -> Self {
+        self.use_redis_stack = true;
+        self
+    }
 }
 
 #[async_trait]
@@ -127,7 +137,15 @@ impl Template for RedisTemplate {
 
     fn build_command(&self) -> crate::RunCommand {
         let config = self.config();
-        let mut cmd = crate::RunCommand::new(format!("{}:{}", config.image, config.tag))
+        
+        // Choose image based on Redis Stack preference
+        let image_tag = if self.use_redis_stack {
+            format!("{REDIS_STACK_IMAGE}:{REDIS_STACK_TAG}")
+        } else {
+            format!("{}:{}", config.image, config.tag)
+        };
+        
+        let mut cmd = crate::RunCommand::new(image_tag)
             .name(&config.name)
             .detach();
 
@@ -176,13 +194,18 @@ impl Template for RedisTemplate {
 
         // Handle Redis-specific command args
         if let Some(password) = config.env.get("REDIS_PASSWORD") {
-            // Override entrypoint to bypass docker-entrypoint.sh and directly run redis-server
-            cmd = cmd.entrypoint("redis-server").cmd(vec![
-                "--requirepass".to_string(),
-                password.clone(),
-                "--protected-mode".to_string(),
-                "yes".to_string(),
-            ]);
+            if self.use_redis_stack {
+                // For Redis Stack, use environment variable instead of command override
+                cmd = cmd.env("REDIS_ARGS", format!("--requirepass {password}"));
+            } else {
+                // For basic Redis, override entrypoint to bypass docker-entrypoint.sh and directly run redis-server
+                cmd = cmd.entrypoint("redis-server").cmd(vec![
+                    "--requirepass".to_string(),
+                    password.clone(),
+                    "--protected-mode".to_string(),
+                    "yes".to_string(),
+                ]);
+            }
         }
 
         // If custom config file is mounted

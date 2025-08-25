@@ -3,6 +3,7 @@
 use anyhow::{Context, Result};
 use colored::*;
 use docker_wrapper::{DockerCommand, RedisTemplate, Template};
+use docker_wrapper::template::redis::RedisInsightTemplate;
 use std::collections::HashMap;
 use tokio::process::Command as ProcessCommand;
 
@@ -36,11 +37,11 @@ async fn start_stack(args: StackStartArgs, verbose: bool) -> Result<()> {
     // Generate password if not provided
     let password = args.password.unwrap_or_else(generate_password);
 
-    // Create Redis Stack template (Redis Stack support requires template enhancement)
+    // Create Redis Stack template
     let mut template = RedisTemplate::new(&name)
         .port(args.port)
-        .password(&password);
-    // TODO: Add .with_redis_stack() once template supports it
+        .password(&password)
+        .with_redis_stack();
 
     if args.persist {
         template = template.with_persistence(format!("{}-data", name));
@@ -50,10 +51,36 @@ async fn start_stack(args: StackStartArgs, verbose: bool) -> Result<()> {
         template = template.memory_limit(memory);
     }
 
-    // TODO: Add Redis Insight support once template supports it
-    // if args.insight {
-    //     template = template.with_redis_insight().redis_insight_port(args.insight_port);
-    // }
+    // Create Redis Insight template if requested
+    let insight_template = if args.insight {
+        Some(RedisInsightTemplate::new(format!("{}-insight", name))
+            .port(args.insight_port)
+            .network(format!("{}-network", name)))
+    } else {
+        None
+    };
+
+    // Create network if insight is enabled
+    if args.insight {
+        let network_name = format!("{}-network", name);
+        if verbose {
+            println!(
+                "{} Creating network: {}",
+                "Network:".cyan(),
+                network_name
+            );
+        }
+        
+        if let Err(e) = docker_wrapper::NetworkCreateCommand::new(&network_name).execute().await {
+            // Network might already exist, which is OK
+            if verbose && !format!("{}", e).contains("already exists") {
+                println!("{} Network creation warning: {}", "Warning:".yellow(), e);
+            }
+        }
+        
+        // Connect Redis template to network
+        template = template.network(&network_name);
+    }
 
     // Start the instance
     if verbose {
@@ -68,10 +95,19 @@ async fn start_stack(args: StackStartArgs, verbose: bool) -> Result<()> {
         Err(e) => {
             let error_msg = format!("{}", e);
             
-            // Clean up any failed container that might have been created
+            // Clean up any failed containers and network
             if let Err(cleanup_err) = docker_wrapper::RmCommand::new(&name).force().execute().await {
                 if verbose {
                     println!("{} Failed to clean up container: {}", "Warning:".yellow(), cleanup_err);
+                }
+            }
+            
+            if args.insight {
+                let network_name = format!("{}-network", name);
+                if let Err(cleanup_err) = docker_wrapper::NetworkRmCommand::new(&network_name).execute().await {
+                    if verbose {
+                        println!("{} Failed to clean up network: {}", "Warning:".yellow(), cleanup_err);
+                    }
                 }
             }
             
@@ -107,15 +143,36 @@ async fn start_stack(args: StackStartArgs, verbose: bool) -> Result<()> {
         println!("{} {}", "Success:".green(), result);
     }
 
-    // Build containers list (insight not yet supported)
-    let containers = vec![name.clone()];
+    // Start Redis Insight if requested
+    if let Some(insight) = insight_template {
+        if verbose {
+            println!("{} Starting RedisInsight...", "Insight:".cyan());
+        }
+        
+        match insight.start().await {
+            Ok(insight_result) => {
+                if verbose {
+                    println!("{} {}", "Success:".green(), insight_result);
+                }
+            }
+            Err(e) => {
+                // Don't fail the whole stack if insight fails, just warn
+                println!("{} Failed to start RedisInsight: {}", "Warning:".yellow(), e);
+            }
+        }
+    }
 
-    // Build additional ports info (insight not yet supported)
-    let additional_ports = HashMap::new();
-    // TODO: Add insight support
-    // if args.insight {
-    //     additional_ports.insert("redisinsight".to_string(), args.insight_port);
-    // }
+    // Build containers list
+    let mut containers = vec![name.clone()];
+    if args.insight {
+        containers.push(format!("{}-insight", name));
+    }
+
+    // Build additional ports info
+    let mut additional_ports = HashMap::new();
+    if args.insight {
+        additional_ports.insert("redisinsight".to_string(), args.insight_port);
+    }
 
     // Store instance info
     let instance_info = InstanceInfo {
@@ -189,10 +246,9 @@ async fn start_stack(args: StackStartArgs, verbose: bool) -> Result<()> {
         );
     }
 
-    // TODO: Add Redis Insight support
-    // if args.insight {
-    //     println!("  {}: http://localhost:{}", "RedisInsight".bold(), args.insight_port.to_string().magenta());
-    // }
+    if args.insight {
+        println!("  {}: http://localhost:{}", "RedisInsight".bold(), args.insight_port.to_string().magenta());
+    }
 
     println!();
     println!("{} Example commands:", "Examples:".bold().blue());
@@ -282,6 +338,21 @@ async fn stop_stack(args: StopArgs, verbose: bool) -> Result<()> {
                 container.dimmed()
             );
         }
+    }
+
+    // Clean up network if it exists
+    let network_name = format!("{}-network", name);
+    if let Err(e) = docker_wrapper::NetworkRmCommand::new(&network_name).execute().await {
+        // Network might not exist or have other containers, which is OK
+        if verbose && !format!("{}", e).contains("not found") && !format!("{}", e).contains("has active endpoints") {
+            println!("{} Network cleanup warning: {}", "Warning:".yellow(), e);
+        }
+    } else if verbose {
+        println!(
+            "  {} Removed network: {}",
+            "Removed:".green(),
+            network_name.dimmed()
+        );
     }
 
     // Remove from config
