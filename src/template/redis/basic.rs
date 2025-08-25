@@ -176,10 +176,12 @@ impl Template for RedisTemplate {
 
         // Handle Redis-specific command args
         if let Some(password) = config.env.get("REDIS_PASSWORD") {
-            cmd = cmd.cmd(vec![
-                "redis-server".to_string(),
+            // Override entrypoint to bypass docker-entrypoint.sh and directly run redis-server
+            cmd = cmd.entrypoint("redis-server").cmd(vec![
                 "--requirepass".to_string(),
                 password.clone(),
+                "--protected-mode".to_string(),
+                "yes".to_string(),
             ]);
         }
 
