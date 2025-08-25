@@ -411,6 +411,7 @@ pub use command::{
     images::{ImageInfo, ImagesCommand, ImagesOutput},
     import::{ImportCommand, ImportResult},
     info::{DockerInfo as SystemDockerInfo, InfoCommand, InfoOutput, SystemInfo},
+    init::{InitCommand, InitOutput, InitTemplate},
     inspect::{InspectCommand, InspectOutput},
     kill::{KillCommand, KillResult},
     load::{LoadCommand, LoadResult},
@@ -484,6 +485,9 @@ pub use template::redis::{RedisSentinelTemplate, SentinelConnectionInfo, Sentine
 pub use template::redis::{
     ClusterInfo, NodeInfo, NodeRole, RedisClusterConnection, RedisClusterTemplate,
 };
+
+#[cfg(feature = "template-redis-enterprise")]
+pub use template::redis::{RedisEnterpriseConnectionInfo, RedisEnterpriseTemplate};
 
 // Database templates
 #[cfg(feature = "template-postgres")]

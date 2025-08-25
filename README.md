@@ -112,6 +112,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 Available templates:
 - `RedisTemplate` - Redis key-value store
 - `RedisSentinelTemplate` - Redis Sentinel for high availability
+- `RedisEnterpriseTemplate` - Redis Enterprise with cluster initialization
 - `RedisInsightTemplate` - Redis management UI
 - `PostgresTemplate` - PostgreSQL database
 - `MysqlTemplate` - MySQL database
@@ -144,6 +145,7 @@ For comprehensive documentation, examples, and API reference:
 
 - **[API Documentation](https://docs.rs/docker-wrapper)** - Complete API reference with examples
 - **[Examples](examples/)** - Working examples for common use cases
+- **[Testing Guide](docs/TESTING.md)** - Best practices for testing with docker-wrapper
 - **[Comparison Guide](docs/COMPARISON.md)** - docker-wrapper vs other Docker Rust libraries
 - **[Command Coverage](docs/DOCKER_COMMAND_COVERAGE.md)** - Docker CLI command implementation status
 - **[GitHub Repository](https://github.com/joshrotenberg/docker-wrapper)** - Source code and issue tracking
@@ -166,6 +168,9 @@ The `examples/` directory contains practical examples:
 - `network_volume_management.rs` - Network and volume management
 - `redis_cluster.rs` - Redis cluster setup example
 - `test_sentinel.rs` - Redis Sentinel high availability example
+- `redis_enterprise.rs` - Redis Enterprise cluster with initialization
+- `testing_basics.rs` - Basic testing patterns with docker-wrapper
+- `test_fixtures.rs` - Reusable test fixtures for common services
 
 Run examples:
 

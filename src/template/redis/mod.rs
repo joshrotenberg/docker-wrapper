@@ -28,6 +28,12 @@ pub use sentinel::{RedisSentinelTemplate, SentinelConnectionInfo, SentinelInfo};
 pub mod insight;
 pub use insight::RedisInsightTemplate;
 
+// Redis Enterprise template
+#[cfg(feature = "template-redis-enterprise")]
+pub mod enterprise;
+#[cfg(feature = "template-redis-enterprise")]
+pub use enterprise::{RedisEnterpriseConnectionInfo, RedisEnterpriseTemplate};
+
 // #[cfg(feature = "template-redis-stack")]
 // pub mod stack;
 // #[cfg(feature = "template-redis-stack")]

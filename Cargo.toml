@@ -47,6 +47,7 @@ tokio = { version = "1.46", features = [
     "time",
     "io-util",
     "sync",
+    "net",
 ] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
@@ -57,6 +58,8 @@ async-trait = "0.1"
 [dev-dependencies]
 tokio-test = "0.4"
 tracing-subscriber = "0.3"
+uuid = { version = "1.0", features = ["v4"] }
+futures = "0.3"
 tempfile = "3.0"
 which = "8.0"
 
