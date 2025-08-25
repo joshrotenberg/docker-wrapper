@@ -7,15 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2025-08-25
+
 ### Added
-- Redis Sentinel template for high availability Redis deployments
-- Redis Stack template with full Redis modules support
-- RedisInsight template for Redis management UI
-- Comprehensive template examples and documentation
+- Container templates system with pre-configured defaults for common services
+  - Redis templates: Basic, Stack, Cluster, Sentinel, Enterprise, and RedisInsight
+  - Database templates: PostgreSQL, MySQL, MongoDB  
+  - Web server template: Nginx
+- Docker context management commands for remote Docker hosts
+- Comprehensive testing documentation and patterns
+- Hierarchical template organization with granular feature flags
 
 ### Changed
-- Restructured workspace to consolidate under `crates/` directory
 - Improved template architecture for better composability
+- Enhanced documentation with template examples
+
+### Fixed
+- Template feature gates for conditional compilation
 
 ## [0.4.0](https://github.com/joshrotenberg/docker-wrapper/compare/v0.3.0...v0.4.0) (2025-08-23)
 
