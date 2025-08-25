@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0](https://github.com/joshrotenberg/docker-wrapper/compare/v0.5.0...v0.6.0) - 2025-08-25
+
+### Added
+
+- add custom image and platform support to all templates ([#148](https://github.com/joshrotenberg/docker-wrapper/pull/148))
+
+### Other
+
+- *(deps)* bump dtolnay/rust-toolchain ([#149](https://github.com/joshrotenberg/docker-wrapper/pull/149))
+
 ## [0.5.0] - 2025-08-25
 
 ### Added
