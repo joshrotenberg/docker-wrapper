@@ -485,6 +485,9 @@ pub use template::redis::{
     ClusterInfo, NodeInfo, NodeRole, RedisClusterConnection, RedisClusterTemplate,
 };
 
+#[cfg(feature = "template-redis-enterprise")]
+pub use template::redis::{RedisEnterpriseConnectionInfo, RedisEnterpriseTemplate};
+
 // Database templates
 #[cfg(feature = "template-postgres")]
 pub use template::database::{PostgresConnectionString, PostgresTemplate};
