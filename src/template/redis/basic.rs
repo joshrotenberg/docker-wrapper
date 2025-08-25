@@ -137,14 +137,14 @@ impl Template for RedisTemplate {
 
     fn build_command(&self) -> crate::RunCommand {
         let config = self.config();
-        
+
         // Choose image based on Redis Stack preference
         let image_tag = if self.use_redis_stack {
             format!("{REDIS_STACK_IMAGE}:{REDIS_STACK_TAG}")
         } else {
             format!("{}:{}", config.image, config.tag)
         };
-        
+
         let mut cmd = crate::RunCommand::new(image_tag)
             .name(&config.name)
             .detach();

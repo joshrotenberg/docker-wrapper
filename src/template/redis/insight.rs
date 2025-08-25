@@ -6,7 +6,7 @@
 #![allow(clippy::needless_borrows_for_generic_args)]
 #![allow(clippy::unnecessary_get_then_check)]
 
-use super::common::{REDIS_INSIGHT_IMAGE, REDIS_INSIGHT_TAG, DEFAULT_REDIS_INSIGHT_PORT};
+use super::common::{DEFAULT_REDIS_INSIGHT_PORT, REDIS_INSIGHT_IMAGE, REDIS_INSIGHT_TAG};
 use crate::template::{Template, TemplateConfig};
 use async_trait::async_trait;
 use std::collections::HashMap;
@@ -89,7 +89,10 @@ mod tests {
         assert_eq!(template.name(), "test-insight");
         assert_eq!(template.config().image, REDIS_INSIGHT_IMAGE);
         assert_eq!(template.config().tag, REDIS_INSIGHT_TAG);
-        assert_eq!(template.config().ports, vec![(DEFAULT_REDIS_INSIGHT_PORT, 5540)]);
+        assert_eq!(
+            template.config().ports,
+            vec![(DEFAULT_REDIS_INSIGHT_PORT, 5540)]
+        );
     }
 
     #[test]
