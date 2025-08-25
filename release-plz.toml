@@ -33,6 +33,3 @@ git_tag_name = "v{{ version }}"
 # Enable changelog updates for version detection
 changelog_update = true
 changelog_path = "CHANGELOG.md"
-
-# Customize changelog format
-changelog_config = "cliff.toml"
