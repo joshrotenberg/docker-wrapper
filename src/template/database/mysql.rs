@@ -49,6 +49,7 @@ impl MysqlTemplate {
             auto_remove: false,
             memory_limit: None,
             cpu_limit: None,
+            platform: None,
         };
 
         Self { config }
@@ -197,6 +198,19 @@ impl MysqlTemplate {
     /// Enable auto-remove when stopped
     pub fn auto_remove(mut self) -> Self {
         self.config.auto_remove = true;
+        self
+    }
+
+    /// Use a custom image and tag
+    pub fn custom_image(mut self, image: impl Into<String>, tag: impl Into<String>) -> Self {
+        self.config.image = image.into();
+        self.config.tag = tag.into();
+        self
+    }
+
+    /// Set the platform for the container (e.g., "linux/arm64", "linux/amd64")
+    pub fn platform(mut self, platform: impl Into<String>) -> Self {
+        self.config.platform = Some(platform.into());
         self
     }
 }

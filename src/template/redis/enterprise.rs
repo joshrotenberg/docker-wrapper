@@ -27,6 +27,9 @@ pub struct RedisEnterpriseTemplate {
     ephemeral_path: Option<String>,
     memory_limit: Option<String>,
     initial_database: Option<String>,
+    image: String,
+    tag: String,
+    platform: Option<String>,
 }
 
 impl RedisEnterpriseTemplate {
@@ -46,6 +49,9 @@ impl RedisEnterpriseTemplate {
             ephemeral_path: None,
             memory_limit: None,
             initial_database: None,
+            image: "redislabs/redis".to_string(),
+            tag: "latest".to_string(),
+            platform: None,
         }
     }
 
@@ -121,6 +127,31 @@ impl RedisEnterpriseTemplate {
         self
     }
 
+    /// Use a custom Redis Enterprise image and tag
+    ///
+    /// # Example
+    /// ```
+    /// # use docker_wrapper::RedisEnterpriseTemplate;
+    /// let template = RedisEnterpriseTemplate::new("my-redis")
+    ///     .custom_image("my-registry/redis-enterprise", "latest")
+    ///     .platform("linux/arm64")
+    ///     .accept_eula();
+    /// ```
+    pub fn custom_image(mut self, image: impl Into<String>, tag: impl Into<String>) -> Self {
+        self.image = image.into();
+        self.tag = tag.into();
+        self
+    }
+
+    /// Set the platform for the container (e.g., "linux/arm64", "linux/amd64")
+    ///
+    /// This is especially useful for ARM-based Redis Enterprise images
+    /// on Apple Silicon Macs or ARM servers.
+    pub fn platform(mut self, platform: impl Into<String>) -> Self {
+        self.platform = Some(platform.into());
+        self
+    }
+
     /// Start the Redis Enterprise container and initialize the cluster
     ///
     /// # Errors
@@ -147,7 +178,7 @@ impl RedisEnterpriseTemplate {
 
         // Start the Redis Enterprise container
         let container_name = format!("{}-enterprise", self.name);
-        let mut cmd = RunCommand::new("redislabs/redis:latest")
+        let mut cmd = RunCommand::new(format!("{}:{}", self.image, self.tag))
             .name(&container_name)
             .port(self.ui_port, 8443)
             .port(self.api_port, 9443)
@@ -180,6 +211,11 @@ impl RedisEnterpriseTemplate {
 
         // Set capabilities for Redis Enterprise
         cmd = cmd.cap_add("SYS_RESOURCE");
+
+        // Add platform if specified
+        if let Some(ref platform) = self.platform {
+            cmd = cmd.platform(platform);
+        }
 
         // Execute container start
         cmd.execute().await.map_err(|e| crate::Error::Custom {

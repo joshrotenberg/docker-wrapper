@@ -30,6 +30,12 @@ pub struct RedisSentinelTemplate {
     parallel_syncs: u32,
     persistence: bool,
     network: Option<String>,
+    /// Custom Redis image
+    redis_image: Option<String>,
+    /// Custom Redis tag
+    redis_tag: Option<String>,
+    /// Platform for containers
+    platform: Option<String>,
 }
 
 impl RedisSentinelTemplate {
@@ -50,6 +56,9 @@ impl RedisSentinelTemplate {
             parallel_syncs: 1,
             persistence: false,
             network: None,
+            redis_image: None,
+            redis_tag: None,
+            platform: None,
         }
     }
 
@@ -131,6 +140,19 @@ impl RedisSentinelTemplate {
         self
     }
 
+    /// Use a custom Redis image and tag
+    pub fn custom_redis_image(mut self, image: impl Into<String>, tag: impl Into<String>) -> Self {
+        self.redis_image = Some(image.into());
+        self.redis_tag = Some(tag.into());
+        self
+    }
+
+    /// Set the platform for the containers (e.g., "linux/arm64", "linux/amd64")
+    pub fn platform(mut self, platform: impl Into<String>) -> Self {
+        self.platform = Some(platform.into());
+        self
+    }
+
     /// Start the Redis Sentinel cluster
     ///
     /// # Errors
@@ -195,8 +217,14 @@ impl RedisSentinelTemplate {
             let sentinel_name = format!("{}-sentinel-{}", self.name, i + 1);
             let sentinel_port = self.sentinel_port_base + u16::try_from(i).unwrap_or(0);
 
-            let mut sentinel_cmd =
-                Self::build_sentinel_command(&sentinel_name, sentinel_port, &sentinel_config);
+            let mut sentinel_cmd = Self::build_sentinel_command(
+                &sentinel_name,
+                sentinel_port,
+                &sentinel_config,
+                self.redis_image.as_deref(),
+                self.redis_tag.as_deref(),
+                self.platform.as_deref(),
+            );
             sentinel_cmd = sentinel_cmd.network(&network_name);
 
             sentinel_cmd
@@ -239,10 +267,23 @@ impl RedisSentinelTemplate {
 
     /// Build a Redis command (master or replica)
     fn build_redis_command(&self, name: &str, port: u16, master: Option<&str>) -> RunCommand {
-        let mut cmd = RunCommand::new(format!("{DEFAULT_REDIS_IMAGE}:{DEFAULT_REDIS_TAG}"))
-            .name(name)
-            .port(port, 6379)
-            .detach();
+        // Choose image based on custom image or default
+        let image = if let Some(ref custom_image) = self.redis_image {
+            if let Some(ref tag) = self.redis_tag {
+                format!("{custom_image}:{tag}")
+            } else {
+                custom_image.clone()
+            }
+        } else {
+            format!("{DEFAULT_REDIS_IMAGE}:{DEFAULT_REDIS_TAG}")
+        };
+
+        let mut cmd = RunCommand::new(image).name(name).port(port, 6379).detach();
+
+        // Add platform if specified
+        if let Some(ref platform) = self.platform {
+            cmd = cmd.platform(platform);
+        }
 
         // Add persistence if enabled
         if self.persistence {
@@ -276,11 +317,31 @@ impl RedisSentinelTemplate {
     }
 
     /// Build Sentinel command
-    fn build_sentinel_command(name: &str, port: u16, config: &str) -> RunCommand {
-        let mut cmd = RunCommand::new(format!("{DEFAULT_REDIS_IMAGE}:{DEFAULT_REDIS_TAG}"))
-            .name(name)
-            .port(port, 26379)
-            .detach();
+    fn build_sentinel_command(
+        name: &str,
+        port: u16,
+        config: &str,
+        redis_image: Option<&str>,
+        redis_tag: Option<&str>,
+        platform: Option<&str>,
+    ) -> RunCommand {
+        // Choose image based on custom image or default
+        let image = if let Some(custom_image) = redis_image {
+            if let Some(tag) = redis_tag {
+                format!("{custom_image}:{tag}")
+            } else {
+                custom_image.to_string()
+            }
+        } else {
+            format!("{DEFAULT_REDIS_IMAGE}:{DEFAULT_REDIS_TAG}")
+        };
+
+        let mut cmd = RunCommand::new(image).name(name).port(port, 26379).detach();
+
+        // Add platform if specified
+        if let Some(platform) = platform {
+            cmd = cmd.platform(platform);
+        }
 
         // Create inline Sentinel config using echo
         let config_cmd = format!(
