@@ -411,6 +411,7 @@ pub use command::{
     images::{ImageInfo, ImagesCommand, ImagesOutput},
     import::{ImportCommand, ImportResult},
     info::{DockerInfo as SystemDockerInfo, InfoCommand, InfoOutput, SystemInfo},
+    init::{InitCommand, InitOutput, InitTemplate},
     inspect::{InspectCommand, InspectOutput},
     kill::{KillCommand, KillResult},
     load::{LoadCommand, LoadResult},

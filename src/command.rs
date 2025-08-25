@@ -49,6 +49,7 @@ pub mod image_prune;
 pub mod images;
 pub mod import;
 pub mod info;
+pub mod init;
 pub mod inspect;
 pub mod kill;
 pub mod load;
