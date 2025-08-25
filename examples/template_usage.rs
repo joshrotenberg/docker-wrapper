@@ -1,8 +1,8 @@
 //! Example demonstrating Docker template usage for common containers
 //!
 //! This example shows how to use pre-configured templates to quickly
-//! spin up development environments with Redis, PostgreSQL, MySQL,
-//! MongoDB, and Nginx.
+//! spin up development environments with Redis, Redis Sentinel, PostgreSQL,
+//! MySQL, MongoDB, and Nginx.
 
 #[cfg(feature = "templates")]
 use docker_wrapper::{
