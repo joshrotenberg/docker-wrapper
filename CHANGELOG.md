@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.2](https://github.com/joshrotenberg/docker-wrapper/compare/v0.4.1...v0.4.2) - 2025-08-25
+
+### Added
+
+- implement Redis Enterprise template and comprehensive testing documentation ([#143](https://github.com/joshrotenberg/docker-wrapper/pull/143))
+- add Redis Sentinel template with documentation updates ([#142](https://github.com/joshrotenberg/docker-wrapper/pull/142))
+- Redis template improvements with Stack support and separate RedisInsight ([#141](https://github.com/joshrotenberg/docker-wrapper/pull/141))
+- add Redis Cluster template with multi-node setup ([#138](https://github.com/joshrotenberg/docker-wrapper/pull/138))
+- add templates feature for pre-configured Docker containers ([#130](https://github.com/joshrotenberg/docker-wrapper/pull/130))
+- add docker context management commands ([#129](https://github.com/joshrotenberg/docker-wrapper/pull/129))
+
+### Fixed
+
+- remove invalid changelog_config field from release-plz.toml ([#146](https://github.com/joshrotenberg/docker-wrapper/pull/146))
+- enable changelog updates in release-plz for proper version detection ([#145](https://github.com/joshrotenberg/docker-wrapper/pull/145))
+- install cargo-machete and cargo-outdated in CI ([#139](https://github.com/joshrotenberg/docker-wrapper/pull/139))
+
+### Other
+
+- implement hierarchical template organization with granular feature flags ([#136](https://github.com/joshrotenberg/docker-wrapper/pull/136))
+- comprehensive integration test coverage improvements ([#127](https://github.com/joshrotenberg/docker-wrapper/pull/127))
+
 ### Added
 - Redis Sentinel template for high availability Redis deployments
 - Redis Stack template with full Redis modules support
