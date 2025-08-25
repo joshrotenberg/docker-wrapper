@@ -17,7 +17,7 @@ pub async fn handle_list(filter_type: Option<String>, verbose: bool) -> Result<(
             "enterprise" => InstanceType::Enterprise,
             _ => {
                 println!("{} Invalid type filter: {}. Valid types: basic, stack, cluster, sentinel, enterprise", 
-                    "⚠️".yellow(), type_filter.red());
+                    "Warning:".yellow(), type_filter.red());
                 return Ok(());
             }
         };
