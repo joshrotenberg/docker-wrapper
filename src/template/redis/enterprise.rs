@@ -131,7 +131,7 @@ impl RedisEnterpriseTemplate {
     ///
     /// # Example
     /// ```
-    /// # use docker_wrapper::template::RedisEnterpriseTemplate;
+    /// # use docker_wrapper::RedisEnterpriseTemplate;
     /// let template = RedisEnterpriseTemplate::new("my-redis")
     ///     .custom_image("my-registry/redis-enterprise", "latest")
     ///     .platform("linux/arm64")
