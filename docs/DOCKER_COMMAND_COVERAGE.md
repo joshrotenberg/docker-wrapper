@@ -110,7 +110,7 @@ All Docker Compose commands are fully implemented when the `compose` feature is 
 ### Medium Priority (Advanced Features)
 | Command | Issue | Use Case |
 |---------|-------|----------|
-| context | #78 | Remote Docker management |
+| context | ✅ | Remote Docker management |
 | builder | #79 | Build cache management |
 | container/* | #80 | CLI compatibility aliases |
 | image/* | #80 | CLI compatibility aliases |

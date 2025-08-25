@@ -14,10 +14,12 @@ A comprehensive, type-safe Docker CLI wrapper for Rust applications.
 - Async/await support with Tokio
 - Real-time output streaming
 - Docker Compose support (optional)
+- Pre-configured container templates (Redis, PostgreSQL, MySQL, MongoDB, Nginx)
+- Docker context management for remote Docker hosts
 - Docker builder commands for build cache management
 - Network and volume management
 - Zero unsafe code
-- Extensive test coverage (680+ tests)
+- Extensive test coverage (750+ tests)
 
 ## Installation
 
@@ -25,7 +27,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-docker-wrapper = "0.4"
+docker-wrapper = "0.5"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -35,7 +37,7 @@ Enable Docker Compose support:
 
 ```toml
 [dependencies]
-docker-wrapper = { version = "0.4", features = ["compose"] }
+docker-wrapper = { version = "0.5", features = ["compose"] }
 ```
 
 ## Quick Start
@@ -79,9 +81,16 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-### Container Templates (Feature: `templates`)
+### Container Templates
 
-Pre-configured templates for common containers with sensible defaults:
+Enable templates for pre-configured containers with sensible defaults:
+
+```toml
+[dependencies]
+docker-wrapper = { version = "0.5", features = ["templates"] }
+```
+
+Available templates:
 
 ```rust
 use docker_wrapper::{RedisTemplate, PostgresTemplate, Template};
@@ -98,6 +107,40 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     // Start PostgreSQL with custom configuration
     let postgres = PostgresTemplate::new("my-postgres")
+        .password("postgres")
+        .database("myapp")
+        .port(5432);
+    
+    let postgres_conn = postgres.start().await?;
+    println!("PostgreSQL URL: {}", postgres_conn.connection_url());
+    
+    Ok(())
+}
+```
+
+### Docker Context Management
+
+```rust
+use docker_wrapper::{DockerCommand, ContextCreateCommand, ContextUseCommand};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Create a context for remote Docker host
+    ContextCreateCommand::new("remote-docker")
+        .docker_host("ssh://user@remote-host")
+        .description("Remote development server")
+        .execute()
+        .await?;
+    
+    // Switch to remote context
+    ContextUseCommand::new("remote-docker")
+        .execute()
+        .await?;
+    
+    // Now all Docker commands will run on the remote host
+    Ok(())
+}
+```
         .database("myapp")
         .user("appuser")
         .password("apppass")
