@@ -133,7 +133,7 @@ impl RedisEnterpriseTemplate {
     /// ```
     /// # use docker_wrapper::template::RedisEnterpriseTemplate;
     /// let template = RedisEnterpriseTemplate::new("my-redis")
-    ///     .custom_image("kurtfm/rs-arm", "latest")
+    ///     .custom_image("my-registry/redis-enterprise", "latest")
     ///     .platform("linux/arm64")
     ///     .accept_eula();
     /// ```
