@@ -67,13 +67,17 @@ impl RedisFixture {
             .remove();
 
         if let Some(ref pwd) = password {
-            cmd = cmd.cmd(vec!["redis-server", "--requirepass", pwd]);
+            cmd = cmd.cmd(vec![
+                "redis-server".to_string(),
+                "--requirepass".to_string(),
+                pwd.to_string(),
+            ]);
         }
 
         cmd.execute().await?;
 
         // Wait for Redis to be ready
-        wait_for_port("localhost", port, Duration::from_secs(5))?;
+        wait_for_port("localhost", port, Duration::from_secs(5)).await?;
 
         Ok(Self {
             container_name,
@@ -101,8 +105,8 @@ impl RedisFixture {
 
         cmd_args.extend(args);
 
-        let output = ExecCommand::new(&self.container_name)
-            .cmd(cmd_args)
+        let cmd_args_strings: Vec<String> = cmd_args.into_iter().map(|s| s.to_string()).collect();
+        let output = ExecCommand::new(&self.container_name, cmd_args_strings)
             .execute()
             .await?;
 
@@ -152,7 +156,7 @@ impl PostgresFixture {
             .await?;
 
         // Wait for PostgreSQL to be ready
-        wait_for_port("localhost", port, Duration::from_secs(10))?;
+        wait_for_port("localhost", port, Duration::from_secs(10)).await?;
 
         // Additional wait for PostgreSQL initialization
         tokio::time::sleep(Duration::from_secs(2)).await;
@@ -176,19 +180,21 @@ impl PostgresFixture {
 
     /// Execute a SQL query
     pub async fn exec_sql(&self, sql: &str) -> Result<String, Box<dyn std::error::Error>> {
-        let output = ExecCommand::new(&self.container_name)
-            .cmd(vec![
-                "psql",
-                "-U",
-                &self.username,
-                "-d",
-                &self.database,
-                "-c",
-                sql,
-            ])
-            .env("PGPASSWORD", &self.password)
-            .execute()
-            .await?;
+        let output = ExecCommand::new(
+            &self.container_name,
+            vec![
+                "psql".to_string(),
+                "-U".to_string(),
+                self.username.clone(),
+                "-d".to_string(),
+                self.database.clone(),
+                "-c".to_string(),
+                sql.to_string(),
+            ],
+        )
+        .env("PGPASSWORD", &self.password)
+        .execute()
+        .await?;
 
         Ok(output.stdout)
     }
@@ -237,7 +243,7 @@ impl MongoFixture {
         cmd.execute().await?;
 
         // Wait for MongoDB to be ready
-        wait_for_port("localhost", port, Duration::from_secs(10))?;
+        wait_for_port("localhost", port, Duration::from_secs(10)).await?;
 
         Ok(Self {
             container_name,

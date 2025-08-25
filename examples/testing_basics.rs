@@ -8,9 +8,9 @@ use docker_wrapper::{DockerCommand, RunCommand};
 use docker_wrapper::{ExecCommand, LogsCommand, RmCommand, StopCommand};
 #[allow(unused_imports)]
 use std::time::Duration;
-use tokio;
 
 /// Generate a unique container name for parallel test execution
+#[allow(dead_code)]
 fn unique_container_name(prefix: &str) -> String {
     format!("{}-{}", prefix, uuid::Uuid::new_v4())
 }
@@ -170,6 +170,7 @@ async fn test_parallel_safe_containers() {
     }
 }
 
+#[allow(dead_code)]
 async fn start_test_container(test_id: &str) -> Result<String, docker_wrapper::Error> {
     let container_name = unique_container_name(&format!("parallel-{}", test_id));
 
