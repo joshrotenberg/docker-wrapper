@@ -43,6 +43,7 @@ impl NginxTemplate {
             auto_remove: false,
             memory_limit: None,
             cpu_limit: None,
+            platform: None,
         };
 
         Self { config }
@@ -170,6 +171,19 @@ impl NginxTemplate {
         self.config
             .env
             .insert("NGINX_DEBUG".to_string(), "true".to_string());
+        self
+    }
+
+    /// Use a custom image and tag
+    pub fn custom_image(mut self, image: impl Into<String>, tag: impl Into<String>) -> Self {
+        self.config.image = image.into();
+        self.config.tag = tag.into();
+        self
+    }
+
+    /// Set the platform for the container (e.g., "linux/arm64", "linux/amd64")
+    pub fn platform(mut self, platform: impl Into<String>) -> Self {
+        self.config.platform = Some(platform.into());
         self
     }
 }

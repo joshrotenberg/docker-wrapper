@@ -88,6 +88,9 @@ pub struct TemplateConfig {
 
     /// CPU limit
     pub cpu_limit: Option<String>,
+
+    /// Platform specification (e.g., "linux/amd64", "linux/arm64")
+    pub platform: Option<String>,
 }
 
 /// Volume mount configuration
@@ -182,6 +185,11 @@ pub trait Template: Send + Sync {
 
         if let Some(cpu) = &config.cpu_limit {
             cmd = cmd.cpus(cpu);
+        }
+
+        // Add platform if specified
+        if let Some(platform) = &config.platform {
+            cmd = cmd.platform(platform);
         }
 
         // Auto-remove
@@ -284,6 +292,7 @@ impl TemplateBuilder {
                 auto_remove: false,
                 memory_limit: None,
                 cpu_limit: None,
+                platform: None,
             },
         }
     }

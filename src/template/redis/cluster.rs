@@ -41,6 +41,12 @@ pub struct RedisClusterTemplate {
     with_redis_insight: bool,
     /// Port for RedisInsight UI
     redis_insight_port: u16,
+    /// Custom Redis image
+    redis_image: Option<String>,
+    /// Custom Redis tag
+    redis_tag: Option<String>,
+    /// Platform for containers
+    platform: Option<String>,
 }
 
 impl RedisClusterTemplate {
@@ -64,6 +70,9 @@ impl RedisClusterTemplate {
             use_redis_stack: false,
             with_redis_insight: false,
             redis_insight_port: 8001,
+            redis_image: None,
+            redis_tag: None,
+            platform: None,
         }
     }
 
@@ -139,6 +148,19 @@ impl RedisClusterTemplate {
         self
     }
 
+    /// Use a custom Redis image and tag
+    pub fn custom_redis_image(mut self, image: impl Into<String>, tag: impl Into<String>) -> Self {
+        self.redis_image = Some(image.into());
+        self.redis_tag = Some(tag.into());
+        self
+    }
+
+    /// Set the platform for the containers (e.g., "linux/arm64", "linux/amd64")
+    pub fn platform(mut self, platform: impl Into<String>) -> Self {
+        self.platform = Some(platform.into());
+        self
+    }
+
     /// Get the total number of nodes
     fn total_nodes(&self) -> usize {
         self.num_masters + (self.num_masters * self.num_replicas)
@@ -161,11 +183,17 @@ impl RedisClusterTemplate {
         let port = self.port_base + node_index as u16;
         let cluster_port = port + 10000;
 
-        // Choose image based on whether Redis Stack is requested
-        let image = if self.use_redis_stack {
-            "redis/redis-stack-server:latest"
+        // Choose image based on custom image or Redis Stack preference
+        let image = if let Some(ref custom_image) = self.redis_image {
+            if let Some(ref tag) = self.redis_tag {
+                format!("{}:{}", custom_image, tag)
+            } else {
+                custom_image.clone()
+            }
+        } else if self.use_redis_stack {
+            "redis/redis-stack-server:latest".to_string()
         } else {
-            "redis:7-alpine"
+            "redis:7-alpine".to_string()
         };
 
         let mut cmd = RunCommand::new(image)
@@ -184,6 +212,11 @@ impl RedisClusterTemplate {
         if let Some(ref prefix) = self.volume_prefix {
             let volume_name = format!("{}-{}", prefix, node_index);
             cmd = cmd.volume(&volume_name, "/data");
+        }
+
+        // Add platform if specified
+        if let Some(ref platform) = self.platform {
+            cmd = cmd.platform(platform);
         }
 
         // Auto-remove
