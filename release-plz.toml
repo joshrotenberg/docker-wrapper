@@ -1,6 +1,6 @@
 [workspace]
-# Disable built-in changelog since we use git-cliff separately
-changelog_update = false
+# Enable changelog updates so release-plz can detect version changes
+changelog_update = true
 
 # Customize git operations
 git_release_enable = true
@@ -30,5 +30,9 @@ git_release_enable = true
 git_tag_enable = true
 git_tag_name = "v{{ version }}"
 
-# Changelog handled by git-cliff in separate workflow
-changelog_update = false
+# Enable changelog updates for version detection
+changelog_update = true
+changelog_path = "CHANGELOG.md"
+
+# Customize changelog format
+changelog_config = "cliff.toml"
