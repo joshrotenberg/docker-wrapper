@@ -12,6 +12,21 @@ pub const DEFAULT_REDIS_IMAGE: &str = "redis";
 /// Default Redis Alpine image tag
 pub const DEFAULT_REDIS_TAG: &str = "7-alpine";
 
+/// Redis Stack image
+pub const REDIS_STACK_IMAGE: &str = "redis/redis-stack";
+
+/// Redis Stack image tag
+pub const REDIS_STACK_TAG: &str = "latest";
+
+/// RedisInsight image
+pub const REDIS_INSIGHT_IMAGE: &str = "redis/redisinsight";
+
+/// RedisInsight image tag
+pub const REDIS_INSIGHT_TAG: &str = "latest";
+
+/// Default RedisInsight port
+pub const DEFAULT_REDIS_INSIGHT_PORT: u16 = 5540;
+
 /// Create a default health check for Redis
 pub fn default_redis_health_check() -> HealthCheck {
     HealthCheck {

@@ -25,6 +25,10 @@ pub use cluster::{ClusterInfo, NodeInfo, NodeRole, RedisClusterConnection, Redis
 // #[cfg(feature = "template-redis-sentinel")]
 // pub use sentinel::RedisSentinelTemplate;
 
+// RedisInsight template
+pub mod insight;
+pub use insight::RedisInsightTemplate;
+
 // #[cfg(feature = "template-redis-stack")]
 // pub mod stack;
 // #[cfg(feature = "template-redis-stack")]

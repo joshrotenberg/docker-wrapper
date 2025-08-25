@@ -1,0 +1,55 @@
+[package]
+name = "redis-dev"
+version = "0.1.0"
+edition = "2021"
+authors = ["Redis Developer Tools"]
+description = "CLI tool for quickly spinning up Redis development environments"
+license = "MIT"
+
+[[bin]]
+name = "redis-dev"
+path = "src/main.rs"
+
+[dependencies]
+# CLI framework
+clap = { version = "4.4", features = ["derive", "env"] }
+
+# Docker orchestration via docker-wrapper
+docker-wrapper = { path = "../..", features = [
+    "templates", 
+    "template-redis-cluster",
+    "template-redis"
+] }
+
+# Async runtime
+tokio = { version = "1.0", features = ["full"] }
+
+# Serialization for state management
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# HTTP client for Enterprise API calls (commented out for now)
+# reqwest = { version = "0.11", features = ["json"] }
+
+# Terminal colors and formatting
+colored = "2.0"
+
+# Random name generation
+rand = "0.8"
+
+# File system operations
+dirs = "5.0"
+
+# Process management
+uuid = { version = "1.0", features = ["v4"] }
+
+# Date/time handling
+chrono = { version = "0.4", features = ["serde"] }
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
