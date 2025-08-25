@@ -22,7 +22,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("\n✅ Redis Sentinel cluster started successfully!");
     println!("\n📊 Cluster Information:");
-    println!("  Master: {}:{}", connection_info.master_host, connection_info.master_port);
+    println!(
+        "  Master: {}:{}",
+        connection_info.master_host, connection_info.master_port
+    );
     println!("  Replicas: {:?}", connection_info.replica_ports);
     println!("  Sentinels:");
     for sentinel in &connection_info.sentinels {
@@ -40,7 +43,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n⏳ Cluster will run for 5 seconds for testing...");
     println!("You can test failover by stopping the master container:");
     println!("  docker stop {}-master", connection_info.name);
-    
+
     // Keep running for testing
     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
 

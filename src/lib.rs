@@ -475,7 +475,7 @@ pub use template::{Template, TemplateBuilder, TemplateConfig, TemplateError};
 
 // Redis templates
 #[cfg(feature = "template-redis")]
-pub use template::redis::{RedisTemplate, RedisInsightTemplate};
+pub use template::redis::{RedisInsightTemplate, RedisTemplate};
 
 #[cfg(feature = "template-redis")]
 pub use template::redis::{RedisSentinelTemplate, SentinelConnectionInfo, SentinelInfo};

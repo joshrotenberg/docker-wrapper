@@ -111,6 +111,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 Available templates:
 - `RedisTemplate` - Redis key-value store
+- `RedisSentinelTemplate` - Redis Sentinel for high availability
+- `RedisInsightTemplate` - Redis management UI
 - `PostgresTemplate` - PostgreSQL database
 - `MysqlTemplate` - MySQL database
 - `MongodbTemplate` - MongoDB document database
@@ -161,6 +163,9 @@ The `examples/` directory contains practical examples:
 - `system_cleanup.rs` - System maintenance and cleanup
 - `complete_run_coverage.rs` - Comprehensive run command options
 - `template_usage.rs` - Container templates usage (requires `templates` feature)
+- `network_volume_management.rs` - Network and volume management
+- `redis_cluster.rs` - Redis cluster setup example
+- `test_sentinel.rs` - Redis Sentinel high availability example
 
 Run examples:
 

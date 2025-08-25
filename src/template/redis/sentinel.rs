@@ -132,8 +132,16 @@ impl RedisSentinelTemplate {
     }
 
     /// Start the Redis Sentinel cluster
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Network creation fails
+    /// - Starting any container (master, replica, or sentinel) fails
     pub async fn start(self) -> Result<SentinelConnectionInfo, crate::Error> {
-        let network_name = self.network.clone()
+        let network_name = self
+            .network
+            .clone()
             .unwrap_or_else(|| format!("{}-network", self.name));
 
         // Create network if not provided
@@ -141,29 +149,40 @@ impl RedisSentinelTemplate {
             NetworkCreateCommand::new(&network_name)
                 .execute()
                 .await
-                .map_err(|e| crate::Error::Custom { message: format!("Failed to create network: {}", e) })?;
+                .map_err(|e| crate::Error::Custom {
+                    message: format!("Failed to create network: {e}"),
+                })?;
         }
 
         // Start Redis master
         let master_name = format!("{}-master", self.name);
         let mut master_cmd = self.build_redis_command(&master_name, self.master_port, None);
         master_cmd = master_cmd.network(&network_name);
-        
-        master_cmd.execute().await
-            .map_err(|e| crate::Error::Custom { message: format!("Failed to start master: {}", e) })?;
+
+        master_cmd
+            .execute()
+            .await
+            .map_err(|e| crate::Error::Custom {
+                message: format!("Failed to start master: {e}"),
+            })?;
 
         // Start Redis replicas
         let mut replica_containers = Vec::new();
         for i in 0..self.num_replicas {
             let replica_name = format!("{}-replica-{}", self.name, i + 1);
-            let replica_port = self.replica_port_base + i as u16;
-            
-            let mut replica_cmd = self.build_redis_command(&replica_name, replica_port, Some(&master_name));
+            let replica_port = self.replica_port_base + u16::try_from(i).unwrap_or(0);
+
+            let mut replica_cmd =
+                self.build_redis_command(&replica_name, replica_port, Some(&master_name));
             replica_cmd = replica_cmd.network(&network_name);
-            
-            replica_cmd.execute().await
-                .map_err(|e| crate::Error::Custom { message: format!("Failed to start replica {}: {}", i + 1, e) })?;
-            
+
+            replica_cmd
+                .execute()
+                .await
+                .map_err(|e| crate::Error::Custom {
+                    message: format!("Failed to start replica {}: {e}", i + 1),
+                })?;
+
             replica_containers.push(replica_name);
         }
 
@@ -174,14 +193,19 @@ impl RedisSentinelTemplate {
         let mut sentinel_containers = Vec::new();
         for i in 0..self.num_sentinels {
             let sentinel_name = format!("{}-sentinel-{}", self.name, i + 1);
-            let sentinel_port = self.sentinel_port_base + i as u16;
-            
-            let mut sentinel_cmd = self.build_sentinel_command(&sentinel_name, sentinel_port, &sentinel_config);
+            let sentinel_port = self.sentinel_port_base + u16::try_from(i).unwrap_or(0);
+
+            let mut sentinel_cmd =
+                Self::build_sentinel_command(&sentinel_name, sentinel_port, &sentinel_config);
             sentinel_cmd = sentinel_cmd.network(&network_name);
-            
-            sentinel_cmd.execute().await
-                .map_err(|e| crate::Error::Custom { message: format!("Failed to start sentinel {}: {}", i + 1, e) })?;
-            
+
+            sentinel_cmd
+                .execute()
+                .await
+                .map_err(|e| crate::Error::Custom {
+                    message: format!("Failed to start sentinel {}: {e}", i + 1),
+                })?;
+
             sentinel_containers.push((sentinel_name, sentinel_port));
         }
 
@@ -191,7 +215,7 @@ impl RedisSentinelTemplate {
             master_host: "localhost".to_string(),
             master_port: self.master_port,
             replica_ports: (0..self.num_replicas)
-                .map(|i| self.replica_port_base + i as u16)
+                .map(|i| self.replica_port_base + u16::try_from(i).unwrap_or(0))
                 .collect(),
             sentinels: sentinel_containers
                 .into_iter()
@@ -205,8 +229,9 @@ impl RedisSentinelTemplate {
             containers: {
                 let mut containers = vec![master_name];
                 containers.extend(replica_containers);
-                containers.extend((0..self.num_sentinels)
-                    .map(|i| format!("{}-sentinel-{}", self.name, i + 1)));
+                containers.extend(
+                    (0..self.num_sentinels).map(|i| format!("{}-sentinel-{}", self.name, i + 1)),
+                );
                 containers
             },
         })
@@ -214,29 +239,29 @@ impl RedisSentinelTemplate {
 
     /// Build a Redis command (master or replica)
     fn build_redis_command(&self, name: &str, port: u16, master: Option<&str>) -> RunCommand {
-        let mut cmd = RunCommand::new(format!("{}:{}", DEFAULT_REDIS_IMAGE, DEFAULT_REDIS_TAG))
+        let mut cmd = RunCommand::new(format!("{DEFAULT_REDIS_IMAGE}:{DEFAULT_REDIS_TAG}"))
             .name(name)
             .port(port, 6379)
             .detach();
 
         // Add persistence if enabled
         if self.persistence {
-            cmd = cmd.volume(format!("{}-data", name), "/data");
+            cmd = cmd.volume(format!("{name}-data"), "/data");
         }
 
         // Build command arguments
         let mut args = Vec::new();
-        
+
         // If this is a replica, configure replication
         if let Some(master_name) = master {
-            args.push(format!("--replicaof {} 6379", master_name));
+            args.push(format!("--replicaof {master_name} 6379"));
         }
 
         // Add password if set
         if let Some(ref password) = self.password {
-            args.push(format!("--requirepass {}", password));
+            args.push(format!("--requirepass {password}"));
             if master.is_some() {
-                args.push(format!("--masterauth {}", password));
+                args.push(format!("--masterauth {password}"));
             }
         }
 
@@ -244,16 +269,15 @@ impl RedisSentinelTemplate {
         args.push("--protected-mode no".to_string());
 
         if !args.is_empty() {
-            cmd = cmd.entrypoint("redis-server")
-                .cmd(args);
+            cmd = cmd.entrypoint("redis-server").cmd(args);
         }
 
         cmd
     }
 
     /// Build Sentinel command
-    fn build_sentinel_command(&self, name: &str, port: u16, config: &str) -> RunCommand {
-        let mut cmd = RunCommand::new(format!("{}:{}", DEFAULT_REDIS_IMAGE, DEFAULT_REDIS_TAG))
+    fn build_sentinel_command(name: &str, port: u16, config: &str) -> RunCommand {
+        let mut cmd = RunCommand::new(format!("{DEFAULT_REDIS_IMAGE}:{DEFAULT_REDIS_TAG}"))
             .name(name)
             .port(port, 26379)
             .detach();
@@ -264,8 +288,7 @@ impl RedisSentinelTemplate {
             config.replace('\'', "'\\''").replace('\n', "\\n")
         );
 
-        cmd = cmd.entrypoint("sh")
-            .cmd(vec!["-c".to_string(), config_cmd]);
+        cmd = cmd.entrypoint("sh").cmd(vec!["-c".to_string(), config_cmd]);
 
         cmd
     }
@@ -273,22 +296,33 @@ impl RedisSentinelTemplate {
     /// Build Sentinel configuration
     fn build_sentinel_config(&self, master_container: &str) -> String {
         let mut config = Vec::new();
-        
+
         config.push("port 26379".to_string());
-        config.push(format!("sentinel monitor {} {} 6379 {}", 
-            self.master_name, master_container, self.quorum));
-        
+        config.push(format!(
+            "sentinel monitor {} {} 6379 {}",
+            self.master_name, master_container, self.quorum
+        ));
+
         if let Some(ref password) = self.password {
-            config.push(format!("sentinel auth-pass {} {}", self.master_name, password));
+            config.push(format!(
+                "sentinel auth-pass {} {}",
+                self.master_name, password
+            ));
         }
-        
-        config.push(format!("sentinel down-after-milliseconds {} {}", 
-            self.master_name, self.down_after_milliseconds));
-        config.push(format!("sentinel failover-timeout {} {}", 
-            self.master_name, self.failover_timeout));
-        config.push(format!("sentinel parallel-syncs {} {}", 
-            self.master_name, self.parallel_syncs));
-        
+
+        config.push(format!(
+            "sentinel down-after-milliseconds {} {}",
+            self.master_name, self.down_after_milliseconds
+        ));
+        config.push(format!(
+            "sentinel failover-timeout {} {}",
+            self.master_name, self.failover_timeout
+        ));
+        config.push(format!(
+            "sentinel parallel-syncs {} {}",
+            self.master_name, self.parallel_syncs
+        ));
+
         config.join("\n")
     }
 }
@@ -327,7 +361,10 @@ impl SentinelConnectionInfo {
     /// Get Redis URL for direct master connection
     pub fn master_url(&self) -> String {
         if let Some(ref password) = self.password {
-            format!("redis://default:{}@{}:{}", password, self.master_host, self.master_port)
+            format!(
+                "redis://default:{}@{}:{}",
+                password, self.master_host, self.master_port
+            )
         } else {
             format!("redis://{}:{}", self.master_host, self.master_port)
         }
@@ -342,22 +379,32 @@ impl SentinelConnectionInfo {
     }
 
     /// Stop all containers in the Sentinel cluster
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Stopping or removing any container fails
+    /// - Removing the network fails
     pub async fn stop(self) -> Result<(), crate::Error> {
-        use crate::{StopCommand, RmCommand, NetworkRmCommand};
-        
+        use crate::{NetworkRmCommand, RmCommand, StopCommand};
+
         // Stop and remove all containers
         for container in &self.containers {
             StopCommand::new(container)
                 .execute()
                 .await
-                .map_err(|e| crate::Error::Custom { message: format!("Failed to stop {}: {}", container, e) })?;
-            
+                .map_err(|e| crate::Error::Custom {
+                    message: format!("Failed to stop {container}: {e}"),
+                })?;
+
             RmCommand::new(container)
                 .force()
                 .volumes()
                 .execute()
                 .await
-                .map_err(|e| crate::Error::Custom { message: format!("Failed to remove {}: {}", container, e) })?;
+                .map_err(|e| crate::Error::Custom {
+                    message: format!("Failed to remove {container}: {e}"),
+                })?;
         }
 
         // Remove network if it was created by us
@@ -365,7 +412,9 @@ impl SentinelConnectionInfo {
             NetworkRmCommand::new(&self.network)
                 .execute()
                 .await
-                .map_err(|e| crate::Error::Custom { message: format!("Failed to remove network: {}", e) })?;
+                .map_err(|e| crate::Error::Custom {
+                    message: format!("Failed to remove network: {e}"),
+                })?;
         }
 
         Ok(())
@@ -395,7 +444,7 @@ mod tests {
             .quorum(3)
             .password("secret")
             .with_persistence();
-        
+
         assert_eq!(template.master_name, "primary");
         assert_eq!(template.num_replicas, 3);
         assert_eq!(template.num_sentinels, 5);
@@ -410,9 +459,9 @@ mod tests {
             .master_name("mymaster")
             .password("secret")
             .quorum(2);
-        
+
         let config = template.build_sentinel_config("redis-master");
-        
+
         assert!(config.contains("sentinel monitor mymaster redis-master 6379 2"));
         assert!(config.contains("sentinel auth-pass mymaster secret"));
         assert!(config.contains("sentinel down-after-milliseconds mymaster 5000"));
