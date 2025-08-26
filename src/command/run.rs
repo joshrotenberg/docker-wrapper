@@ -4,6 +4,7 @@
 //! with support for common options and an extensible architecture for any additional options.
 
 use super::{CommandExecutor, DockerCommand, EnvironmentBuilder, PortBuilder};
+use crate::command::port::{PortCommand, PortMapping as PortMappingInfo};
 use crate::error::{Error, Result};
 use crate::stream::{OutputLine, StreamResult, StreamableCommand};
 use async_trait::async_trait;
@@ -315,6 +316,80 @@ impl ContainerId {
             &self.0
         }
     }
+
+    /// Get port mappings for this container
+    ///
+    /// This queries Docker for the actual mapped ports of the running container.
+    /// Useful when using dynamic port allocation (e.g., `-p 6379` without specifying host port).
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use docker_wrapper::{DockerCommand, RunCommand};
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// // Run Redis with dynamic port allocation
+    /// let container_id = RunCommand::new("redis:alpine")
+    ///     .name("my-redis")
+    ///     .port_dyn(6379)  // Dynamic port allocation
+    ///     .detach()
+    ///     .rm()
+    ///     .execute()
+    ///     .await?;
+    ///
+    /// // Get the actual mapped port
+    /// let port_mappings = container_id.port_mappings().await?;
+    /// if let Some(mapping) = port_mappings.first() {
+    ///     println!("Redis is available at {}:{}", mapping.host_ip, mapping.host_port);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The container doesn't exist or has been removed
+    /// - The Docker daemon is not running
+    /// - There's a communication error with Docker
+    pub async fn port_mappings(&self) -> Result<Vec<PortMappingInfo>> {
+        let result = PortCommand::new(&self.0).run().await?;
+        Ok(result.port_mappings)
+    }
+
+    /// Get a specific port mapping for this container
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use docker_wrapper::{DockerCommand, RunCommand};
+    ///
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let container_id = RunCommand::new("nginx:alpine")
+    ///     .port_dyn(80)
+    ///     .detach()
+    ///     .rm()
+    ///     .execute()
+    ///     .await?;
+    ///
+    /// // Get the mapping for port 80
+    /// if let Some(mapping) = container_id.port_mapping(80).await? {
+    ///     println!("Nginx is available at {}:{}", mapping.host_ip, mapping.host_port);
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The container doesn't exist or has been removed
+    /// - The Docker daemon is not running
+    /// - There's a communication error with Docker
+    pub async fn port_mapping(&self, container_port: u16) -> Result<Option<PortMappingInfo>> {
+        let result = PortCommand::new(&self.0).port(container_port).run().await?;
+        Ok(result.port_mappings.into_iter().next())
+    }
 }
 
 impl std::fmt::Display for ContainerId {
@@ -507,6 +582,12 @@ impl RunCommand {
         self
     }
 
+    /// Alias for `dynamic_port()` - Add a dynamic port mapping (Docker assigns host port)
+    #[must_use]
+    pub fn port_dyn(self, container_port: u16) -> Self {
+        self.dynamic_port(container_port)
+    }
+
     /// Add a volume mount
     #[must_use]
     pub fn volume(mut self, source: impl Into<String>, target: impl Into<String>) -> Self {
@@ -583,6 +664,12 @@ impl RunCommand {
     pub fn remove(mut self) -> Self {
         self.remove = true;
         self
+    }
+
+    /// Alias for `remove()` - Remove container automatically when it exits (--rm flag)
+    #[must_use]
+    pub fn rm(self) -> Self {
+        self.remove()
     }
 
     /// Convenience method for interactive TTY mode
