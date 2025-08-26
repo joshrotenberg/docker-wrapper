@@ -359,6 +359,9 @@ impl ContainerId {
 
     /// Get a specific port mapping for this container
     ///
+    /// Returns the first mapping found for the specified container port,
+    /// regardless of protocol (tcp/udp).
+    ///
     /// # Example
     ///
     /// ```no_run
@@ -387,8 +390,12 @@ impl ContainerId {
     /// - The Docker daemon is not running
     /// - There's a communication error with Docker
     pub async fn port_mapping(&self, container_port: u16) -> Result<Option<PortMappingInfo>> {
-        let result = PortCommand::new(&self.0).port(container_port).run().await?;
-        Ok(result.port_mappings.into_iter().next())
+        // Get all mappings and filter for the specific port
+        // This is more reliable than using docker port with a specific port argument
+        let mappings = self.port_mappings().await?;
+        Ok(mappings
+            .into_iter()
+            .find(|m| m.container_port == container_port))
     }
 }
 
