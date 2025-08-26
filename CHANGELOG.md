@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0](https://github.com/joshrotenberg/docker-wrapper/compare/v0.6.0...v0.7.0) - 2025-08-26
+
+### Added
+
+- enhance port mapping API and add convenience aliases ([#152](https://github.com/joshrotenberg/docker-wrapper/pull/152))
+
 ## [0.6.0](https://github.com/joshrotenberg/docker-wrapper/compare/v0.5.0...v0.6.0) - 2025-08-25
 
 ### Added
