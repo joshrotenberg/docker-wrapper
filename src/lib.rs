@@ -425,7 +425,7 @@ pub use command::{
         NetworkPruneResult, NetworkRmCommand, NetworkRmResult,
     },
     pause::{PauseCommand, PauseResult},
-    port::{PortCommand, PortMapping as PortInfo, PortResult},
+    port::{PortCommand, PortMapping as PortMappingInfo, PortResult},
     ps::{ContainerInfo, PsCommand, PsFormat, PsOutput},
     pull::PullCommand,
     push::PushCommand,
