@@ -31,7 +31,7 @@ docker-wrapper = "0.5"
 tokio = { version = "1", features = ["full"] }
 ```
 
-**Minimum Supported Rust Version (MSRV):** 1.78.0
+**Minimum Supported Rust Version (MSRV):** 1.89.0
 
 Enable Docker Compose support:
 
@@ -213,7 +213,7 @@ The `examples/` directory contains practical examples:
 - `network_volume_management.rs` - Network and volume management
 - `redis_cluster.rs` - Redis cluster setup example
 - `test_sentinel.rs` - Redis Sentinel high availability example
-- `redis_enterprise.rs` - Redis Enterprise cluster with initialization
+- `redis_enterprise_template.rs` - Redis Enterprise cluster with automatic initialization
 - `testing_basics.rs` - Basic testing patterns with docker-wrapper
 - `test_fixtures.rs` - Reusable test fixtures for common services
 

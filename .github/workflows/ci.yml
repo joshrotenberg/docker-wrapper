@@ -180,10 +180,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v5
 
-      - name: Install Rust 1.78.0
+      - name: Install Rust 1.89.0
         uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9
         with:
-          toolchain: 1.78.0
+          toolchain: 1.89.0
 
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2

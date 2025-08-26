@@ -2,7 +2,7 @@
 name = "docker-wrapper"
 version = "0.7.0"
 edition = "2021"
-rust-version = "1.78.0"
+rust-version = "1.89.0"
 authors = ["Josh Rotenberg <joshrotenberg@gmail.com>"]
 description = "A Docker CLI wrapper for Rust"
 license = "MIT OR Apache-2.0"
@@ -27,17 +27,17 @@ templates = [
 ]
 
 # Individual template features
-template-redis = []
-template-postgres = []
-template-mysql = []
-template-mongodb = []
-template-nginx = []
+template-redis = ["reqwest"]
+template-redis-enterprise = ["reqwest"]
+template-redis-cluster = ["reqwest"]
+template-postgres = ["reqwest"]
+template-mysql = ["reqwest"]
+template-mongodb = ["reqwest"]
+template-nginx = ["reqwest"]
 
 # Future Redis variants
-template-redis-cluster = ["template-redis"]
 template-redis-sentinel = ["template-redis"]
 template-redis-stack = ["template-redis"]
-template-redis-enterprise = ["template-redis"]
 
 [dependencies]
 tokio = { version = "1.46", features = [
@@ -55,6 +55,9 @@ thiserror = "2.0"
 tracing = "0.1"
 async-trait = "0.1"
 
+# Optional dependencies for templates
+reqwest = { version = "0.12", features = ["json", "rustls-tls"], optional = true }
+
 [dev-dependencies]
 tokio-test = "0.4"
 tracing-subscriber = "0.3"
@@ -62,6 +65,7 @@ uuid = { version = "1.0", features = ["v4"] }
 futures = "0.3"
 tempfile = "3.0"
 which = "8.0"
+serde_json = "1.0"
 
 [[example]]
 name = "basic_usage"
@@ -88,3 +92,8 @@ required-features = ["templates"]
 name = "redis_cluster"
 path = "examples/redis_cluster.rs"
 required-features = ["template-redis-cluster"]
+
+[[example]]
+name = "redis_enterprise_template"
+path = "examples/redis_enterprise_template.rs"
+required-features = ["template-redis-enterprise"]
