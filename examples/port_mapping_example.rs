@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Get the actual mapped port
     let port_mappings = container_id.port_mappings().await?;
-    
+
     if let Some(mapping) = port_mappings.first() {
         println!(
             "Redis is available at {}:{}",
@@ -51,9 +51,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Stop the container (it will be automatically removed due to .rm())
     println!("Stopping container...");
-    StopCommand::new(container_id.as_str())
-        .execute()
-        .await?;
+    StopCommand::new(container_id.as_str()).execute().await?;
 
     println!("Container stopped and removed automatically!");
 
