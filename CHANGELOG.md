@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0](https://github.com/joshrotenberg/docker-wrapper/compare/v0.7.0...v0.8.0) - 2025-08-26
+
+### Added
+
+- [**breaking**] replace curl with reqwest for Redis Enterprise bootstrap ([#155](https://github.com/joshrotenberg/docker-wrapper/pull/155))
+
+### Other
+
+- clarify DockerCommand trait requirement and fix ContainerId usage ([#154](https://github.com/joshrotenberg/docker-wrapper/pull/154))
+
 ## [0.7.0](https://github.com/joshrotenberg/docker-wrapper/compare/v0.6.0...v0.7.0) - 2025-08-26
 
 ### Added
