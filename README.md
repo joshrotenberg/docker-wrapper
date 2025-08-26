@@ -31,7 +31,7 @@ docker-wrapper = "0.5"
 tokio = { version = "1", features = ["full"] }
 ```
 
-**Minimum Supported Rust Version (MSRV):** 1.78.0
+**Minimum Supported Rust Version (MSRV):** 1.89.0
 
 Enable Docker Compose support:
 
