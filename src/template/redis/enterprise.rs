@@ -9,8 +9,13 @@
 #![allow(clippy::return_self_not_must_use)]
 #![allow(clippy::needless_borrows_for_generic_args)]
 
-use crate::{DockerCommand, ExecCommand, RmCommand, RunCommand, StopCommand};
+use crate::{DockerCommand, RmCommand, RunCommand, StopCommand};
 use std::time::Duration;
+
+#[cfg(feature = "template-redis-enterprise")]
+use reqwest::Client;
+#[cfg(feature = "template-redis-enterprise")]
+use serde_json::Value;
 
 /// Redis Enterprise template for production-grade deployments
 pub struct RedisEnterpriseTemplate {
@@ -30,6 +35,9 @@ pub struct RedisEnterpriseTemplate {
     image: String,
     tag: String,
     platform: Option<String>,
+    bootstrap_timeout: Duration,
+    bootstrap_retries: u32,
+    api_ready_timeout: Duration,
 }
 
 impl RedisEnterpriseTemplate {
@@ -52,6 +60,9 @@ impl RedisEnterpriseTemplate {
             image: "redislabs/redis".to_string(),
             tag: "latest".to_string(),
             platform: None,
+            bootstrap_timeout: Duration::from_secs(60),
+            bootstrap_retries: 3,
+            api_ready_timeout: Duration::from_secs(30),
         }
     }
 
@@ -152,6 +163,24 @@ impl RedisEnterpriseTemplate {
         self
     }
 
+    /// Set the bootstrap timeout (default: 60 seconds)
+    pub fn bootstrap_timeout(mut self, timeout: Duration) -> Self {
+        self.bootstrap_timeout = timeout;
+        self
+    }
+
+    /// Set the number of bootstrap retries (default: 3)
+    pub fn bootstrap_retries(mut self, retries: u32) -> Self {
+        self.bootstrap_retries = retries;
+        self
+    }
+
+    /// Set the API ready timeout (default: 30 seconds)
+    pub fn api_ready_timeout(mut self, timeout: Duration) -> Self {
+        self.api_ready_timeout = timeout;
+        self
+    }
+
     /// Start the Redis Enterprise container and initialize the cluster
     ///
     /// # Errors
@@ -222,38 +251,14 @@ impl RedisEnterpriseTemplate {
             message: format!("Failed to start Redis Enterprise container: {e}"),
         })?;
 
-        // Wait for the API to be ready
-        tokio::time::sleep(Duration::from_secs(10)).await;
+        // Wait for API to be ready with health checks
+        self.wait_for_api_ready(&container_name).await?;
 
-        // Initialize the cluster using curl
-        let bootstrap_json = self.build_bootstrap_json();
-        let bootstrap_cmd = format!(
-            r#"curl -k -X POST https://localhost:{}/v1/bootstrap/create_cluster \
-            -H "Content-Type: application/json" \
-            -d '{}'"#,
-            self.api_port, bootstrap_json
-        );
+        // Bootstrap the cluster with retries
+        self.bootstrap_cluster(&container_name).await?;
 
-        // Execute bootstrap command inside the container
-        let output = ExecCommand::new(
-            &container_name,
-            vec!["sh".to_string(), "-c".to_string(), bootstrap_cmd.clone()],
-        )
-        .execute()
-        .await
-        .map_err(|e| crate::Error::Custom {
-            message: format!("Failed to bootstrap cluster: {e}"),
-        })?;
-
-        // Check if bootstrap was successful
-        if !output.stdout.contains("200") && !output.stdout.contains("OK") {
-            return Err(crate::Error::Custom {
-                message: format!("Cluster bootstrap failed: {}", output.stdout),
-            });
-        }
-
-        // Wait for cluster to be fully initialized
-        tokio::time::sleep(Duration::from_secs(5)).await;
+        // Verify cluster is ready
+        self.verify_cluster_ready(&container_name).await?;
 
         // Create initial database if requested
         if let Some(ref db_name) = self.initial_database {
@@ -273,6 +278,188 @@ impl RedisEnterpriseTemplate {
             } else {
                 None
             },
+        })
+    }
+
+    /// Wait for the API to be ready using reqwest
+    async fn wait_for_api_ready(&self, _container_name: &str) -> Result<(), crate::Error> {
+        let client = Client::builder()
+            .danger_accept_invalid_certs(true)
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| crate::Error::Custom {
+                message: format!("Failed to build HTTP client: {e}"),
+            })?;
+
+        let start = std::time::Instant::now();
+        let url = format!("https://localhost:{}/", self.api_port);
+
+        while start.elapsed() < self.api_ready_timeout {
+            if let Ok(response) = client.get(&url).send().await {
+                let status = response.status();
+                // API is ready when it returns any response
+                if let Ok(text) = response.text().await {
+                    if text.contains("no_cluster")
+                        || text.contains("error_code")
+                        || status.is_success()
+                    {
+                        // Give it a bit more time to fully initialize
+                        tokio::time::sleep(Duration::from_secs(2)).await;
+                        return Ok(());
+                    }
+                }
+            } else {
+                // API might not be fully ready yet, continue waiting
+            }
+
+            tokio::time::sleep(Duration::from_secs(2)).await;
+        }
+
+        Err(crate::Error::Custom {
+            message: format!(
+                "API did not become ready within {} seconds",
+                self.api_ready_timeout.as_secs()
+            ),
+        })
+    }
+
+    /// Bootstrap the cluster with retries using reqwest
+    async fn bootstrap_cluster(&self, _container_name: &str) -> Result<(), crate::Error> {
+        // Build HTTP client that accepts self-signed certificates
+        let client = Client::builder()
+            .danger_accept_invalid_certs(true) // Redis Enterprise uses self-signed certs
+            .timeout(Duration::from_secs(30))
+            .build()
+            .map_err(|e| crate::Error::Custom {
+                message: format!("Failed to build HTTP client: {e}"),
+            })?;
+
+        // Parse the bootstrap JSON into a Value for proper serialization
+        let bootstrap_json_str = self.build_bootstrap_json();
+        let bootstrap_json: Value =
+            serde_json::from_str(&bootstrap_json_str).map_err(|e| crate::Error::Custom {
+                message: format!("Invalid bootstrap JSON: {e}"),
+            })?;
+
+        let url = format!(
+            "https://localhost:{}/v1/bootstrap/create_cluster",
+            self.api_port
+        );
+
+        for attempt in 1..=self.bootstrap_retries {
+            let response = client
+                .post(&url)
+                .header("Content-Type", "application/json")
+                .json(&bootstrap_json)
+                .send()
+                .await;
+
+            match response {
+                Ok(res) => {
+                    let status = res.status();
+
+                    // Check for success
+                    if status.is_success() || status.as_u16() == 409 {
+                        // 200-299 = success, 409 = already bootstrapped
+                        return Ok(());
+                    }
+
+                    // Check for validation errors (don't retry these)
+                    if status.as_u16() == 400 {
+                        let error_body = res.text().await.unwrap_or_default();
+
+                        if error_body.contains("invalid_schema") {
+                            return Err(crate::Error::Custom {
+                                message: format!("Bootstrap validation failed: {error_body}"),
+                            });
+                        }
+
+                        return Err(crate::Error::Custom {
+                            message: format!("Bootstrap failed with bad request: {error_body}"),
+                        });
+                    }
+
+                    // Other error status codes - may retry
+                    if attempt == self.bootstrap_retries {
+                        let error_body = res.text().await.unwrap_or_default();
+                        return Err(crate::Error::Custom {
+                            message: format!("Bootstrap failed with status {status}: {error_body}"),
+                        });
+                    }
+
+                    // Log non-fatal errors for debugging
+                    if let Ok(error_text) = res.text().await {
+                        eprintln!(
+                            "Bootstrap attempt {attempt} failed with status {status}: {error_text}"
+                        );
+                    }
+                }
+                Err(e) => {
+                    eprintln!("Bootstrap attempt {attempt} failed with network error: {e}");
+
+                    if attempt == self.bootstrap_retries {
+                        return Err(crate::Error::Custom {
+                            message: format!(
+                                "Failed to connect to cluster after {} attempts: {}",
+                                self.bootstrap_retries, e
+                            ),
+                        });
+                    }
+                }
+            }
+
+            // Exponential backoff between retries
+            if attempt < self.bootstrap_retries {
+                let wait_time = Duration::from_secs(5 * u64::from(attempt));
+                tokio::time::sleep(wait_time).await;
+            }
+        }
+
+        Err(crate::Error::Custom {
+            message: format!(
+                "Failed to bootstrap cluster after {} attempts",
+                self.bootstrap_retries
+            ),
+        })
+    }
+
+    /// Verify the cluster is ready using reqwest
+    async fn verify_cluster_ready(&self, _container_name: &str) -> Result<(), crate::Error> {
+        let client = Client::builder()
+            .danger_accept_invalid_certs(true)
+            .timeout(Duration::from_secs(10))
+            .build()
+            .map_err(|e| crate::Error::Custom {
+                message: format!("Failed to build HTTP client: {e}"),
+            })?;
+
+        let url = format!("https://localhost:{}/v1/cluster", self.api_port);
+        let start = std::time::Instant::now();
+
+        while start.elapsed() < Duration::from_secs(10) {
+            if let Ok(response) = client
+                .get(&url)
+                .basic_auth(&self.admin_username, Some(&self.admin_password))
+                .send()
+                .await
+            {
+                if response.status().is_success() {
+                    if let Ok(text) = response.text().await {
+                        if text.contains(&format!(r#""name":"{}""#, self.cluster_name)) {
+                            return Ok(());
+                        }
+                    }
+                }
+            } else {
+                // API might not be ready yet, continue waiting
+            }
+
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+
+        Err(crate::Error::Custom {
+            message: "Cluster verification failed - cluster may not be fully initialized"
+                .to_string(),
         })
     }
 
@@ -308,38 +495,45 @@ impl RedisEnterpriseTemplate {
         json
     }
 
-    /// Create a database in the cluster
+    /// Create a database in the cluster using reqwest
     async fn create_database(
         &self,
-        container_name: &str,
+        _container_name: &str,
         db_name: &str,
     ) -> Result<(), crate::Error> {
-        let create_db_json = format!(
-            r#"{{
-                "name": "{}",
-                "port": {},
-                "memory_size": 104857600
-            }}"#,
-            db_name, self.database_port_start
-        );
+        let client = Client::builder()
+            .danger_accept_invalid_certs(true)
+            .timeout(Duration::from_secs(30))
+            .build()
+            .map_err(|e| crate::Error::Custom {
+                message: format!("Failed to build HTTP client: {e}"),
+            })?;
 
-        let create_db_cmd = format!(
-            r#"curl -k -X POST https://localhost:{}/v1/bdbs \
-            -u {}:{} \
-            -H "Content-Type: application/json" \
-            -d '{}'"#,
-            self.api_port, self.admin_username, self.admin_password, create_db_json
-        );
+        let create_db_json = serde_json::json!({
+            "name": db_name,
+            "port": self.database_port_start,
+            "memory_size": 104_857_600
+        });
 
-        ExecCommand::new(
-            container_name,
-            vec!["sh".to_string(), "-c".to_string(), create_db_cmd],
-        )
-        .execute()
-        .await
-        .map_err(|e| crate::Error::Custom {
-            message: format!("Failed to create database: {e}"),
-        })?;
+        let url = format!("https://localhost:{}/v1/bdbs", self.api_port);
+        let response = client
+            .post(&url)
+            .basic_auth(&self.admin_username, Some(&self.admin_password))
+            .header("Content-Type", "application/json")
+            .json(&create_db_json)
+            .send()
+            .await
+            .map_err(|e| crate::Error::Custom {
+                message: format!("Failed to send database creation request: {e}"),
+            })?;
+
+        if !response.status().is_success() {
+            let status = response.status();
+            let error_body = response.text().await.unwrap_or_default();
+            return Err(crate::Error::Custom {
+                message: format!("Failed to create database with status {status}: {error_body}"),
+            });
+        }
 
         Ok(())
     }
