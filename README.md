@@ -55,10 +55,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .execute()
         .await?;
 
-    println!("Container started: {}", output.container_id);
+    println!("Container started: {}", output.0);
     Ok(())
 }
 ```
+
+> **Important:** The `DockerCommand` trait must be imported to use the `.execute()` method on any Docker command. This trait provides the core execution functionality for all commands.
 
 ### Docker Builder Example
 
