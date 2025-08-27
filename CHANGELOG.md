@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.2](https://github.com/joshrotenberg/docker-wrapper/compare/v0.8.1...v0.8.2) - 2025-08-27
+
+### Fixed
+
+- enable all features for docs.rs to show template documentation ([#159](https://github.com/joshrotenberg/docker-wrapper/pull/159))
+
 ## [0.8.1](https://github.com/joshrotenberg/docker-wrapper/compare/v0.8.0...v0.8.1) - 2025-08-27
 
 ### Other
