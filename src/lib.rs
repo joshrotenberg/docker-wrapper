@@ -13,6 +13,7 @@
 //! - **Async/await support**: Built on Tokio for efficient async operations
 //! - **Streaming support**: Real-time output streaming for long-running commands
 //! - **Docker Compose support**: Optional feature for multi-container orchestration
+//! - **Container templates**: Pre-configured templates for Redis, `PostgreSQL`, `MongoDB`, etc.
 //! - **Zero dependencies on Docker SDK**: Works directly with the Docker CLI
 //! - **Comprehensive error handling**: Detailed error messages and types
 //! - **Well-tested**: Extensive unit and integration test coverage
@@ -117,6 +118,36 @@
 //! }
 //! # Ok(())
 //! # }
+//! ```
+//!
+//! ## Container Templates
+//!
+//! Use pre-configured templates for common services:
+//!
+//! ```rust,no_run
+//! # #[cfg(feature = "template-redis")]
+//! use docker_wrapper::{RedisTemplate, Template};
+//!
+//! # #[cfg(feature = "template-redis")]
+//! # #[tokio::main]
+//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//! // Start Redis with persistence and custom configuration
+//! let redis = RedisTemplate::new("my-redis")
+//!     .port(6379)
+//!     .password("secret")
+//!     .memory_limit("256m")
+//!     .with_persistence("redis-data")
+//!     .custom_image("redis", "7-alpine");
+//!
+//! let container_id = redis.start().await?;
+//! println!("Redis started: {}", container_id);
+//!
+//! // Clean up
+//! redis.stop().await?;
+//! # Ok(())
+//! # }
+//! # #[cfg(not(feature = "template-redis"))]
+//! # fn main() {}
 //! ```
 //!
 //! ## Docker Compose Support
@@ -376,6 +407,56 @@ pub mod error;
 pub mod platform;
 pub mod prerequisites;
 pub mod stream;
+#[cfg(any(
+    feature = "templates",
+    feature = "template-redis",
+    feature = "template-redis-cluster",
+    feature = "template-postgres",
+    feature = "template-mysql",
+    feature = "template-mongodb",
+    feature = "template-nginx"
+))]
+/// Container templates module
+///
+/// Provides pre-configured container templates with sensible defaults for common services.
+/// Templates support custom images, platforms, persistence, and resource configuration.
+///
+/// See the [Template Guide](https://github.com/joshrotenberg/docker-wrapper/blob/main/docs/TEMPLATES.md) for comprehensive documentation.
+///
+/// # Available Templates
+///
+/// ## Redis Templates
+/// - [`RedisTemplate`] - Basic Redis server
+/// - [`RedisSentinelTemplate`] - High-availability Redis with Sentinel
+/// - [`RedisClusterTemplate`] - Sharded Redis cluster
+/// - [`RedisEnterpriseTemplate`] - Redis Enterprise with management
+/// - [`RedisInsightTemplate`] - Redis management UI
+///
+/// ## Database Templates
+/// - [`PostgresTemplate`] - PostgreSQL database
+/// - [`MysqlTemplate`] - MySQL database
+/// - [`MongodbTemplate`] - MongoDB document database
+///
+/// ## Web Server Templates
+/// - [`NginxTemplate`] - Nginx web server
+///
+/// # Quick Start
+///
+/// ```rust,no_run
+/// use docker_wrapper::{RedisTemplate, Template};
+///
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let redis = RedisTemplate::new("my-redis")
+///     .port(6379)
+///     .password("secret")
+///     .with_persistence("redis-data");
+///
+/// let container_id = redis.start().await?;
+/// println!("Redis started: {}", container_id);
+/// # Ok(())
+/// # }
+/// ```
 #[cfg(any(
     feature = "templates",
     feature = "template-redis",

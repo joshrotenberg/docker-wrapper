@@ -85,33 +85,36 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ### Container Templates
 
-Enable templates for pre-configured containers with sensible defaults:
+Templates provide pre-configured containers with sensible defaults and best practices:
 
 ```toml
 [dependencies]
-docker-wrapper = { version = "0.5", features = ["templates"] }
+docker-wrapper = { version = "0.8", features = ["templates"] }
 ```
 
-Available templates:
+Quick example:
 
 ```rust
 use docker_wrapper::{RedisTemplate, PostgresTemplate, Template};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Start Redis with persistence
+    // Start Redis with persistence and custom image
     let redis = RedisTemplate::new("my-redis")
         .port(6379)
         .password("secret")
-        .with_persistence("redis-data");
+        .with_persistence("redis-data")
+        .custom_image("redis", "7-alpine")
+        .platform("linux/amd64");
     
     let redis_id = redis.start().await?;
     
     // Start PostgreSQL with custom configuration
     let postgres = PostgresTemplate::new("my-postgres")
-        .password("postgres")
         .database("myapp")
-        .port(5432);
+        .username("appuser") 
+        .password("apppass")
+        .with_persistence("postgres-data");
     
     let postgres_conn = postgres.start().await?;
     println!("PostgreSQL URL: {}", postgres_conn.connection_url());
@@ -119,6 +122,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
+
+**📖 [Complete Template Documentation](docs/TEMPLATES.md)** - Comprehensive guide with examples for all templates
 
 ### Docker Context Management
 
@@ -143,34 +148,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 ```
-        .database("myapp")
-        .user("appuser")
-        .password("apppass")
-        .with_persistence("postgres-data");
-        
-    let postgres_id = postgres.start().await?;
-    
-    Ok(())
-}
-```
-
 Available templates:
-- `RedisTemplate` - Redis key-value store
-- `RedisSentinelTemplate` - Redis Sentinel for high availability
-- `RedisEnterpriseTemplate` - Redis Enterprise with cluster initialization
-- `RedisInsightTemplate` - Redis management UI
-- `PostgresTemplate` - PostgreSQL database
-- `MysqlTemplate` - MySQL database
-- `MongodbTemplate` - MongoDB document database
-- `NginxTemplate` - Nginx web server
+- **Redis**: `RedisTemplate`, `RedisSentinelTemplate`, `RedisClusterTemplate`, `RedisEnterpriseTemplate`, `RedisInsightTemplate`
+- **Databases**: `PostgresTemplate`, `MysqlTemplate`, `MongodbTemplate`
+- **Web Servers**: `NginxTemplate`
 
-Enable with granular feature flags:
-```toml
-[dependencies]
-docker-wrapper = { version = "0.4", features = ["template-redis", "template-postgres"] }
-# Or enable all templates:
-docker-wrapper = { version = "0.4", features = ["templates"] }
-```
+All templates support custom images, platforms, persistence, and resource limits. See the [Template Documentation](docs/TEMPLATES.md) for complete usage examples.
 
 ## When to Use docker-wrapper
 
@@ -189,6 +172,7 @@ docker-wrapper is ideal for:
 For comprehensive documentation, examples, and API reference:
 
 - **[API Documentation](https://docs.rs/docker-wrapper)** - Complete API reference with examples
+- **[Template Guide](docs/TEMPLATES.md)** - Comprehensive template documentation with examples
 - **[Examples](examples/)** - Working examples for common use cases
 - **[Testing Guide](docs/TESTING.md)** - Best practices for testing with docker-wrapper
 - **[Comparison Guide](docs/COMPARISON.md)** - docker-wrapper vs other Docker Rust libraries
