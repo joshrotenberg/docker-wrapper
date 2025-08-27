@@ -12,6 +12,88 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 
 /// PostgreSQL container template with sensible defaults
+///
+/// Provides a pre-configured PostgreSQL relational database with support for custom
+/// databases, users, persistence, and resource limits.
+///
+/// # Features
+///
+/// - **PostgreSQL 15 Alpine**: Lightweight, secure PostgreSQL image by default
+/// - **Database Creation**: Automatic database and user setup
+/// - **Persistence Support**: Easy volume mounting for data persistence  
+/// - **Health Checks**: Built-in PostgreSQL health monitoring
+/// - **Custom Images**: Support for custom PostgreSQL images and platforms
+/// - **Resource Limits**: Memory and CPU limit configuration
+/// - **Connection Helpers**: Automatic connection string generation
+///
+/// # Examples
+///
+/// ## Basic PostgreSQL Database
+///
+/// ```rust,no_run
+/// use docker_wrapper::{PostgresTemplate, Template};
+///
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let postgres = PostgresTemplate::new("my-db");
+/// let connection_info = postgres.start().await?;
+/// println!("PostgreSQL URL: {}", connection_info.connection_url());
+/// postgres.stop().await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ## Custom Database with Persistence
+///
+/// ```rust,no_run
+/// use docker_wrapper::{PostgresTemplate, Template};
+///
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let postgres = PostgresTemplate::new("app-db")
+///     .database("myapp")
+///     .username("appuser")
+///     .password("secure-password")
+///     .with_persistence("postgres-data")
+///     .memory_limit("1g");
+///
+/// let connection_info = postgres.start().await?;
+/// println!("App Database URL: {}", connection_info.connection_url());
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ## High-Performance Setup
+///
+/// ```rust,no_run
+/// use docker_wrapper::{PostgresTemplate, Template};
+///
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let postgres = PostgresTemplate::new("high-perf-db")
+///     .custom_image("postgres", "16-alpine")
+///     .platform("linux/amd64")
+///     .memory_limit("2g")
+///     .cpu_limit("1.5")
+///     .with_persistence("postgres-data");
+///
+/// let connection_info = postgres.start().await?;
+/// println!("High-performance PostgreSQL: {}", connection_info.connection_url());
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Connection
+///
+/// The template provides connection information through **PostgresConnectionString**:
+///
+/// - **URL Format**: `postgresql://username:password@localhost:5432/database`
+/// - **Default Host**: `localhost`
+/// - **Default Port**: `5432`
+/// - **Default Database**: `postgres`
+/// - **Default User**: `postgres`
+///
+/// Use the connection string with any PostgreSQL client library.
 pub struct PostgresTemplate {
     config: TemplateConfig,
 }

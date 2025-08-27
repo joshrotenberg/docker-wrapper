@@ -15,6 +15,87 @@ use async_trait::async_trait;
 use std::collections::HashMap;
 
 /// Redis container template with sensible defaults
+///
+/// Provides a pre-configured Redis key-value store with support for persistence,
+/// authentication, custom images, and Redis Stack modules.
+///
+/// # Features
+///
+/// - **Default Redis 7**: Uses latest stable Redis image by default
+/// - **Persistence Support**: Easy volume mounting for data persistence
+/// - **Authentication**: Built-in password configuration
+/// - **Redis Stack**: Optional Redis Stack modules (JSON, Search, etc.)
+/// - **Custom Images**: Support for custom Redis images and platforms
+/// - **Health Checks**: Automatic health monitoring
+/// - **Resource Limits**: Memory and CPU limit configuration
+///
+/// # Examples
+///
+/// ## Basic Redis Server
+///
+/// ```rust,no_run
+/// use docker_wrapper::{RedisTemplate, Template};
+///
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let redis = RedisTemplate::new("my-redis");
+/// let container_id = redis.start().await?;
+/// println!("Redis started: {}", container_id);
+/// redis.stop().await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ## Redis with Authentication and Persistence
+///
+/// ```rust,no_run
+/// use docker_wrapper::{RedisTemplate, Template};
+///
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let redis = RedisTemplate::new("secure-redis")
+///     .port(6379)
+///     .password("my-secure-password")
+///     .with_persistence("redis-data")
+///     .memory_limit("512m");
+///
+/// let container_id = redis.start().await?;
+/// println!("Secure Redis started: {}", container_id);
+/// redis.stop().await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// ## Redis Stack with Custom Image
+///
+/// ```rust,no_run
+/// use docker_wrapper::{RedisTemplate, Template};
+///
+/// # #[tokio::main]
+/// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+/// let redis = RedisTemplate::new("redis-stack")
+///     .with_redis_stack() // Enable Redis Stack modules
+///     .custom_redis_image("redis/redis-stack", "latest")
+///     .platform("linux/amd64")
+///     .port(6379);
+///
+/// let container_id = redis.start().await?;
+/// println!("Redis Stack started: {}", container_id);
+/// redis.stop().await?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// # Connection
+///
+/// Connect to Redis using standard Redis clients:
+///
+/// - **URL**: `redis://localhost:6379` (or with password: `redis://:password@localhost:6379`)
+/// - **Host**: `localhost`
+/// - **Port**: `6379` (configurable)
+///
+/// For more advanced setups, see **RedisSentinelTemplate** for high availability
+/// or **RedisClusterTemplate** for sharded clusters.
 pub struct RedisTemplate {
     config: TemplateConfig,
     use_redis_stack: bool,
