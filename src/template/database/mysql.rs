@@ -313,9 +313,9 @@ impl Template for MysqlTemplate {
         use std::time::Duration;
         use tokio::time::{sleep, timeout};
 
-        // Custom MySQL readiness check
-        let wait_timeout = Duration::from_secs(30);
-        let check_interval = Duration::from_millis(500);
+        // Custom MySQL readiness check - increased timeout for charset/collation configs
+        let wait_timeout = Duration::from_secs(60);
+        let check_interval = Duration::from_millis(1000);
 
         timeout(wait_timeout, async {
             loop {
