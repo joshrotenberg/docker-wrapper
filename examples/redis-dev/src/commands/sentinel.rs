@@ -51,7 +51,7 @@ async fn start_sentinel(args: SentinelStartArgs, verbose: bool) -> Result<()> {
     for i in 0..masters {
         let master_name = format!("{}-master-{}", name, i + 1);
         let master_port = args.redis_port_base + i as u16;
-        
+
         let mut master = RedisTemplate::new(&master_name)
             .port(master_port)
             .password(&password)
@@ -86,7 +86,7 @@ async fn start_sentinel(args: SentinelStartArgs, verbose: bool) -> Result<()> {
     // Start Sentinel nodes
     let sentinels = args.sentinels.max(1);
     let mut sentinel_containers = Vec::new();
-    
+
     for i in 0..sentinels {
         let sentinel_name = format!("{}-sentinel-{}", name, i + 1);
         let sentinel_port = args.sentinel_port_base + i as u16;
@@ -96,13 +96,13 @@ async fn start_sentinel(args: SentinelStartArgs, verbose: bool) -> Result<()> {
         sentinel_config.push_str(&format!("port {}\n", sentinel_port));
         sentinel_config.push_str("sentinel announce-hostnames yes\n");
         sentinel_config.push_str("sentinel resolve-hostnames yes\n");
-        
+
         // Monitor all masters
         for j in 0..masters {
             let master_name = format!("{}-master-{}", name, j + 1);
             let master_port = args.redis_port_base + j as u16;
             let quorum = (sentinels / 2) + 1; // Majority quorum
-            
+
             sentinel_config.push_str(&format!(
                 "sentinel monitor master-{} {} {} {}\n",
                 j + 1,
@@ -110,7 +110,7 @@ async fn start_sentinel(args: SentinelStartArgs, verbose: bool) -> Result<()> {
                 master_port,
                 quorum
             ));
-            
+
             if !password.is_empty() {
                 sentinel_config.push_str(&format!(
                     "sentinel auth-pass master-{} {}\n",
@@ -118,25 +118,21 @@ async fn start_sentinel(args: SentinelStartArgs, verbose: bool) -> Result<()> {
                     password
                 ));
             }
-            
+
             sentinel_config.push_str(&format!(
                 "sentinel down-after-milliseconds master-{} 5000\n",
                 j + 1
             ));
             sentinel_config.push_str(&format!(
-                "sentinel failover-timeout master-{} 10000\n", 
+                "sentinel failover-timeout master-{} 10000\n",
                 j + 1
             ));
-            sentinel_config.push_str(&format!(
-                "sentinel parallel-syncs master-{} 1\n",
-                j + 1
-            ));
+            sentinel_config.push_str(&format!("sentinel parallel-syncs master-{} 1\n", j + 1));
         }
 
         // Create a temporary config file
         let config_path = std::env::temp_dir().join(format!("{}.conf", sentinel_name));
-        std::fs::write(&config_path, sentinel_config)
-            .context("Failed to write Sentinel config")?;
+        std::fs::write(&config_path, sentinel_config).context("Failed to write Sentinel config")?;
 
         // Start Sentinel container
         use docker_wrapper::RunCommand;
@@ -193,10 +189,7 @@ async fn start_sentinel(args: SentinelStartArgs, verbose: bool) -> Result<()> {
             host: "localhost".to_string(),
             port: args.redis_port_base,
             password: Some(password.clone()),
-            url: format!(
-                "redis://:{}@localhost:{}",
-                password, args.redis_port_base
-            ),
+            url: format!("redis://:{}@localhost:{}", password, args.redis_port_base),
             additional_ports: {
                 let mut ports = HashMap::new();
                 ports.insert("sentinel_base".to_string(), args.sentinel_port_base);
@@ -214,8 +207,17 @@ async fn start_sentinel(args: SentinelStartArgs, verbose: bool) -> Result<()> {
         "Success:".green().bold()
     );
     println!("\n{}", "Connection Information:".bold().underline());
-    println!("  {} redis://:{}@localhost:{}", "Master:".cyan(), password, args.redis_port_base);
-    println!("  {} localhost:{}", "Sentinel:".cyan(), args.sentinel_port_base);
+    println!(
+        "  {} redis://:{}@localhost:{}",
+        "Master:".cyan(),
+        password,
+        args.redis_port_base
+    );
+    println!(
+        "  {} localhost:{}",
+        "Sentinel:".cyan(),
+        args.sentinel_port_base
+    );
     println!("\n{}", "Components:".bold().underline());
     println!("  - {} Redis master(s)", masters);
     println!("  - {} Sentinel node(s)", sentinels);
@@ -231,11 +233,7 @@ async fn start_sentinel(args: SentinelStartArgs, verbose: bool) -> Result<()> {
         "Check Sentinel:".yellow(),
         args.sentinel_port_base
     );
-    println!(
-        "  {} redis-dev sentinel stop {}",
-        "Stop:".yellow(),
-        name
-    );
+    println!("  {} redis-dev sentinel stop {}", "Stop:".yellow(), name);
 
     Ok(())
 }
@@ -244,9 +242,11 @@ async fn stop_sentinel(args: StopArgs, verbose: bool) -> Result<()> {
     let mut config = Config::load()?;
 
     // Find the instance
-    let name = args
-        .name
-        .or_else(|| config.get_latest_instance(&InstanceType::Sentinel).map(|i| i.name.clone()));
+    let name = args.name.or_else(|| {
+        config
+            .get_latest_instance(&InstanceType::Sentinel)
+            .map(|i| i.name.clone())
+    });
 
     let name = name.context("No Sentinel instance found. Specify a name or start one first.")?;
 
@@ -269,27 +269,17 @@ async fn stop_sentinel(args: StopArgs, verbose: bool) -> Result<()> {
     for container_id in &instance.containers {
         // Extract container name from ID (if needed)
         let container_name = container_id.split(':').next().unwrap_or(container_id);
-        
-        StopCommand::new(container_name)
-            .execute()
-            .await
-            .ok(); // Ignore errors for already stopped containers
-        
-        RmCommand::new(container_name)
-            .force()
-            .execute()
-            .await
-            .ok();
+
+        StopCommand::new(container_name).execute().await.ok(); // Ignore errors for already stopped containers
+
+        RmCommand::new(container_name).force().execute().await.ok();
     }
 
     // Remove network
     if let Some(network) = instance.metadata.get("network") {
         if let Some(network_name) = network.as_str() {
             use docker_wrapper::NetworkRmCommand;
-            NetworkRmCommand::new(network_name)
-                .execute()
-                .await
-                .ok();
+            NetworkRmCommand::new(network_name).execute().await.ok();
         }
     }
 
@@ -310,9 +300,11 @@ async fn info_sentinel(args: InfoArgs, verbose: bool) -> Result<()> {
     let config = Config::load()?;
 
     // Find the instance
-    let name = args
-        .name
-        .or_else(|| config.get_latest_instance(&InstanceType::Sentinel).map(|i| i.name.clone()));
+    let name = args.name.or_else(|| {
+        config
+            .get_latest_instance(&InstanceType::Sentinel)
+            .map(|i| i.name.clone())
+    });
 
     let name = name.context("No Sentinel instance found. Specify a name or start one first.")?;
 
@@ -327,21 +319,43 @@ async fn info_sentinel(args: InfoArgs, verbose: bool) -> Result<()> {
     println!(
         "{} {} masters, {} sentinels",
         "Configuration:".cyan(),
-        instance.metadata.get("masters").and_then(|v| v.as_u64()).unwrap_or(0),
-        instance.metadata.get("sentinels").and_then(|v| v.as_u64()).unwrap_or(0)
+        instance
+            .metadata
+            .get("masters")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0),
+        instance
+            .metadata
+            .get("sentinels")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0)
     );
-    println!("{} {}", "Network:".cyan(), 
-        instance.metadata.get("network").and_then(|v| v.as_str()).unwrap_or("unknown")
+    println!(
+        "{} {}",
+        "Network:".cyan(),
+        instance
+            .metadata
+            .get("network")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown")
     );
-    
+
     println!("\n{}", "Ports:".bold().underline());
     for port in &instance.ports {
         println!("  - {}", port);
     }
 
     println!("\n{}", "Connection:".bold().underline());
-    println!("  {} {}", "Master URL:".cyan(), instance.connection_info.url);
-    if let Some(sentinel_port) = instance.connection_info.additional_ports.get("sentinel_base") {
+    println!(
+        "  {} {}",
+        "Master URL:".cyan(),
+        instance.connection_info.url
+    );
+    if let Some(sentinel_port) = instance
+        .connection_info
+        .additional_ports
+        .get("sentinel_base")
+    {
         println!("  {} localhost:{}", "Sentinel:".cyan(), sentinel_port);
     }
 
@@ -360,9 +374,17 @@ async fn info_sentinel(args: InfoArgs, verbose: bool) -> Result<()> {
                     use docker_wrapper::{DockerCommand, ExecCommand};
                     let status = ExecCommand::new(
                         first_sentinel,
-                        vec!["redis-cli".to_string(), "-p".to_string(), "26379".to_string(), "sentinel".to_string(), "masters".to_string()]
-                    ).execute().await;
-                    
+                        vec![
+                            "redis-cli".to_string(),
+                            "-p".to_string(),
+                            "26379".to_string(),
+                            "sentinel".to_string(),
+                            "masters".to_string(),
+                        ],
+                    )
+                    .execute()
+                    .await;
+
                     if let Ok(result) = status {
                         if !result.stdout.is_empty() {
                             println!("\n{}", "Sentinel Status:".bold().underline());

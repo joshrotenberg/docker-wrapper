@@ -8,5 +8,5 @@ pub mod commands;
 pub mod config;
 
 // Re-export commonly used types
-pub use config::{Config, InstanceType, InstanceInfo};
 pub use cli::{Cli, Commands};
+pub use config::{Config, InstanceInfo, InstanceType};

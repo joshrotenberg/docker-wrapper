@@ -203,14 +203,14 @@ mod tests {
     #[test]
     fn test_config_name_generation() {
         let mut config = Config::default();
-        
+
         // Test that counters increment properly
         let name1 = config.generate_name(&InstanceType::Basic);
         assert_eq!(name1, "redis-basic-1");
-        
+
         let name2 = config.generate_name(&InstanceType::Basic);
         assert_eq!(name2, "redis-basic-2");
-        
+
         // Different types have separate counters
         let cluster1 = config.generate_name(&InstanceType::Cluster);
         assert_eq!(cluster1, "redis-cluster-1");
@@ -219,7 +219,7 @@ mod tests {
     #[test]
     fn test_get_latest_instance() {
         let mut config = Config::default();
-        
+
         // Add some instances
         let instance1 = InstanceInfo {
             name: "redis-basic-1".to_string(),
@@ -236,7 +236,7 @@ mod tests {
             },
             metadata: HashMap::new(),
         };
-        
+
         let instance2 = InstanceInfo {
             name: "redis-basic-5".to_string(),
             instance_type: InstanceType::Basic,
@@ -252,10 +252,10 @@ mod tests {
             },
             metadata: HashMap::new(),
         };
-        
+
         config.add_instance(instance1);
         config.add_instance(instance2);
-        
+
         // Should return the one with highest counter (redis-basic-5)
         let latest = config.get_latest_instance(&InstanceType::Basic);
         assert!(latest.is_some());
@@ -264,14 +264,15 @@ mod tests {
 
     #[test]
     fn test_password_generation_uniqueness() {
-        let passwords: Vec<String> = (0..100)
-            .map(|_| generate_password())
-            .collect();
-        
+        let passwords: Vec<String> = (0..100).map(|_| generate_password()).collect();
+
         // Check all passwords are unique
-        let unique_count = passwords.iter().collect::<std::collections::HashSet<_>>().len();
+        let unique_count = passwords
+            .iter()
+            .collect::<std::collections::HashSet<_>>()
+            .len();
         assert_eq!(unique_count, 100);
-        
+
         // Check all passwords are 16 chars
         for password in &passwords {
             assert_eq!(password.len(), 16);

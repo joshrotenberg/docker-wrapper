@@ -50,7 +50,7 @@ async fn start_enterprise(args: EnterpriseStartArgs, verbose: bool) -> Result<()
         .cluster_name(format!("{}-cluster", name))
         .accept_eula()
         .ui_port(args.port_base)
-        .api_port(args.port_base + 1000)  // API port is typically 1000 higher
+        .api_port(args.port_base + 1000) // API port is typically 1000 higher
         .database_port_start(args.db_port);
 
     // Set memory limit if specified
@@ -76,7 +76,7 @@ async fn start_enterprise(args: EnterpriseStartArgs, verbose: bool) -> Result<()
             "{} Starting in containers-only mode. Cluster formation skipped.",
             "Note:".yellow()
         );
-        
+
         // Just start the container without bootstrapping
         use docker_wrapper::RunCommand;
         let container_name = format!("{}-enterprise", name);
@@ -114,9 +114,12 @@ async fn start_enterprise(args: EnterpriseStartArgs, verbose: bool) -> Result<()
             "\n{} Redis Enterprise container started in manual mode.",
             "Info:".cyan()
         );
-        println!("  Access the UI at https://localhost:{} to complete setup", args.port_base);
+        println!(
+            "  Access the UI at https://localhost:{} to complete setup",
+            args.port_base
+        );
         println!("  Container ID: {}", container_id.0);
-        
+
         // Return basic connection info
         docker_wrapper::RedisEnterpriseConnectionInfo {
             name: name.clone(),
@@ -214,7 +217,7 @@ async fn start_enterprise(args: EnterpriseStartArgs, verbose: bool) -> Result<()
     println!("  {} {}", "API:".cyan(), connection_info.api_url);
     println!("  {} {}", "Username:".cyan(), connection_info.username);
     println!("  {} {}", "Password:".cyan(), connection_info.password);
-    
+
     if let Some(db_port) = connection_info.database_port {
         println!("\n{}", "Database:".bold().underline());
         println!(
@@ -231,16 +234,8 @@ async fn start_enterprise(args: EnterpriseStartArgs, verbose: bool) -> Result<()
         "Access UI:".yellow(),
         args.port_base
     );
-    println!(
-        "  {} redis-dev enterprise stop {}",
-        "Stop:".yellow(),
-        name
-    );
-    println!(
-        "  {} redis-dev enterprise info {}",
-        "Info:".yellow(),
-        name
-    );
+    println!("  {} redis-dev enterprise stop {}", "Stop:".yellow(), name);
+    println!("  {} redis-dev enterprise info {}", "Info:".yellow(), name);
 
     Ok(())
 }
@@ -249,16 +244,13 @@ async fn stop_enterprise(args: StopArgs, verbose: bool) -> Result<()> {
     let mut config = Config::load()?;
 
     // Find the instance
-    let name = args
-        .name
-        .or_else(|| {
-            config
-                .get_latest_instance(&InstanceType::Enterprise)
-                .map(|i| i.name.clone())
-        });
+    let name = args.name.or_else(|| {
+        config
+            .get_latest_instance(&InstanceType::Enterprise)
+            .map(|i| i.name.clone())
+    });
 
-    let name =
-        name.context("No Enterprise instance found. Specify a name or start one first.")?;
+    let name = name.context("No Enterprise instance found. Specify a name or start one first.")?;
 
     let instance = config
         .instances
@@ -277,29 +269,22 @@ async fn stop_enterprise(args: StopArgs, verbose: bool) -> Result<()> {
     // Stop and remove containers
     use docker_wrapper::{RmCommand, StopCommand};
     for container in &instance.containers {
-        StopCommand::new(container)
-            .execute()
-            .await
-            .ok(); // Ignore errors for already stopped containers
+        StopCommand::new(container).execute().await.ok(); // Ignore errors for already stopped containers
 
-        RmCommand::new(container)
-            .force()
-            .execute()
-            .await
-            .ok();
+        RmCommand::new(container).force().execute().await.ok();
     }
 
     // Remove volumes if they exist
     use docker_wrapper::VolumeRmCommand;
     let persistent_volume = format!("{}-persistent", name);
     let ephemeral_volume = format!("{}-ephemeral", name);
-    
+
     VolumeRmCommand::new(&persistent_volume)
         .force()
         .execute()
         .await
         .ok();
-    
+
     VolumeRmCommand::new(&ephemeral_volume)
         .force()
         .execute()
@@ -323,16 +308,13 @@ async fn info_enterprise(args: InfoArgs, verbose: bool) -> Result<()> {
     let config = Config::load()?;
 
     // Find the instance
-    let name = args
-        .name
-        .or_else(|| {
-            config
-                .get_latest_instance(&InstanceType::Enterprise)
-                .map(|i| i.name.clone())
-        });
+    let name = args.name.or_else(|| {
+        config
+            .get_latest_instance(&InstanceType::Enterprise)
+            .map(|i| i.name.clone())
+    });
 
-    let name =
-        name.context("No Enterprise instance found. Specify a name or start one first.")?;
+    let name = name.context("No Enterprise instance found. Specify a name or start one first.")?;
 
     let instance = config
         .instances
@@ -377,11 +359,7 @@ async fn info_enterprise(args: InfoArgs, verbose: bool) -> Result<()> {
             db_name.as_str().unwrap_or("unknown")
         );
         if let Some(db_port) = instance.metadata.get("database_port") {
-            println!(
-                "  {} {}",
-                "Port:".cyan(),
-                db_port.as_u64().unwrap_or(0)
-            );
+            println!("  {} {}", "Port:".cyan(), db_port.as_u64().unwrap_or(0));
         }
     }
 
