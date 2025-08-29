@@ -18,7 +18,8 @@ clap = { version = "4.4", features = ["derive", "env"] }
 docker-wrapper = { path = "../..", features = [
     "templates", 
     "template-redis-cluster",
-    "template-redis"
+    "template-redis",
+    "template-redis-enterprise"
 ] }
 
 # Async runtime
