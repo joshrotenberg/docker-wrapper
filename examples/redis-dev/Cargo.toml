@@ -6,6 +6,10 @@ authors = ["Redis Developer Tools"]
 description = "CLI tool for quickly spinning up Redis development environments"
 license = "MIT"
 
+[lib]
+name = "redis_dev"
+path = "src/lib.rs"
+
 [[bin]]
 name = "redis-dev"
 path = "src/main.rs"
@@ -50,3 +54,11 @@ chrono = { version = "0.4", features = ["serde"] }
 # Logging and tracing
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tempfile = "3.8"
+tokio-test = "0.4"
+
+[features]
+default = []
+docker-tests = []  # Feature flag for tests that require Docker

@@ -186,3 +186,95 @@ pub fn generate_password() -> String {
         })
         .collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_instance_type_display() {
+        assert_eq!(InstanceType::Basic.to_string(), "basic");
+        assert_eq!(InstanceType::Stack.to_string(), "stack");
+        assert_eq!(InstanceType::Cluster.to_string(), "cluster");
+        assert_eq!(InstanceType::Sentinel.to_string(), "sentinel");
+        assert_eq!(InstanceType::Enterprise.to_string(), "enterprise");
+    }
+
+    #[test]
+    fn test_config_name_generation() {
+        let mut config = Config::default();
+        
+        // Test that counters increment properly
+        let name1 = config.generate_name(&InstanceType::Basic);
+        assert_eq!(name1, "redis-basic-1");
+        
+        let name2 = config.generate_name(&InstanceType::Basic);
+        assert_eq!(name2, "redis-basic-2");
+        
+        // Different types have separate counters
+        let cluster1 = config.generate_name(&InstanceType::Cluster);
+        assert_eq!(cluster1, "redis-cluster-1");
+    }
+
+    #[test]
+    fn test_get_latest_instance() {
+        let mut config = Config::default();
+        
+        // Add some instances
+        let instance1 = InstanceInfo {
+            name: "redis-basic-1".to_string(),
+            instance_type: InstanceType::Basic,
+            created_at: "2024-01-01T00:00:00Z".to_string(),
+            ports: vec![6379],
+            containers: vec!["container1".to_string()],
+            connection_info: ConnectionInfo {
+                host: "localhost".to_string(),
+                port: 6379,
+                password: None,
+                url: "redis://localhost:6379".to_string(),
+                additional_ports: HashMap::new(),
+            },
+            metadata: HashMap::new(),
+        };
+        
+        let instance2 = InstanceInfo {
+            name: "redis-basic-5".to_string(),
+            instance_type: InstanceType::Basic,
+            created_at: "2024-01-02T00:00:00Z".to_string(),
+            ports: vec![6380],
+            containers: vec!["container2".to_string()],
+            connection_info: ConnectionInfo {
+                host: "localhost".to_string(),
+                port: 6380,
+                password: None,
+                url: "redis://localhost:6380".to_string(),
+                additional_ports: HashMap::new(),
+            },
+            metadata: HashMap::new(),
+        };
+        
+        config.add_instance(instance1);
+        config.add_instance(instance2);
+        
+        // Should return the one with highest counter (redis-basic-5)
+        let latest = config.get_latest_instance(&InstanceType::Basic);
+        assert!(latest.is_some());
+        assert_eq!(latest.unwrap().name, "redis-basic-5");
+    }
+
+    #[test]
+    fn test_password_generation_uniqueness() {
+        let passwords: Vec<String> = (0..100)
+            .map(|_| generate_password())
+            .collect();
+        
+        // Check all passwords are unique
+        let unique_count = passwords.iter().collect::<std::collections::HashSet<_>>().len();
+        assert_eq!(unique_count, 100);
+        
+        // Check all passwords are 16 chars
+        for password in &passwords {
+            assert_eq!(password.len(), 16);
+        }
+    }
+}
