@@ -22,8 +22,7 @@ mod database_template_tests {
     #[allow(dead_code)]
     fn random_port() -> u16 {
         // Use a range that's unlikely to conflict with common services
-        let port = 40000 + (uuid::Uuid::new_v4().as_u128() % 10000) as u16;
-        port
+        40000 + (uuid::Uuid::new_v4().as_u128() % 10000) as u16
     }
 
     #[cfg(feature = "template-postgres")]

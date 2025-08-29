@@ -14,8 +14,7 @@ mod redis_template_tests {
     /// Generate a random port for testing to avoid conflicts
     fn random_port() -> u16 {
         // Use a range that's unlikely to conflict with common services
-        let port = 30000 + (uuid::Uuid::new_v4().as_u128() % 10000) as u16;
-        port
+        30000 + (uuid::Uuid::new_v4().as_u128() % 10000) as u16
     }
 
     #[tokio::test]
