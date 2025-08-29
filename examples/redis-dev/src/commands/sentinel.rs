@@ -246,7 +246,7 @@ async fn stop_sentinel(args: StopArgs, verbose: bool) -> Result<()> {
     // Find the instance
     let name = args
         .name
-        .or_else(|| config.get_latest_instance_name(&InstanceType::Sentinel));
+        .or_else(|| config.get_latest_instance(&InstanceType::Sentinel).map(|i| i.name.clone()));
 
     let name = name.context("No Sentinel instance found. Specify a name or start one first.")?;
 
@@ -312,7 +312,7 @@ async fn info_sentinel(args: InfoArgs, verbose: bool) -> Result<()> {
     // Find the instance
     let name = args
         .name
-        .or_else(|| config.get_latest_instance_name(&InstanceType::Sentinel));
+        .or_else(|| config.get_latest_instance(&InstanceType::Sentinel).map(|i| i.name.clone()));
 
     let name = name.context("No Sentinel instance found. Specify a name or start one first.")?;
 
@@ -357,11 +357,11 @@ async fn info_sentinel(args: InfoArgs, verbose: bool) -> Result<()> {
         if let Some(containers) = sentinel_containers.as_array() {
             if !containers.is_empty() {
                 if let Some(first_sentinel) = containers.first().and_then(|v| v.as_str()) {
-                    use docker_wrapper::ExecCommand;
-                    let status = ExecCommand::new(first_sentinel)
-                        .cmd(vec!["redis-cli", "-p", "26379", "sentinel", "masters"])
-                        .execute()
-                        .await;
+                    use docker_wrapper::{DockerCommand, ExecCommand};
+                    let status = ExecCommand::new(
+                        first_sentinel,
+                        vec!["redis-cli".to_string(), "-p".to_string(), "26379".to_string(), "sentinel".to_string(), "masters".to_string()]
+                    ).execute().await;
                     
                     if let Ok(result) = status {
                         if !result.stdout.is_empty() {
