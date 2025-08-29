@@ -221,7 +221,10 @@ async fn start_stack(args: StackStartArgs, verbose: bool) -> Result<()> {
         metadata: {
             let mut map = HashMap::new();
             map.insert("persist".to_string(), serde_json::Value::Bool(args.persist));
-            map.insert("insight".to_string(), serde_json::Value::Bool(args.with_insight));
+            map.insert(
+                "insight".to_string(),
+                serde_json::Value::Bool(args.with_insight),
+            );
             if let Some(memory) = args.memory {
                 map.insert("memory".to_string(), serde_json::Value::String(memory));
             }

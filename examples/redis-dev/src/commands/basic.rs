@@ -122,7 +122,7 @@ async fn start_basic(args: BasicStartArgs, verbose: bool) -> Result<()> {
         match start_insight(insight_config, verbose).await {
             Ok(container_id) => {
                 insight_container = Some(container_id);
-                
+
                 // Create connection info for Insight
                 let connections = vec![create_redis_connection(
                     name.clone(),
@@ -131,7 +131,7 @@ async fn start_basic(args: BasicStartArgs, verbose: bool) -> Result<()> {
                     Some(password.clone()),
                     ConnectionType::Standalone,
                 )];
-                
+
                 // Print instructions
                 print_insight_instructions(args.insight_port, connections);
             }
@@ -294,7 +294,7 @@ async fn stop_basic(args: StopArgs, verbose: bool) -> Result<()> {
             if verbose {
                 println!("  {} Stopping RedisInsight...", "Cleanup:".cyan());
             }
-            
+
             // Use the insight module's stop function
             use crate::commands::insight::stop_insight;
             if let Err(e) = stop_insight(&name).await {

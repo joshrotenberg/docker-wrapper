@@ -221,7 +221,10 @@ async fn start_cluster(args: ClusterStartArgs, verbose: bool) -> Result<()> {
             );
             map.insert("persist".to_string(), serde_json::Value::Bool(args.persist));
             map.insert("stack".to_string(), serde_json::Value::Bool(args.stack));
-            map.insert("insight".to_string(), serde_json::Value::Bool(args.with_insight));
+            map.insert(
+                "insight".to_string(),
+                serde_json::Value::Bool(args.with_insight),
+            );
             if let Some(memory) = args.memory {
                 map.insert("memory".to_string(), serde_json::Value::String(memory));
             }

@@ -32,7 +32,7 @@ impl InsightConfig {
 /// Start a Redis Insight container
 pub async fn start_insight(config: InsightConfig, verbose: bool) -> Result<String> {
     let container_name = format!("{}-insight", config.name);
-    
+
     if verbose {
         println!(
             "  {} Starting RedisInsight on port {}...",
@@ -40,10 +40,10 @@ pub async fn start_insight(config: InsightConfig, verbose: bool) -> Result<Strin
             config.port
         );
     }
-    
+
     let mut cmd = RunCommand::new("redis/redisinsight:latest")
         .name(&container_name)
-        .port(config.port, 5540)  // RedisInsight runs on port 5540 inside container
+        .port(config.port, 5540) // RedisInsight runs on port 5540 inside container
         .detach();
 
     // Add network if specified
@@ -55,13 +55,13 @@ pub async fn start_insight(config: InsightConfig, verbose: bool) -> Result<Strin
     cmd = cmd
         .env("REDISINSIGHT_PORT", "5540")
         .env("REDISINSIGHT_HOST", "0.0.0.0")
-        .env("REDISINSIGHT_LOG_LEVEL", "warning");  // Reduce log noise
+        .env("REDISINSIGHT_LOG_LEVEL", "warning"); // Reduce log noise
 
     let container_id = cmd
         .execute()
         .await
         .context("Failed to start Redis Insight container")?;
-    
+
     if verbose {
         println!(
             "  {} RedisInsight container started: {}",
@@ -76,42 +76,32 @@ pub async fn start_insight(config: InsightConfig, verbose: bool) -> Result<Strin
 /// Stop a Redis Insight container
 pub async fn stop_insight(name: &str) -> Result<()> {
     use docker_wrapper::{RmCommand, StopCommand};
-    
+
     let container_name = format!("{}-insight", name);
-    
+
     // Stop the container
-    StopCommand::new(&container_name)
-        .execute()
-        .await
-        .ok();  // Ignore if already stopped
-    
+    StopCommand::new(&container_name).execute().await.ok(); // Ignore if already stopped
+
     // Remove the container
-    RmCommand::new(&container_name)
-        .force()
-        .execute()
-        .await
-        .ok();  // Ignore if already removed
-    
+    RmCommand::new(&container_name).force().execute().await.ok(); // Ignore if already removed
+
     Ok(())
 }
 
 /// Print instructions for configuring Redis Insight
-pub fn print_insight_instructions(
-    insight_port: u16,
-    connections: Vec<RedisConnection>,
-) {
+pub fn print_insight_instructions(insight_port: u16, connections: Vec<RedisConnection>) {
     println!("\n{}", "RedisInsight GUI:".bold().underline());
     println!(
         "  {} http://localhost:{}",
         "Access at:".cyan(),
         insight_port
     );
-    
+
     if !connections.is_empty() {
         println!("\n  {}", "To add Redis connections:".yellow());
         println!("  1. Click 'I already have a database'");
         println!("  2. Click 'Connect to Redis Database'");
-        
+
         for conn in connections {
             println!("\n  {} {}:", "For".cyan(), conn.name);
             match conn.connection_type {
@@ -175,33 +165,33 @@ pub fn create_redis_connection(
 /// Check if Redis Insight container is running
 pub async fn is_insight_running(name: &str) -> Result<bool> {
     use docker_wrapper::PsCommand;
-    
+
     let container_name = format!("{}-insight", name);
     let output = PsCommand::new()
         .filter(format!("name={}", container_name))
         .quiet()
         .execute()
         .await?;
-    
+
     Ok(!output.stdout.trim().is_empty())
 }
 
 /// Get Redis Insight container info
 pub async fn get_insight_info(name: &str) -> Result<HashMap<String, String>> {
     use docker_wrapper::InspectCommand;
-    
+
     let container_name = format!("{}-insight", name);
     let result = InspectCommand::new(&container_name)
         .execute()
         .await
         .context("Failed to inspect Redis Insight container")?;
-    
+
     // Parse JSON output to extract relevant info
-    let containers: serde_json::Value = serde_json::from_str(&result.stdout)
-        .context("Failed to parse inspect output")?;
-    
+    let containers: serde_json::Value =
+        serde_json::from_str(&result.stdout).context("Failed to parse inspect output")?;
+
     let mut info = HashMap::new();
-    
+
     if let Some(container) = containers.as_array().and_then(|arr| arr.first()) {
         // Extract useful information
         if let Some(state) = container.get("State") {
@@ -209,20 +199,21 @@ pub async fn get_insight_info(name: &str) -> Result<HashMap<String, String>> {
                 info.insert("status".to_string(), status.to_string());
             }
         }
-        
+
         if let Some(config) = container.get("Config") {
             if let Some(image) = config.get("Image").and_then(|i| i.as_str()) {
                 info.insert("image".to_string(), image.to_string());
             }
         }
-        
+
         // Extract port mappings
         if let Some(network_settings) = container.get("NetworkSettings") {
             if let Some(ports) = network_settings.get("Ports") {
                 if let Some(port_5540) = ports.get("5540/tcp") {
                     if let Some(mappings) = port_5540.as_array() {
                         if let Some(first) = mappings.first() {
-                            if let Some(host_port) = first.get("HostPort").and_then(|p| p.as_str()) {
+                            if let Some(host_port) = first.get("HostPort").and_then(|p| p.as_str())
+                            {
                                 info.insert("port".to_string(), host_port.to_string());
                             }
                         }
@@ -231,6 +222,6 @@ pub async fn get_insight_info(name: &str) -> Result<HashMap<String, String>> {
             }
         }
     }
-    
+
     Ok(info)
 }
