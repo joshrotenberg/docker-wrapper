@@ -1,6 +1,7 @@
 //! Redis Insight container management for GUI access to Redis instances
 
 use anyhow::{Context, Result};
+use colored::*;
 use docker_wrapper::{DockerCommand, RunCommand};
 use std::collections::HashMap;
 
@@ -29,29 +30,45 @@ impl InsightConfig {
 }
 
 /// Start a Redis Insight container
-pub async fn start_insight(config: InsightConfig) -> Result<String> {
+pub async fn start_insight(config: InsightConfig, verbose: bool) -> Result<String> {
     let container_name = format!("{}-insight", config.name);
+    
+    if verbose {
+        println!(
+            "  {} Starting RedisInsight on port {}...",
+            "Insight:".cyan(),
+            config.port
+        );
+    }
     
     let mut cmd = RunCommand::new("redis/redisinsight:latest")
         .name(&container_name)
         .port(config.port, 5540)  // RedisInsight runs on port 5540 inside container
-        .detach()
-        .remove();  // Auto-remove when stopped
+        .detach();
 
     // Add network if specified
-    if let Some(network) = config.network {
-        cmd = cmd.network(&network);
+    if let Some(network) = &config.network {
+        cmd = cmd.network(network);
     }
 
     // Set environment variables for Redis Insight
     cmd = cmd
         .env("REDISINSIGHT_PORT", "5540")
-        .env("REDISINSIGHT_HOST", "0.0.0.0");
+        .env("REDISINSIGHT_HOST", "0.0.0.0")
+        .env("REDISINSIGHT_LOG_LEVEL", "warning");  // Reduce log noise
 
     let container_id = cmd
         .execute()
         .await
         .context("Failed to start Redis Insight container")?;
+    
+    if verbose {
+        println!(
+            "  {} RedisInsight container started: {}",
+            "Success".green(),
+            container_name
+        );
+    }
 
     Ok(container_id.0)
 }
@@ -78,31 +95,47 @@ pub async fn stop_insight(name: &str) -> Result<()> {
     Ok(())
 }
 
-/// Add Redis connection to Insight via API (requires Insight to be running)
-pub async fn add_connection_to_insight(
+/// Print instructions for configuring Redis Insight
+pub fn print_insight_instructions(
     insight_port: u16,
-    redis_host: &str,
-    redis_port: u16,
-    password: Option<&str>,
-    connection_name: &str,
-) -> Result<()> {
-    // Note: Redis Insight has an API for adding connections programmatically
-    // This would typically be done via HTTP POST to the Insight API
-    // For now, we'll just print instructions for manual configuration
+    connections: Vec<RedisConnection>,
+) {
+    println!("\n{}", "RedisInsight GUI:".bold().underline());
+    println!(
+        "  {} http://localhost:{}",
+        "Access at:".cyan(),
+        insight_port
+    );
     
-    println!("\n📊 Redis Insight Configuration:");
-    println!("1. Open http://localhost:{} in your browser", insight_port);
-    println!("2. Click 'Add Redis Database'");
-    println!("3. Enter the following details:");
-    println!("   - Host: {}", redis_host);
-    println!("   - Port: {}", redis_port);
-    if let Some(pwd) = password {
-        println!("   - Password: {}", pwd);
+    if !connections.is_empty() {
+        println!("\n  {}", "To add Redis connections:".yellow());
+        println!("  1. Click 'I already have a database'");
+        println!("  2. Click 'Connect to Redis Database'");
+        
+        for conn in connections {
+            println!("\n  {} {}:", "For".cyan(), conn.name);
+            match conn.connection_type {
+                ConnectionType::Standalone | ConnectionType::Enterprise => {
+                    println!("    - Host: {}", conn.host);
+                    println!("    - Port: {}", conn.port);
+                }
+                ConnectionType::Cluster => {
+                    println!("    - Connection Type: OSS Cluster");
+                    println!("    - Host: {}", conn.host);
+                    println!("    - Port: {}", conn.port);
+                }
+                ConnectionType::Sentinel { sentinel_port } => {
+                    println!("    - Connection Type: Sentinel");
+                    println!("    - Sentinel Host: {}", conn.host);
+                    println!("    - Sentinel Port: {}", sentinel_port);
+                }
+            }
+            if let Some(ref pwd) = conn.password {
+                println!("    - Password: {}", pwd);
+            }
+            println!("    - Database Alias: {}", conn.name);
+        }
     }
-    println!("   - Database Alias: {}", connection_name);
-    println!("4. Click 'Add Redis Database' to connect");
-    
-    Ok(())
 }
 
 /// Configuration for multiple Redis instances to add to Insight
@@ -122,46 +155,21 @@ pub enum ConnectionType {
     Enterprise,
 }
 
-/// Generate Insight connection instructions for various Redis types
-pub fn generate_insight_instructions(
-    insight_port: u16,
-    connections: Vec<RedisConnection>,
-) -> String {
-    let mut instructions = format!("\n📊 Redis Insight is running at http://localhost:{}\n\n", insight_port);
-    instructions.push_str("To add your Redis instances:\n\n");
-    
-    for (i, conn) in connections.iter().enumerate() {
-        instructions.push_str(&format!("{}. {} ({:?}):\n", i + 1, conn.name, conn.connection_type));
-        
-        match conn.connection_type {
-            ConnectionType::Standalone => {
-                instructions.push_str(&format!("   - Connection Type: Standalone\n"));
-                instructions.push_str(&format!("   - Host: {}\n", conn.host));
-                instructions.push_str(&format!("   - Port: {}\n", conn.port));
-            }
-            ConnectionType::Cluster => {
-                instructions.push_str(&format!("   - Connection Type: Redis Cluster\n"));
-                instructions.push_str(&format!("   - Seed nodes: {}:{}\n", conn.host, conn.port));
-            }
-            ConnectionType::Sentinel { sentinel_port } => {
-                instructions.push_str(&format!("   - Connection Type: Redis Sentinel\n"));
-                instructions.push_str(&format!("   - Sentinel Host: {}\n", conn.host));
-                instructions.push_str(&format!("   - Sentinel Port: {}\n", sentinel_port));
-            }
-            ConnectionType::Enterprise => {
-                instructions.push_str(&format!("   - Connection Type: Redis Enterprise\n"));
-                instructions.push_str(&format!("   - Host: {}\n", conn.host));
-                instructions.push_str(&format!("   - Port: {}\n", conn.port));
-            }
-        }
-        
-        if let Some(ref pwd) = conn.password {
-            instructions.push_str(&format!("   - Password: {}\n", pwd));
-        }
-        instructions.push_str("\n");
+/// Create a Redis connection configuration for Insight
+pub fn create_redis_connection(
+    name: String,
+    host: String,
+    port: u16,
+    password: Option<String>,
+    connection_type: ConnectionType,
+) -> RedisConnection {
+    RedisConnection {
+        name,
+        host,
+        port,
+        password,
+        connection_type,
     }
-    
-    instructions
 }
 
 /// Check if Redis Insight container is running

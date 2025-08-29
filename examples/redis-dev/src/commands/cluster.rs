@@ -63,7 +63,7 @@ async fn start_cluster(args: ClusterStartArgs, verbose: bool) -> Result<()> {
         template = template.with_redis_stack();
     }
 
-    if args.insight {
+    if args.with_insight {
         template = template
             .with_redis_insight()
             .redis_insight_port(args.insight_port);
@@ -102,7 +102,7 @@ async fn start_cluster(args: ClusterStartArgs, verbose: bool) -> Result<()> {
                 }
             }
             // Also clean up potential insight container
-            if args.insight {
+            if args.with_insight {
                 let insight_name = format!("{}-insight", name);
                 if let Err(cleanup_err) = docker_wrapper::RmCommand::new(&insight_name)
                     .force()
@@ -171,7 +171,7 @@ async fn start_cluster(args: ClusterStartArgs, verbose: bool) -> Result<()> {
     for i in 0..total_nodes {
         containers.push(format!("{}-node-{}", name, i));
     }
-    if args.insight {
+    if args.with_insight {
         containers.push(format!("{}-insight", name));
     }
 
@@ -183,7 +183,7 @@ async fn start_cluster(args: ClusterStartArgs, verbose: bool) -> Result<()> {
 
     // Build additional ports info
     let mut additional_ports = HashMap::new();
-    if args.insight {
+    if args.with_insight {
         additional_ports.insert("redisinsight".to_string(), args.insight_port);
     }
 
@@ -221,7 +221,7 @@ async fn start_cluster(args: ClusterStartArgs, verbose: bool) -> Result<()> {
             );
             map.insert("persist".to_string(), serde_json::Value::Bool(args.persist));
             map.insert("stack".to_string(), serde_json::Value::Bool(args.stack));
-            map.insert("insight".to_string(), serde_json::Value::Bool(args.insight));
+            map.insert("insight".to_string(), serde_json::Value::Bool(args.with_insight));
             if let Some(memory) = args.memory {
                 map.insert("memory".to_string(), serde_json::Value::String(memory));
             }
@@ -272,7 +272,7 @@ async fn start_cluster(args: ClusterStartArgs, verbose: bool) -> Result<()> {
         );
     }
 
-    if args.insight {
+    if args.with_insight {
         println!(
             "  {}: http://localhost:{}",
             "RedisInsight".bold(),

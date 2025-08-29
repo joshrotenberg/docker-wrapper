@@ -110,6 +110,42 @@ async fn start_basic(args: BasicStartArgs, verbose: bool) -> Result<()> {
         println!("{} {}", "Success:".green(), result);
     }
 
+    // Start RedisInsight if requested
+    let mut insight_container = None;
+    if args.with_insight {
+        use crate::commands::insight::{
+            create_redis_connection, print_insight_instructions, start_insight, ConnectionType,
+            InsightConfig, RedisConnection,
+        };
+
+        let insight_config = InsightConfig::new(&name, args.insight_port);
+        match start_insight(insight_config, verbose).await {
+            Ok(container_id) => {
+                insight_container = Some(container_id);
+                
+                // Create connection info for Insight
+                let connections = vec![create_redis_connection(
+                    name.clone(),
+                    "host.docker.internal".to_string(), // Use host.docker.internal for Docker Desktop
+                    args.port,
+                    Some(password.clone()),
+                    ConnectionType::Standalone,
+                )];
+                
+                // Print instructions
+                print_insight_instructions(args.insight_port, connections);
+            }
+            Err(e) => {
+                warn!("Failed to start RedisInsight: {}", e);
+                println!(
+                    "{} RedisInsight failed to start: {}",
+                    "Warning:".yellow(),
+                    e
+                );
+            }
+        }
+    }
+
     // Store instance info
     let instance_info = InstanceInfo {
         name: name.clone(),
@@ -131,6 +167,16 @@ async fn start_basic(args: BasicStartArgs, verbose: bool) -> Result<()> {
                 map.insert(
                     "memory".to_string(),
                     serde_json::Value::String(memory.clone()),
+                );
+            }
+            if let Some(ref container_id) = insight_container {
+                map.insert(
+                    "insight_container".to_string(),
+                    serde_json::Value::String(container_id.clone()),
+                );
+                map.insert(
+                    "insight_port".to_string(),
+                    serde_json::Value::Number(args.insight_port.into()),
                 );
             }
             map
@@ -211,7 +257,10 @@ async fn stop_basic(args: StopArgs, verbose: bool) -> Result<()> {
     };
 
     // Check if instance exists
-    let instance = config.get_instance(&name).context("Instance not found")?;
+    let instance = config
+        .get_instance(&name)
+        .context("Instance not found")?
+        .clone(); // Clone to avoid borrow issues
 
     if instance.instance_type != InstanceType::Basic {
         anyhow::bail!("Instance '{}' is not a basic Redis instance", name);
@@ -238,6 +287,21 @@ async fn stop_basic(args: StopArgs, verbose: bool) -> Result<()> {
         .execute()
         .await
         .with_context(|| format!("Failed to remove Redis container: {}", name))?;
+
+    // Stop and remove Insight container if it exists
+    if let Some(insight_container) = instance.metadata.get("insight_container") {
+        if let Some(container_name) = insight_container.as_str() {
+            if verbose {
+                println!("  {} Stopping RedisInsight...", "Cleanup:".cyan());
+            }
+            
+            // Use the insight module's stop function
+            use crate::commands::insight::stop_insight;
+            if let Err(e) = stop_insight(&name).await {
+                warn!("Failed to stop RedisInsight: {}", e);
+            }
+        }
+    }
 
     // Remove from config
     config.remove_instance(&name);

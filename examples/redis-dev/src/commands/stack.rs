@@ -52,7 +52,7 @@ async fn start_stack(args: StackStartArgs, verbose: bool) -> Result<()> {
     }
 
     // Create Redis Insight template if requested
-    let insight_template = if args.insight {
+    let insight_template = if args.with_insight {
         Some(
             RedisInsightTemplate::new(format!("{}-insight", name))
                 .port(args.insight_port)
@@ -63,7 +63,7 @@ async fn start_stack(args: StackStartArgs, verbose: bool) -> Result<()> {
     };
 
     // Create network if insight is enabled
-    if args.insight {
+    if args.with_insight {
         let network_name = format!("{}-network", name);
         if verbose {
             println!("{} Creating network: {}", "Network:".cyan(), network_name);
@@ -111,7 +111,7 @@ async fn start_stack(args: StackStartArgs, verbose: bool) -> Result<()> {
                 }
             }
 
-            if args.insight {
+            if args.with_insight {
                 let network_name = format!("{}-network", name);
                 if let Err(cleanup_err) = docker_wrapper::NetworkRmCommand::new(&network_name)
                     .execute()
@@ -194,13 +194,13 @@ async fn start_stack(args: StackStartArgs, verbose: bool) -> Result<()> {
 
     // Build containers list
     let mut containers = vec![name.clone()];
-    if args.insight {
+    if args.with_insight {
         containers.push(format!("{}-insight", name));
     }
 
     // Build additional ports info
     let mut additional_ports = HashMap::new();
-    if args.insight {
+    if args.with_insight {
         additional_ports.insert("redisinsight".to_string(), args.insight_port);
     }
 
@@ -221,7 +221,7 @@ async fn start_stack(args: StackStartArgs, verbose: bool) -> Result<()> {
         metadata: {
             let mut map = HashMap::new();
             map.insert("persist".to_string(), serde_json::Value::Bool(args.persist));
-            map.insert("insight".to_string(), serde_json::Value::Bool(args.insight));
+            map.insert("insight".to_string(), serde_json::Value::Bool(args.with_insight));
             if let Some(memory) = args.memory {
                 map.insert("memory".to_string(), serde_json::Value::String(memory));
             }
@@ -276,7 +276,7 @@ async fn start_stack(args: StackStartArgs, verbose: bool) -> Result<()> {
         );
     }
 
-    if args.insight {
+    if args.with_insight {
         println!(
             "  {}: http://localhost:{}",
             "RedisInsight".bold(),
