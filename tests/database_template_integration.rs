@@ -20,7 +20,6 @@ mod database_template_tests {
         async fn test_postgres_basic_start_stop() -> Result<(), Box<dyn std::error::Error>> {
             let name = test_container_name("postgres", "basic");
             let postgres = PostgresTemplate::new(&name)
-                .port(0)
                 .database("testdb")
                 .user("testuser")
                 .password("testpass");
@@ -66,7 +65,6 @@ mod database_template_tests {
             let volume_name = format!("{}-data", name);
 
             let postgres = PostgresTemplate::new(&name)
-                .port(0)
                 .database("persistdb")
                 .user("persistuser")
                 .password("persistpass")
@@ -106,7 +104,6 @@ mod database_template_tests {
 
             // Start new container with same volume
             let postgres2 = PostgresTemplate::new(format!("{}-2", name))
-                .port(0)
                 .database("persistdb")
                 .user("persistuser")
                 .password("persistpass")
@@ -143,21 +140,22 @@ mod database_template_tests {
         async fn test_postgres_init_script() -> Result<(), Box<dyn std::error::Error>> {
             let name = test_container_name("postgres", "init");
 
-            // Create a temporary init script
+            // Create a temporary directory for init scripts
             use std::io::Write;
             let temp_dir = tempfile::tempdir()?;
-            let init_file = temp_dir.path().join("init.sql");
+            let init_dir = temp_dir.path().join("initdb.d");
+            std::fs::create_dir(&init_dir)?;
+            let init_file = init_dir.join("init.sql");
             let mut file = std::fs::File::create(&init_file)?;
             writeln!(file, "CREATE TABLE init_test (id INT PRIMARY KEY);")?;
             writeln!(file, "INSERT INTO init_test VALUES (42);")?;
             file.sync_all()?;
 
             let postgres = PostgresTemplate::new(&name)
-                .port(0)
                 .database("initdb")
                 .user("inituser")
                 .password("initpass")
-                .init_scripts(init_file.to_str().unwrap());
+                .init_scripts(init_dir.to_str().unwrap());
 
             // Start and wait
             let _container_id = postgres.start_and_wait().await?;
@@ -196,7 +194,6 @@ mod database_template_tests {
         async fn test_mysql_basic_start_stop() -> Result<(), Box<dyn std::error::Error>> {
             let name = test_container_name("mysql", "basic");
             let mysql = MysqlTemplate::new(&name)
-                .port(0)
                 .database("testdb")
                 .user("testuser")
                 .password("testpass")
@@ -240,7 +237,6 @@ mod database_template_tests {
         async fn test_mysql_character_set() -> Result<(), Box<dyn std::error::Error>> {
             let name = test_container_name("mysql", "charset");
             let mysql = MysqlTemplate::new(&name)
-                .port(0)
                 .database("chardb")
                 .root_password("rootpass")
                 .character_set("utf8mb4")
@@ -291,7 +287,7 @@ mod database_template_tests {
         #[tokio::test]
         async fn test_mongodb_basic_start_stop() -> Result<(), Box<dyn std::error::Error>> {
             let name = test_container_name("mongodb", "basic");
-            let mongodb = MongodbTemplate::new(&name).port(0).database("testdb");
+            let mongodb = MongodbTemplate::new(&name).database("testdb");
 
             // Start and wait for ready
             let container_id = mongodb.start_and_wait().await?;
@@ -332,7 +328,6 @@ mod database_template_tests {
         async fn test_mongodb_with_auth() -> Result<(), Box<dyn std::error::Error>> {
             let name = test_container_name("mongodb", "auth");
             let mongodb = MongodbTemplate::new(&name)
-                .port(0)
                 .root_username("admin")
                 .root_password("adminpass")
                 .database("authdb")
@@ -355,7 +350,7 @@ mod database_template_tests {
         #[tokio::test]
         async fn test_mongodb_replica_set() -> Result<(), Box<dyn std::error::Error>> {
             let name = test_container_name("mongodb", "replica");
-            let mongodb = MongodbTemplate::new(&name).port(0).replica_set("rs0");
+            let mongodb = MongodbTemplate::new(&name).replica_set("rs0");
 
             // Start and wait
             let _container_id = mongodb.start_and_wait().await?;
