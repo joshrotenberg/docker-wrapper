@@ -1,6 +1,6 @@
 //! Integration tests for Redis templates
 
-#[cfg(all(test, feature = "template-redis"))]
+#[cfg(feature = "template-redis")]
 mod redis_template_tests {
     use docker_wrapper::{DockerCommand, RedisTemplate, Template};
     use std::time::Duration;
@@ -11,10 +11,17 @@ mod redis_template_tests {
         format!("test-redis-template-{}-{}", suffix, uuid::Uuid::new_v4())
     }
 
+    /// Generate a random port for testing to avoid conflicts
+    fn random_port() -> u16 {
+        // Use a range that's unlikely to conflict with common services
+        let port = 30000 + (uuid::Uuid::new_v4().as_u128() % 10000) as u16;
+        port
+    }
+
     #[tokio::test]
     async fn test_redis_basic_start_stop() -> Result<(), Box<dyn std::error::Error>> {
         let name = test_container_name("basic");
-        let redis = RedisTemplate::new(&name); // Don't use port 0 in CI
+        let redis = RedisTemplate::new(&name).port(random_port());
 
         // Start the container and wait for it to be ready
         let container_id = redis.start_and_wait().await?;
@@ -39,7 +46,9 @@ mod redis_template_tests {
     #[tokio::test]
     async fn test_redis_with_password() -> Result<(), Box<dyn std::error::Error>> {
         let name = test_container_name("password");
-        let redis = RedisTemplate::new(&name).password("test_password");
+        let redis = RedisTemplate::new(&name)
+            .port(random_port())
+            .password("test_password");
 
         // Start and wait for ready
         let _container_id = redis.start_and_wait().await?;
@@ -66,7 +75,9 @@ mod redis_template_tests {
         let name = test_container_name("persistence");
         let volume_name = format!("{}-data", name);
 
-        let redis = RedisTemplate::new(&name).with_persistence(&volume_name);
+        let redis = RedisTemplate::new(&name)
+            .port(random_port())
+            .with_persistence(&volume_name);
 
         // Start and wait
         let _container_id = redis.start_and_wait().await?;
@@ -85,7 +96,9 @@ mod redis_template_tests {
         redis.remove().await?;
 
         // Start a new container with same volume
-        let redis2 = RedisTemplate::new(format!("{}-2", name)).with_persistence(&volume_name);
+        let redis2 = RedisTemplate::new(format!("{}-2", name))
+            .port(random_port())
+            .with_persistence(&volume_name);
 
         let _container_id2 = redis2.start_and_wait().await?;
 
@@ -107,7 +120,9 @@ mod redis_template_tests {
     #[tokio::test]
     async fn test_redis_memory_limit() -> Result<(), Box<dyn std::error::Error>> {
         let name = test_container_name("memory");
-        let redis = RedisTemplate::new(&name).memory_limit("128m");
+        let redis = RedisTemplate::new(&name)
+            .port(random_port())
+            .memory_limit("128m");
 
         // Start and wait
         let _container_id = redis.start_and_wait().await?;
@@ -137,7 +152,9 @@ mod redis_template_tests {
     #[tokio::test]
     async fn test_redis_custom_image() -> Result<(), Box<dyn std::error::Error>> {
         let name = test_container_name("custom");
-        let redis = RedisTemplate::new(&name).custom_image("redis", "6-alpine");
+        let redis = RedisTemplate::new(&name)
+            .port(random_port())
+            .custom_image("redis", "6-alpine");
 
         // Start and wait
         let _container_id = redis.start_and_wait().await?;
@@ -156,7 +173,9 @@ mod redis_template_tests {
     #[tokio::test]
     async fn test_redis_stack() -> Result<(), Box<dyn std::error::Error>> {
         let name = test_container_name("stack");
-        let redis = RedisTemplate::new(&name).with_redis_stack();
+        let redis = RedisTemplate::new(&name)
+            .port(random_port())
+            .with_redis_stack();
 
         // Start and wait
         let _container_id = redis.start_and_wait().await?;
@@ -183,7 +202,7 @@ mod redis_template_tests {
     #[tokio::test]
     async fn test_redis_logs() -> Result<(), Box<dyn std::error::Error>> {
         let name = test_container_name("logs");
-        let redis = RedisTemplate::new(&name);
+        let redis = RedisTemplate::new(&name).port(random_port());
 
         // Start and wait
         let _container_id = redis.start_and_wait().await?;

@@ -247,7 +247,8 @@ pub trait Template: Send + Sync {
             .execute()
             .await?;
 
-        Ok(!output.containers.is_empty())
+        // In quiet mode, check if stdout contains any container IDs
+        Ok(!output.stdout.trim().is_empty())
     }
 
     /// Get container logs
