@@ -201,6 +201,66 @@ impl Template for MongodbTemplate {
     fn config_mut(&mut self) -> &mut TemplateConfig {
         &mut self.config
     }
+
+    async fn wait_for_ready(&self) -> crate::template::Result<()> {
+        use std::time::Duration;
+        use tokio::time::{sleep, timeout};
+
+        // Custom MongoDB readiness check
+        let wait_timeout = Duration::from_secs(30);
+        let check_interval = Duration::from_millis(500);
+
+        timeout(wait_timeout, async {
+            loop {
+                // First check if container is running
+                if !self.is_running().await? {
+                    return Err(crate::template::TemplateError::NotRunning(
+                        self.config().name.clone(),
+                    ));
+                }
+
+                // Try to connect to MongoDB using mongosh (or mongo for older versions)
+                let check_cmd = if self.config.tag.starts_with("4.") {
+                    // Use mongo for version 4.x
+                    vec![
+                        "mongo",
+                        "--host",
+                        "localhost",
+                        "--eval",
+                        "db.runCommand({ ping: 1 })",
+                        "--quiet",
+                    ]
+                } else {
+                    // Use mongosh for version 5.0+
+                    vec![
+                        "mongosh",
+                        "--host",
+                        "localhost",
+                        "--eval",
+                        "db.runCommand({ ping: 1 })",
+                        "--quiet",
+                    ]
+                };
+
+                // Execute readiness check
+                if let Ok(result) = self.exec(check_cmd).await {
+                    // MongoDB ping returns { ok: 1 } on success
+                    if result.stdout.contains("ok") && result.stdout.contains('1') {
+                        return Ok(());
+                    }
+                }
+
+                sleep(check_interval).await;
+            }
+        })
+        .await
+        .map_err(|_| {
+            crate::template::TemplateError::InvalidConfig(format!(
+                "MongoDB container {} failed to become ready within timeout",
+                self.config().name
+            ))
+        })?
+    }
 }
 
 /// Builder for MongoDB connection strings

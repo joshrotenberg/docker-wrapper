@@ -209,6 +209,59 @@ impl Template for PostgresTemplate {
     fn config_mut(&mut self) -> &mut TemplateConfig {
         &mut self.config
     }
+
+    async fn wait_for_ready(&self) -> crate::template::Result<()> {
+        use std::time::Duration;
+        use tokio::time::{sleep, timeout};
+
+        // Custom PostgreSQL readiness check
+        let wait_timeout = Duration::from_secs(30);
+        let check_interval = Duration::from_millis(500);
+
+        timeout(wait_timeout, async {
+            loop {
+                // First check if container is running
+                if !self.is_running().await? {
+                    return Err(crate::template::TemplateError::NotRunning(
+                        self.config().name.clone(),
+                    ));
+                }
+
+                // Try to connect to PostgreSQL using pg_isready
+                let user = self
+                    .config
+                    .env
+                    .get("POSTGRES_USER")
+                    .map(|s| s.as_str())
+                    .unwrap_or("postgres");
+                let db = self
+                    .config
+                    .env
+                    .get("POSTGRES_DB")
+                    .map(|s| s.as_str())
+                    .unwrap_or("postgres");
+
+                let check_cmd = vec!["pg_isready", "-h", "localhost", "-U", user, "-d", db];
+
+                // Execute readiness check
+                if let Ok(result) = self.exec(check_cmd).await {
+                    // pg_isready returns 0 on success
+                    if result.stdout.contains("accepting connections") {
+                        return Ok(());
+                    }
+                }
+
+                sleep(check_interval).await;
+            }
+        })
+        .await
+        .map_err(|_| {
+            crate::template::TemplateError::InvalidConfig(format!(
+                "PostgreSQL container {} failed to become ready within timeout",
+                self.config().name
+            ))
+        })?
+    }
 }
 
 /// Builder for PostgreSQL connection strings

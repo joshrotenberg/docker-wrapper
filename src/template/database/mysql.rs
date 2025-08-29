@@ -228,6 +228,63 @@ impl Template for MysqlTemplate {
     fn config_mut(&mut self) -> &mut TemplateConfig {
         &mut self.config
     }
+
+    async fn wait_for_ready(&self) -> crate::template::Result<()> {
+        use std::time::Duration;
+        use tokio::time::{sleep, timeout};
+
+        // Custom MySQL readiness check
+        let wait_timeout = Duration::from_secs(30);
+        let check_interval = Duration::from_millis(500);
+
+        timeout(wait_timeout, async {
+            loop {
+                // First check if container is running
+                if !self.is_running().await? {
+                    return Err(crate::template::TemplateError::NotRunning(
+                        self.config().name.clone(),
+                    ));
+                }
+
+                // Try to connect to MySQL using mysqladmin
+                let password = self
+                    .config
+                    .env
+                    .get("MYSQL_ROOT_PASSWORD")
+                    .or_else(|| self.config.env.get("MYSQL_PASSWORD"))
+                    .map(|s| s.as_str())
+                    .unwrap_or("mysql");
+
+                let password_arg = format!("-p{}", password);
+                let check_cmd = vec![
+                    "mysqladmin",
+                    "-h",
+                    "localhost",
+                    "-u",
+                    "root",
+                    &password_arg,
+                    "ping",
+                ];
+
+                // Execute readiness check
+                if let Ok(result) = self.exec(check_cmd).await {
+                    // mysqladmin ping returns "mysqld is alive" on success
+                    if result.stdout.contains("mysqld is alive") {
+                        return Ok(());
+                    }
+                }
+
+                sleep(check_interval).await;
+            }
+        })
+        .await
+        .map_err(|_| {
+            crate::template::TemplateError::InvalidConfig(format!(
+                "MySQL container {} failed to become ready within timeout",
+                self.config().name
+            ))
+        })?
+    }
 }
 
 /// Builder for MySQL connection strings
