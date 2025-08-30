@@ -1,0 +1,8 @@
+api-version: v1
+deployments:
+  - name: my-redis
+    type: basic
+    port: 6379
+    persist: true
+    memory: "512m"
+    with-insight: true

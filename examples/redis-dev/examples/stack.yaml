@@ -1,0 +1,9 @@
+api-version: v1
+deployments:
+  - name: my-stack
+    type: stack
+    port: 6380
+    persist: true
+    memory: "1g"
+    with-insight: true
+    insight-port: 8002

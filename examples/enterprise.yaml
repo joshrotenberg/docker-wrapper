@@ -1,0 +1,11 @@
+api-version: v1
+deployments:
+  - name: my-enterprise
+    type: enterprise
+    nodes: 3
+    port-base: 8443
+    create-db: "mydb"
+    db-port: 12000
+    memory: "4g"
+    persist: false
+    with-insight: true

@@ -74,6 +74,17 @@ pub enum Commands {
         #[arg(short, long)]
         timestamps: bool,
     },
+    /// Deploy Redis instances from YAML configuration
+    Deploy {
+        /// Path to YAML configuration file
+        file: std::path::PathBuf,
+    },
+    /// Generate example YAML configuration files
+    Examples {
+        /// Directory to create example files in
+        #[arg(default_value = "./examples")]
+        dir: std::path::PathBuf,
+    },
 }
 
 #[derive(Subcommand, Debug)]
