@@ -149,6 +149,55 @@ impl Template for RedisTemplate {
         &mut self.config
     }
 
+    async fn wait_for_ready(&self) -> crate::template::Result<()> {
+        use std::time::Duration;
+        use tokio::time::{sleep, timeout};
+
+        // Custom Redis readiness check
+        let wait_timeout = Duration::from_secs(30);
+        let check_interval = Duration::from_millis(500);
+
+        timeout(wait_timeout, async {
+            loop {
+                // First check if container is running
+                if !self.is_running().await? {
+                    return Err(crate::template::TemplateError::NotRunning(
+                        self.config().name.clone(),
+                    ));
+                }
+
+                // Try to ping Redis
+                let password = self.config.env.get("REDIS_PASSWORD");
+                let mut ping_cmd = vec!["redis-cli", "-h", "localhost"];
+
+                // Add auth if password is set
+                let auth_args;
+                if let Some(pass) = password {
+                    auth_args = vec!["-a", pass.as_str()];
+                    ping_cmd.extend(&auth_args);
+                }
+
+                ping_cmd.push("ping");
+
+                // Execute ping command
+                if let Ok(result) = self.exec(ping_cmd).await {
+                    if result.stdout.trim() == "PONG" {
+                        return Ok(());
+                    }
+                }
+
+                sleep(check_interval).await;
+            }
+        })
+        .await
+        .map_err(|_| {
+            crate::template::TemplateError::InvalidConfig(format!(
+                "Redis container {} failed to become ready within timeout",
+                self.config().name
+            ))
+        })?
+    }
+
     fn build_command(&self) -> crate::RunCommand {
         let config = self.config();
 

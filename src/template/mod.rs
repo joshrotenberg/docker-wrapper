@@ -206,6 +206,13 @@ pub trait Template: Send + Sync {
         Ok(output.0)
     }
 
+    /// Start the container and wait for it to be ready
+    async fn start_and_wait(&self) -> Result<String> {
+        let container_id = self.start().await?;
+        self.wait_for_ready().await?;
+        Ok(container_id)
+    }
+
     /// Stop the container
     async fn stop(&self) -> Result<()> {
         use crate::StopCommand;
@@ -240,7 +247,8 @@ pub trait Template: Send + Sync {
             .execute()
             .await?;
 
-        Ok(!output.containers.is_empty())
+        // In quiet mode, check if stdout contains any container IDs
+        Ok(!output.stdout.trim().is_empty())
     }
 
     /// Get container logs
@@ -268,6 +276,76 @@ pub trait Template: Send + Sync {
         let cmd = ExecCommand::new(&self.config().name, cmd_vec);
 
         cmd.execute().await.map_err(Into::into)
+    }
+
+    /// Wait for the container to be ready
+    ///
+    /// This method will wait for the container to pass its health checks
+    /// or reach a ready state. The default implementation waits for the
+    /// container to be running and healthy (if health checks are configured).
+    ///
+    /// Templates can override this to provide custom readiness checks.
+    async fn wait_for_ready(&self) -> Result<()> {
+        use std::time::Duration;
+        use tokio::time::{sleep, timeout};
+
+        // Default timeout of 30 seconds
+        let wait_timeout = Duration::from_secs(30);
+        let check_interval = Duration::from_millis(500);
+
+        timeout(wait_timeout, async {
+            loop {
+                // First check if container is running
+                if !self.is_running().await? {
+                    return Err(TemplateError::NotRunning(self.config().name.clone()));
+                }
+
+                // If there's a health check configured, wait for it
+                if self.config().health_check.is_some() {
+                    use crate::InspectCommand;
+
+                    let inspect = InspectCommand::new(&self.config().name).execute().await?;
+
+                    // Check health status in the inspect output
+                    if let Ok(containers) =
+                        serde_json::from_str::<serde_json::Value>(&inspect.stdout)
+                    {
+                        if let Some(first) = containers.as_array().and_then(|arr| arr.first()) {
+                            if let Some(state) = first.get("State") {
+                                if let Some(health) = state.get("Health") {
+                                    if let Some(status) =
+                                        health.get("Status").and_then(|s| s.as_str())
+                                    {
+                                        if status == "healthy" {
+                                            return Ok(());
+                                        }
+                                    }
+                                } else if let Some(running) =
+                                    state.get("Running").and_then(|r| r.as_bool())
+                                {
+                                    // No health check configured, just check if running
+                                    if running {
+                                        return Ok(());
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // No health check, just ensure it's running
+                    return Ok(());
+                }
+
+                sleep(check_interval).await;
+            }
+        })
+        .await
+        .map_err(|_| {
+            TemplateError::InvalidConfig(format!(
+                "Container {} failed to become ready within timeout",
+                self.config().name
+            ))
+        })?
     }
 }
 

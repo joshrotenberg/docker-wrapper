@@ -5,9 +5,12 @@
 //! - Test the management API endpoints
 //! - Verify cluster initialization
 
+#[cfg(feature = "template-redis-enterprise")]
 use docker_wrapper::{DockerCommand, RedisEnterpriseTemplate};
+#[cfg(feature = "template-redis-enterprise")]
 use std::time::Duration;
 
+#[cfg(feature = "template-redis-enterprise")]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Initialize logging
@@ -170,4 +173,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ Cleanup complete!");
 
     Ok(())
+}
+
+#[cfg(not(feature = "template-redis-enterprise"))]
+fn main() {
+    eprintln!("This example requires the 'template-redis-enterprise' feature to be enabled.");
+    eprintln!("Run with: cargo run --example redis_enterprise_template --features template-redis-enterprise");
 }

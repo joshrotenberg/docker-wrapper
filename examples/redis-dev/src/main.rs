@@ -53,7 +53,12 @@ async fn main() -> Result<()> {
         Some(Commands::Cleanup { force, r#type }) => {
             commands::cleanup::handle_cleanup(force, r#type, cli.verbose).await?;
         }
-        Some(Commands::Logs { name, follow, tail, timestamps }) => {
+        Some(Commands::Logs {
+            name,
+            follow,
+            tail,
+            timestamps,
+        }) => {
             commands::logs::handle_logs(name, follow, tail, timestamps, cli.verbose).await?;
         }
         None => {
@@ -61,7 +66,10 @@ async fn main() -> Result<()> {
             println!();
             println!("Quick commands to get started:");
             println!("  {} Start basic Redis", "redis-dev basic start".green());
-            println!("  {} Start Redis + shell", "redis-dev basic start --shell".green());
+            println!(
+                "  {} Start Redis + shell",
+                "redis-dev basic start --shell".green()
+            );
             println!(
                 "  {} Start Redis Stack with popular modules",
                 "redis-dev stack start".green()
@@ -76,7 +84,10 @@ async fn main() -> Result<()> {
             );
             println!();
             println!("  {} List all running instances", "redis-dev list".yellow());
-            println!("  {} View logs for instances", "redis-dev logs --follow".blue());
+            println!(
+                "  {} View logs for instances",
+                "redis-dev logs --follow".blue()
+            );
             println!("  {} Clean up all instances", "redis-dev cleanup".red());
             println!();
             println!(

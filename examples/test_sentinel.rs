@@ -2,8 +2,10 @@
 //!
 //! Run with: cargo run --example test_sentinel --all-features
 
+#[cfg(feature = "template-redis")]
 use docker_wrapper::RedisSentinelTemplate;
 
+#[cfg(feature = "template-redis")]
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Setting up Redis Sentinel cluster...");
@@ -52,4 +54,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("✅ Cleanup complete!");
 
     Ok(())
+}
+
+#[cfg(not(feature = "template-redis"))]
+fn main() {
+    eprintln!("This example requires the 'template-redis' feature to be enabled.");
+    eprintln!("Run with: cargo run --example test_sentinel --features template-redis");
 }

@@ -19,7 +19,10 @@ pub async fn handle_logs(
     let instance_name = if let Some(name) = name {
         // Validate the named instance exists
         if config.get_instance(&name).is_none() {
-            anyhow::bail!("Instance '{}' not found. Use 'redis-dev list' to see available instances.", name);
+            anyhow::bail!(
+                "Instance '{}' not found. Use 'redis-dev list' to see available instances.",
+                name
+            );
         }
         name
     } else {
@@ -27,9 +30,10 @@ pub async fn handle_logs(
         if config.instances.is_empty() {
             anyhow::bail!("No Redis instances found. Use 'redis-dev basic start' or similar to create an instance.");
         }
-        
+
         // Find the most recently created instance
-        config.instances
+        config
+            .instances
             .values()
             .max_by_key(|instance| &instance.created_at)
             .map(|instance| instance.name.clone())
@@ -37,11 +41,16 @@ pub async fn handle_logs(
     };
 
     // Get instance info to verify container name
-    let instance = config.get_instance(&instance_name)
+    let instance = config
+        .get_instance(&instance_name)
         .context("Instance not found")?;
 
     if verbose {
-        println!("{} Showing logs for instance: {}", "Info:".cyan(), instance_name.bold());
+        println!(
+            "{} Showing logs for instance: {}",
+            "Info:".cyan(),
+            instance_name.bold()
+        );
         println!("  Type: {}", instance.instance_type.to_string().yellow());
         println!("  Containers: {}", instance.containers.join(", ").purple());
         println!();
@@ -52,38 +61,55 @@ pub async fn handle_logs(
 
     // Show appropriate message
     if follow {
-        println!("{} Following logs for '{}' (press Ctrl+C to exit):", "Logs:".bold().blue(), instance_name);
+        println!(
+            "{} Following logs for '{}' (press Ctrl+C to exit):",
+            "Logs:".bold().blue(),
+            instance_name
+        );
         if !timestamps {
-            println!("{} Tip: Use --timestamps to show log timestamps", "Tip:".dimmed());
+            println!(
+                "{} Tip: Use --timestamps to show log timestamps",
+                "Tip:".dimmed()
+            );
         }
     } else {
-        println!("{} Last {} lines for '{}':", "Logs:".bold().blue(), tail, instance_name);
+        println!(
+            "{} Last {} lines for '{}':",
+            "Logs:".bold().blue(),
+            tail,
+            instance_name
+        );
     }
-    
+
     println!("{} Redis typically produces few logs after startup unless there are connections or errors.", "Note:".dimmed());
     println!();
 
     // Build and execute docker logs command directly
     let mut cmd = Command::new("docker");
     cmd.arg("logs");
-    
+
     if follow {
         cmd.arg("-f");
     }
-    
+
     if timestamps {
         cmd.arg("--timestamps");
     }
-    
+
     cmd.arg("--tail").arg(tail.to_string());
     cmd.arg(container_name);
 
     // Execute the command
-    let status = cmd.status().await
+    let status = cmd
+        .status()
+        .await
         .context("Failed to execute docker logs command")?;
-        
+
     if !status.success() {
-        anyhow::bail!("Docker logs command failed for container '{}'", container_name);
+        anyhow::bail!(
+            "Docker logs command failed for container '{}'",
+            container_name
+        );
     }
 
     Ok(())

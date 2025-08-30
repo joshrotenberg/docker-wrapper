@@ -201,6 +201,143 @@ impl Template for MongodbTemplate {
     fn config_mut(&mut self) -> &mut TemplateConfig {
         &mut self.config
     }
+
+    fn build_command(&self) -> crate::RunCommand {
+        let config = self.config();
+        let image_tag = format!("{}:{}", config.image, config.tag);
+
+        let mut cmd = crate::RunCommand::new(image_tag)
+            .name(&config.name)
+            .detach();
+
+        // Add port mappings
+        for (host, container) in &config.ports {
+            cmd = cmd.port(*host, *container);
+        }
+
+        // Add volume mounts
+        for mount in &config.volumes {
+            if mount.read_only {
+                cmd = cmd.volume_ro(&mount.source, &mount.target);
+            } else {
+                cmd = cmd.volume(&mount.source, &mount.target);
+            }
+        }
+
+        // Add network
+        if let Some(network) = &config.network {
+            cmd = cmd.network(network);
+        }
+
+        // Add environment variables (except MONGO_REPLICA_SET which is handled as command arg)
+        for (key, value) in &config.env {
+            if key != "MONGO_REPLICA_SET" {
+                cmd = cmd.env(key, value);
+            }
+        }
+
+        // Add health check
+        if let Some(health) = &config.health_check {
+            cmd = cmd
+                .health_cmd(&health.test.join(" "))
+                .health_interval(&health.interval)
+                .health_timeout(&health.timeout)
+                .health_retries(health.retries)
+                .health_start_period(&health.start_period);
+        }
+
+        // Add resource limits
+        if let Some(memory) = &config.memory_limit {
+            cmd = cmd.memory(memory);
+        }
+
+        if let Some(cpu) = &config.cpu_limit {
+            cmd = cmd.cpus(cpu);
+        }
+
+        // Auto-remove
+        if config.auto_remove {
+            cmd = cmd.remove();
+        }
+
+        // Add platform if specified
+        if let Some(platform) = &config.platform {
+            cmd = cmd.platform(platform);
+        }
+
+        // Add MongoDB-specific command for replica set
+        if let Some(replica_set) = config.env.get("MONGO_REPLICA_SET") {
+            // Start mongod with --replSet parameter
+            cmd = cmd.cmd(vec![
+                "mongod".to_string(),
+                "--replSet".to_string(),
+                replica_set.clone(),
+                "--bind_ip_all".to_string(),
+            ]);
+        }
+
+        cmd
+    }
+
+    async fn wait_for_ready(&self) -> crate::template::Result<()> {
+        use std::time::Duration;
+        use tokio::time::{sleep, timeout};
+
+        // Custom MongoDB readiness check
+        let wait_timeout = Duration::from_secs(30);
+        let check_interval = Duration::from_millis(500);
+
+        timeout(wait_timeout, async {
+            loop {
+                // First check if container is running
+                if !self.is_running().await? {
+                    return Err(crate::template::TemplateError::NotRunning(
+                        self.config().name.clone(),
+                    ));
+                }
+
+                // Try to connect to MongoDB using mongosh (or mongo for older versions)
+                let check_cmd = if self.config.tag.starts_with("4.") {
+                    // Use mongo for version 4.x
+                    vec![
+                        "mongo",
+                        "--host",
+                        "localhost",
+                        "--eval",
+                        "db.runCommand({ ping: 1 })",
+                        "--quiet",
+                    ]
+                } else {
+                    // Use mongosh for version 5.0+
+                    vec![
+                        "mongosh",
+                        "--host",
+                        "localhost",
+                        "--eval",
+                        "db.runCommand({ ping: 1 })",
+                        "--quiet",
+                    ]
+                };
+
+                // Execute readiness check
+                if let Ok(result) = self.exec(check_cmd).await {
+                    // MongoDB ping returns { ok: 1 } on success
+                    if result.stdout.contains("ok") && result.stdout.contains('1') {
+                        return Ok(());
+                    }
+                }
+
+                sleep(check_interval).await;
+            }
+        })
+        .await
+        .map_err(|_| {
+            crate::template::TemplateError::InvalidConfig(format!(
+                "MongoDB container {} failed to become ready within timeout",
+                self.config().name
+            ))
+        })?
+    }
 }
 
 /// Builder for MongoDB connection strings

@@ -84,7 +84,13 @@ jobs:
         run: |
           docker pull alpine:latest &
           docker pull redis:7.2-alpine &
+          docker pull redis:7-alpine &
+          docker pull redis:6-alpine &
+          docker pull redis/redis-stack:latest &
           docker pull nginx:alpine &
+          docker pull postgres:15-alpine &
+          docker pull mysql:8 &
+          docker pull mongo:latest &
           wait
 
       - name: Run integration tests

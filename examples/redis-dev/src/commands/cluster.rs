@@ -2,9 +2,7 @@
 
 use anyhow::{Context, Result};
 use colored::*;
-use docker_wrapper::{
-    DockerCommand, RedisClusterConnection, RedisClusterTemplate, Template,
-};
+use docker_wrapper::{DockerCommand, RedisClusterConnection, RedisClusterTemplate, Template};
 use std::collections::HashMap;
 use tokio::process::Command as ProcessCommand;
 
@@ -65,7 +63,7 @@ async fn start_cluster(args: ClusterStartArgs, verbose: bool) -> Result<()> {
         template = template.with_redis_stack();
     }
 
-    if args.insight {
+    if args.with_insight {
         template = template
             .with_redis_insight()
             .redis_insight_port(args.insight_port);
@@ -83,51 +81,79 @@ async fn start_cluster(args: ClusterStartArgs, verbose: bool) -> Result<()> {
         Ok(result) => result,
         Err(e) => {
             let error_msg = format!("{}", e);
-            
+
             // Clean up any failed containers that might have been created
             let total_nodes = args.masters + (args.masters * args.replicas);
             for i in 0..total_nodes {
                 let container_name = format!("{}-node-{}", name, i);
-                if let Err(cleanup_err) = docker_wrapper::RmCommand::new(&container_name).force().execute().await {
+                if let Err(cleanup_err) = docker_wrapper::RmCommand::new(&container_name)
+                    .force()
+                    .execute()
+                    .await
+                {
                     if verbose {
-                        println!("{} Failed to clean up container {}: {}", "Warning:".yellow(), container_name, cleanup_err);
+                        println!(
+                            "{} Failed to clean up container {}: {}",
+                            "Warning:".yellow(),
+                            container_name,
+                            cleanup_err
+                        );
                     }
                 }
             }
             // Also clean up potential insight container
-            if args.insight {
+            if args.with_insight {
                 let insight_name = format!("{}-insight", name);
-                if let Err(cleanup_err) = docker_wrapper::RmCommand::new(&insight_name).force().execute().await {
+                if let Err(cleanup_err) = docker_wrapper::RmCommand::new(&insight_name)
+                    .force()
+                    .execute()
+                    .await
+                {
                     if verbose {
-                        println!("{} Failed to clean up container {}: {}", "Warning:".yellow(), insight_name, cleanup_err);
+                        println!(
+                            "{} Failed to clean up container {}: {}",
+                            "Warning:".yellow(),
+                            insight_name,
+                            cleanup_err
+                        );
                     }
                 }
             }
-            
+
             // Rollback counter since we failed
-            config.counters.entry(InstanceType::Cluster.to_string()).and_modify(|c| {
-                if *c > 0 {
-                    *c -= 1;
-                }
-            });
+            config
+                .counters
+                .entry(InstanceType::Cluster.to_string())
+                .and_modify(|c| {
+                    if *c > 0 {
+                        *c -= 1;
+                    }
+                });
             config.save()?;
-            
-            if error_msg.contains("is already in use by container") || error_msg.contains("Conflict") {
+
+            if error_msg.contains("is already in use by container")
+                || error_msg.contains("Conflict")
+            {
                 return Err(anyhow::anyhow!(
                     "Failed to start Redis Cluster '{}': Container name already exists. Use --name to specify a different name or run 'redis-dev cleanup' to clean up old instances.",
                     name
                 ));
-            } else if error_msg.contains("port is already allocated") || 
-                      error_msg.contains("bind") || 
-                      error_msg.contains("Bind for") ||
-                      error_msg.contains("failed to set up container networking") ||
-                      error_msg.contains("address already in use") {
+            } else if error_msg.contains("port is already allocated")
+                || error_msg.contains("bind")
+                || error_msg.contains("Bind for")
+                || error_msg.contains("failed to set up container networking")
+                || error_msg.contains("address already in use")
+            {
                 return Err(anyhow::anyhow!(
                     "Failed to start Redis Cluster '{}': Port range starting at {} is already in use. Stop other Redis instances or use --port-base to specify a different starting port.",
                     name, args.port_base
                 ));
             } else {
-                return Err(anyhow::anyhow!("Failed to start Redis Cluster '{}': {}", name, e));
+                return Err(anyhow::anyhow!(
+                    "Failed to start Redis Cluster '{}': {}",
+                    name,
+                    e
+                ));
             }
         }
     };
@@ -145,7 +171,7 @@ async fn start_cluster(args: ClusterStartArgs, verbose: bool) -> Result<()> {
     for i in 0..total_nodes {
         containers.push(format!("{}-node-{}", name, i));
     }
-    if args.insight {
+    if args.with_insight {
         containers.push(format!("{}-insight", name));
     }
 
@@ -157,7 +183,7 @@ async fn start_cluster(args: ClusterStartArgs, verbose: bool) -> Result<()> {
 
     // Build additional ports info
     let mut additional_ports = HashMap::new();
-    if args.insight {
+    if args.with_insight {
         additional_ports.insert("redisinsight".to_string(), args.insight_port);
     }
 
@@ -195,7 +221,10 @@ async fn start_cluster(args: ClusterStartArgs, verbose: bool) -> Result<()> {
             );
             map.insert("persist".to_string(), serde_json::Value::Bool(args.persist));
             map.insert("stack".to_string(), serde_json::Value::Bool(args.stack));
-            map.insert("insight".to_string(), serde_json::Value::Bool(args.insight));
+            map.insert(
+                "insight".to_string(),
+                serde_json::Value::Bool(args.with_insight),
+            );
             if let Some(memory) = args.memory {
                 map.insert("memory".to_string(), serde_json::Value::String(memory));
             }
@@ -246,7 +275,7 @@ async fn start_cluster(args: ClusterStartArgs, verbose: bool) -> Result<()> {
         );
     }
 
-    if args.insight {
+    if args.with_insight {
         println!(
             "  {}: http://localhost:{}",
             "RedisInsight".bold(),
@@ -257,20 +286,26 @@ async fn start_cluster(args: ClusterStartArgs, verbose: bool) -> Result<()> {
     // Connect to Redis cluster shell if requested (connect to first master node)
     if args.shell {
         println!();
-        println!("{} Connecting to redis-cli (cluster mode)...", "Shell:".bold().green());
+        println!(
+            "{} Connecting to redis-cli (cluster mode)...",
+            "Shell:".bold().green()
+        );
         println!();
-        
+
         let status = ProcessCommand::new("redis-cli")
             .args([
-                "-h", "localhost",
-                "-p", &args.port_base.to_string(),
-                "-a", &password,
+                "-h",
+                "localhost",
+                "-p",
+                &args.port_base.to_string(),
+                "-a",
+                &password,
                 "-c", // Enable cluster mode
             ])
             .status()
             .await
             .context("Failed to start redis-cli")?;
-            
+
         if !status.success() {
             println!("{} redis-cli exited with error", "Warning:".yellow());
         }

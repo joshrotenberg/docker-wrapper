@@ -1,3 +1,7 @@
+[workspace]
+members = [".", "examples/redis-dev"]
+resolver = "2"
+
 [package]
 name = "docker-wrapper"
 version = "0.8.2"

@@ -151,6 +151,14 @@ pub struct BasicStartArgs {
     /// Connect to redis-cli shell after starting
     #[arg(long)]
     pub shell: bool,
+
+    /// Start RedisInsight GUI
+    #[arg(long)]
+    pub with_insight: bool,
+
+    /// RedisInsight port (default: 8001)
+    #[arg(long, default_value = "8001")]
+    pub insight_port: u16,
 }
 
 #[derive(Args, Debug)]
@@ -201,7 +209,7 @@ pub struct StackStartArgs {
 
     /// Start RedisInsight GUI
     #[arg(long)]
-    pub insight: bool,
+    pub with_insight: bool,
 
     /// RedisInsight port (default: 8001)
     #[arg(long, default_value = "8001")]
@@ -248,7 +256,7 @@ pub struct ClusterStartArgs {
 
     /// Start RedisInsight GUI
     #[arg(long)]
-    pub insight: bool,
+    pub with_insight: bool,
 
     /// RedisInsight port (default: 8001)
     #[arg(long, default_value = "8001")]
@@ -292,6 +300,14 @@ pub struct SentinelStartArgs {
     /// Memory limit per instance (e.g., "256m", "1g")
     #[arg(long)]
     pub memory: Option<String>,
+
+    /// Start RedisInsight GUI
+    #[arg(long)]
+    pub with_insight: bool,
+
+    /// RedisInsight port (default: 8001)
+    #[arg(long, default_value = "8001")]
+    pub insight_port: u16,
 }
 
 #[derive(Args, Debug)]
@@ -327,6 +343,14 @@ pub struct EnterpriseStartArgs {
     /// Skip cluster formation (just start containers)
     #[arg(long)]
     pub containers_only: bool,
+
+    /// Start RedisInsight GUI
+    #[arg(long)]
+    pub with_insight: bool,
+
+    /// RedisInsight port (default: 8001)
+    #[arg(long, default_value = "8001")]
+    pub insight_port: u16,
 }
 
 #[derive(Args, Debug)]

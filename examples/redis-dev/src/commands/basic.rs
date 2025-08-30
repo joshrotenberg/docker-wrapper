@@ -56,45 +56,94 @@ async fn start_basic(args: BasicStartArgs, verbose: bool) -> Result<()> {
         Err(e) => {
             let error_msg = format!("{}", e);
             debug!("Full error message: {}", error_msg);
-            
+
             // Clean up any failed container that might have been created
-            if let Err(cleanup_err) = docker_wrapper::RmCommand::new(&name).force().execute().await {
+            if let Err(cleanup_err) = docker_wrapper::RmCommand::new(&name)
+                .force()
+                .execute()
+                .await
+            {
                 warn!("Failed to clean up container {}: {}", name, cleanup_err);
             }
-            
+
             // Rollback counter since we failed
-            config.counters.entry(InstanceType::Basic.to_string()).and_modify(|c| {
-                if *c > 0 {
-                    *c -= 1;
-                }
-            });
+            config
+                .counters
+                .entry(InstanceType::Basic.to_string())
+                .and_modify(|c| {
+                    if *c > 0 {
+                        *c -= 1;
+                    }
+                });
             config.save()?;
-            
-            if error_msg.contains("is already in use by container") || 
-               error_msg.contains("Conflict") || 
-               error_msg.contains("already exists") {
+
+            if error_msg.contains("is already in use by container")
+                || error_msg.contains("Conflict")
+                || error_msg.contains("already exists")
+            {
                 return Err(anyhow::anyhow!(
                     "Failed to start Redis instance '{}': Container name already exists. Use --name to specify a different name or run 'redis-dev cleanup' to clean up old instances.",
                     name
                 ));
-            } else if error_msg.contains("port is already allocated") || 
-                      error_msg.contains("bind") || 
-                      error_msg.contains("Bind for") ||
-                      error_msg.contains("failed to set up container networking") ||
-                      error_msg.contains("address already in use") ||
-                      error_msg.contains("driver failed programming external connectivity") {
+            } else if error_msg.contains("port is already allocated")
+                || error_msg.contains("bind")
+                || error_msg.contains("Bind for")
+                || error_msg.contains("failed to set up container networking")
+                || error_msg.contains("address already in use")
+                || error_msg.contains("driver failed programming external connectivity")
+            {
                 return Err(anyhow::anyhow!(
                     "Failed to start Redis instance '{}': Port {} is already in use. Stop other Redis instances or use --port to specify a different port.",
                     name, args.port
                 ));
             } else {
-                return Err(anyhow::anyhow!("Failed to start Redis instance '{}': {}", name, e));
+                return Err(anyhow::anyhow!(
+                    "Failed to start Redis instance '{}': {}",
+                    name,
+                    e
+                ));
             }
         }
     };
 
     if verbose {
         println!("{} {}", "Success:".green(), result);
+    }
+
+    // Start RedisInsight if requested
+    let mut insight_container = None;
+    if args.with_insight {
+        use crate::commands::insight::{
+            create_redis_connection, print_insight_instructions, start_insight, ConnectionType,
+            InsightConfig, RedisConnection,
+        };
+
+        let insight_config = InsightConfig::new(&name, args.insight_port);
+        match start_insight(insight_config, verbose).await {
+            Ok(container_id) => {
+                insight_container = Some(container_id);
+
+                // Create connection info for Insight
+                let connections = vec![create_redis_connection(
+                    name.clone(),
+                    "host.docker.internal".to_string(), // Use host.docker.internal for Docker Desktop
+                    args.port,
+                    Some(password.clone()),
+                    ConnectionType::Standalone,
+                )];
+
+                // Print instructions
+                print_insight_instructions(args.insight_port, connections);
+            }
+            Err(e) => {
+                warn!("Failed to start RedisInsight: {}", e);
+                println!(
+                    "{} RedisInsight failed to start: {}",
+                    "Warning:".yellow(),
+                    e
+                );
+            }
+        }
     }
 
     // Store instance info
@@ -118,6 +167,16 @@ async fn start_basic(args: BasicStartArgs, verbose: bool) -> Result<()> {
                 map.insert(
                     "memory".to_string(),
                     serde_json::Value::String(memory.clone()),
+                );
+            }
+            if let Some(ref container_id) = insight_container {
+                map.insert(
+                    "insight_container".to_string(),
+                    serde_json::Value::String(container_id.clone()),
+                );
+                map.insert(
+                    "insight_port".to_string(),
+                    serde_json::Value::Number(args.insight_port.into()),
                 );
             }
             map
@@ -160,17 +219,20 @@ async fn start_basic(args: BasicStartArgs, verbose: bool) -> Result<()> {
         println!();
         println!("{} Connecting to redis-cli...", "Shell:".bold().green());
         println!();
-        
+
         let status = ProcessCommand::new("redis-cli")
             .args([
-                "-h", "localhost",
-                "-p", &args.port.to_string(),
-                "-a", &password,
+                "-h",
+                "localhost",
+                "-p",
+                &args.port.to_string(),
+                "-a",
+                &password,
             ])
             .status()
             .await
             .context("Failed to start redis-cli")?;
-            
+
         if !status.success() {
             println!("{} redis-cli exited with error", "Warning:".yellow());
         }
@@ -195,7 +257,10 @@ async fn stop_basic(args: StopArgs, verbose: bool) -> Result<()> {
     };
 
     // Check if instance exists
-    let instance = config.get_instance(&name).context("Instance not found")?;
+    let instance = config
+        .get_instance(&name)
+        .context("Instance not found")?
+        .clone(); // Clone to avoid borrow issues
 
     if instance.instance_type != InstanceType::Basic {
         anyhow::bail!("Instance '{}' is not a basic Redis instance", name);
@@ -222,6 +287,21 @@ async fn stop_basic(args: StopArgs, verbose: bool) -> Result<()> {
         .execute()
         .await
         .with_context(|| format!("Failed to remove Redis container: {}", name))?;
+
+    // Stop and remove Insight container if it exists
+    if let Some(insight_container) = instance.metadata.get("insight_container") {
+        if let Some(container_name) = insight_container.as_str() {
+            if verbose {
+                println!("  {} Stopping RedisInsight...", "Cleanup:".cyan());
+            }
+
+            // Use the insight module's stop function
+            use crate::commands::insight::stop_insight;
+            if let Err(e) = stop_insight(&name).await {
+                warn!("Failed to stop RedisInsight: {}", e);
+            }
+        }
+    }
 
     // Remove from config
     config.remove_instance(&name);
