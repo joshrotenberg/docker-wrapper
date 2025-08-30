@@ -1,0 +1,11 @@
+api-version: v1
+deployments:
+  - name: my-cluster
+    type: cluster
+    masters: 3
+    replicas: 1
+    port-base: 7000
+    persist: true
+    memory: "256m"
+    stack: false
+    with-insight: true
