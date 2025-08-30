@@ -5,8 +5,8 @@ use anyhow::Result;
 use docker_wrapper::{DockerCommand, RmCommand, StopCommand};
 use redis::AsyncCommands;
 use redis_dev::cli::{
-    BasicStartArgs, Cli, ClusterStartArgs, ClusterAction, Commands, EnterpriseStartArgs, 
-    EnterpriseAction, RedisAction, SentinelStartArgs, SentinelAction, StackAction, 
+    BasicStartArgs, Cli, ClusterAction, ClusterStartArgs, Commands, EnterpriseAction,
+    EnterpriseStartArgs, RedisAction, SentinelAction, SentinelStartArgs, StackAction,
     StackStartArgs, StopArgs,
 };
 use redis_dev::commands;
@@ -22,13 +22,8 @@ async fn cleanup_all() {
     let config = Config::load().unwrap_or_default();
     for instance in config.instances.values() {
         // Try to stop and remove each instance, ignore errors
-        let _ = StopCommand::new(&instance.name)
-            .execute()
-            .await;
-        let _ = RmCommand::new(&instance.name)
-            .force()
-            .execute()
-            .await;
+        let _ = StopCommand::new(&instance.name).execute().await;
+        let _ = RmCommand::new(&instance.name).force().execute().await;
     }
     // Clear the config
     if let Ok(mut config) = Config::load() {
@@ -175,9 +170,7 @@ deployments:
         verify_redis_connection(16381, Some("stackpass789")).await?;
 
         // Test Redis Stack modules (JSON)
-        let client = redis::Client::open(format!(
-            "redis://default:stackpass789@127.0.0.1:16381"
-        ))?;
+        let client = redis::Client::open(format!("redis://default:stackpass789@127.0.0.1:16381"))?;
         let mut con = client.get_multiplexed_async_connection().await?;
 
         // Test JSON module
@@ -265,19 +258,13 @@ deployments:
             shell: false,
         };
 
-        commands::cluster::handle_action(
-            ClusterAction::Start(args),
-            false,
-        )
-        .await?;
+        commands::cluster::handle_action(ClusterAction::Start(args), false).await?;
 
         // Give cluster time to initialize
         sleep(Duration::from_secs(10)).await;
 
         // Connect to first master node
-        let client = redis::Client::open(format!(
-            "redis://default:clusterpass@127.0.0.1:17000"
-        ))?;
+        let client = redis::Client::open(format!("redis://default:clusterpass@127.0.0.1:17000"))?;
         let mut con = client.get_multiplexed_async_connection().await?;
 
         // Test cluster info
@@ -291,11 +278,7 @@ deployments:
         let stop_args = StopArgs {
             name: Some("test-cluster-cli".to_string()),
         };
-        commands::cluster::handle_action(
-            ClusterAction::Stop(stop_args),
-            false,
-        )
-        .await?;
+        commands::cluster::handle_action(ClusterAction::Stop(stop_args), false).await?;
 
         cleanup_all().await;
         Ok(())
@@ -331,8 +314,7 @@ deployments:
         sleep(Duration::from_secs(10)).await;
 
         // Connect to first master node
-        let client =
-            redis::Client::open(format!("redis://default:clusteryaml@127.0.0.1:17100"))?;
+        let client = redis::Client::open(format!("redis://default:clusteryaml@127.0.0.1:17100"))?;
         let mut con = client.get_multiplexed_async_connection().await?;
 
         // Test cluster info
@@ -346,11 +328,7 @@ deployments:
         let stop_args = StopArgs {
             name: Some("test-cluster-yaml".to_string()),
         };
-        commands::cluster::handle_action(
-            ClusterAction::Stop(stop_args),
-            false,
-        )
-        .await?;
+        commands::cluster::handle_action(ClusterAction::Stop(stop_args), false).await?;
 
         cleanup_all().await;
         Ok(())
@@ -375,11 +353,7 @@ deployments:
             insight_port: 8001,
         };
 
-        commands::sentinel::handle_action(
-            SentinelAction::Start(args),
-            false,
-        )
-        .await?;
+        commands::sentinel::handle_action(SentinelAction::Start(args), false).await?;
 
         // Give Sentinel time to initialize
         sleep(Duration::from_secs(8)).await;
@@ -402,11 +376,7 @@ deployments:
         let stop_args = StopArgs {
             name: Some("test-sentinel-cli".to_string()),
         };
-        commands::sentinel::handle_action(
-            SentinelAction::Stop(stop_args),
-            false,
-        )
-        .await?;
+        commands::sentinel::handle_action(SentinelAction::Stop(stop_args), false).await?;
 
         cleanup_all().await;
         Ok(())
@@ -459,11 +429,7 @@ deployments:
         let stop_args = StopArgs {
             name: Some("test-sentinel-yaml".to_string()),
         };
-        commands::sentinel::handle_action(
-            SentinelAction::Stop(stop_args),
-            false,
-        )
-        .await?;
+        commands::sentinel::handle_action(SentinelAction::Stop(stop_args), false).await?;
 
         cleanup_all().await;
         Ok(())
@@ -471,7 +437,7 @@ deployments:
 
     // Note: Redis Enterprise tests are commented out as they require more resources
     // and take longer to initialize. Uncomment if you have sufficient resources.
-    
+
     /*
     #[tokio::test]
     #[serial]
