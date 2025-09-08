@@ -46,7 +46,7 @@ colored = "2.0"
 rand = "0.8"
 
 # File system operations
-dirs = "5.0"
+dirs = "6.0"
 
 # Date/time handling
 chrono = { version = "0.4", features = ["serde"] }
