@@ -43,7 +43,7 @@ anyhow = "1.0"
 colored = "2.0"
 
 # Random name generation
-rand = "0.8"
+rand = "0.9"
 
 # File system operations
 dirs = "5.0"
