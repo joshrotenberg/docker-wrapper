@@ -65,6 +65,7 @@ async-trait = "0.1"
 
 # Optional dependencies for templates
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], optional = true }
+which = "8.0"
 
 [dev-dependencies]
 tokio-test = "0.4"
