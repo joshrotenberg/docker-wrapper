@@ -106,3 +106,13 @@ required-features = ["template-redis-cluster"]
 name = "redis_enterprise_template"
 path = "examples/redis_enterprise_template.rs"
 required-features = ["template-redis-enterprise"]
+
+[[example]]
+name = "docker_compose"
+path = "examples/docker_compose.rs"
+required-features = ["compose"]
+
+[[example]]
+name = "template_showcase"
+path = "examples/template_showcase.rs"
+required-features = ["templates"]
