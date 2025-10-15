@@ -5,14 +5,12 @@ use anyhow::Result;
 use docker_wrapper::{DockerCommand, RmCommand, StopCommand};
 use redis::AsyncCommands;
 use redis_dev::cli::{
-    BasicStartArgs, Cli, ClusterAction, ClusterStartArgs, Commands, EnterpriseAction,
-    EnterpriseStartArgs, RedisAction, SentinelAction, SentinelStartArgs, StackAction,
-    StackStartArgs, StopArgs,
+    BasicStartArgs, ClusterAction, ClusterStartArgs, RedisAction, SentinelAction,
+    SentinelStartArgs, StackAction, StackStartArgs, StopArgs,
 };
 use redis_dev::commands;
-use redis_dev::config::{Config, InstanceType};
+use redis_dev::config::Config;
 use serial_test::serial;
-use std::path::PathBuf;
 use std::time::Duration;
 use tempfile::TempDir;
 use tokio::time::sleep;
@@ -170,7 +168,7 @@ deployments:
         verify_redis_connection(16381, Some("stackpass789")).await?;
 
         // Test Redis Stack modules (JSON)
-        let client = redis::Client::open(format!("redis://default:stackpass789@127.0.0.1:16381"))?;
+        let client = redis::Client::open("redis://default:stackpass789@127.0.0.1:16381")?;
         let mut con = client.get_multiplexed_async_connection().await?;
 
         // Test JSON module
@@ -264,7 +262,7 @@ deployments:
         sleep(Duration::from_secs(10)).await;
 
         // Connect to first master node
-        let client = redis::Client::open(format!("redis://default:clusterpass@127.0.0.1:17000"))?;
+        let client = redis::Client::open("redis://default:clusterpass@127.0.0.1:17000")?;
         let mut con = client.get_multiplexed_async_connection().await?;
 
         // Test cluster info
@@ -314,7 +312,7 @@ deployments:
         sleep(Duration::from_secs(10)).await;
 
         // Connect to first master node
-        let client = redis::Client::open(format!("redis://default:clusteryaml@127.0.0.1:17100"))?;
+        let client = redis::Client::open("redis://default:clusteryaml@127.0.0.1:17100")?;
         let mut con = client.get_multiplexed_async_connection().await?;
 
         // Test cluster info
@@ -503,7 +501,7 @@ deployments:
     port: 16600
     password: multipass1
     memory: "128m"
-    
+
   - name: test-multi-stack
     type: stack
     port: 16601

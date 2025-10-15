@@ -2,9 +2,15 @@
 name = "redis-dev"
 version = "0.1.0"
 edition = "2021"
-authors = ["Redis Developer Tools"]
+authors = ["Josh Rotenberg <joshrotenberg@gmail.com>"]
 description = "CLI tool for quickly spinning up Redis development environments"
 license = "MIT"
+repository = "https://github.com/joshrotenberg/redis-dev"
+homepage = "https://github.com/joshrotenberg/redis-dev"
+documentation = "https://github.com/joshrotenberg/redis-dev"
+readme = "README.md"
+keywords = ["redis", "docker", "cli", "development", "testing"]
+categories = ["command-line-utilities", "development-tools"]
 
 [lib]
 name = "redis_dev"
@@ -20,7 +26,7 @@ clap = { version = "4.4", features = ["derive", "env"] }
 
 # Docker orchestration via docker-wrapper
 docker-wrapper = { path = "../..", features = [
-    "templates", 
+    "templates",
     "template-redis-cluster",
     "template-redis",
     "template-redis-enterprise"
