@@ -167,7 +167,17 @@ jobs:
       - name: Start Docker
         run: |
           sudo systemctl start docker
-          docker pull alpine:latest
+          docker --version
+
+      - name: Pull test images for coverage
+        run: |
+          docker pull alpine:latest &
+          docker pull redis:7.2-alpine &
+          docker pull redis:7-alpine &
+          docker pull redis/redis-stack:latest &
+          docker pull nginx:alpine &
+          docker pull postgres:15-alpine &
+          wait
 
       - name: Create redis-dev config directory
         run: mkdir -p ~/.config/redis-dev
