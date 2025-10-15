@@ -300,6 +300,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.3](https://github.com/joshrotenberg/docker-wrapper/compare/v0.8.2...v0.8.3) - 2025-10-15
+
+### Added
+
+- *(redis-dev)* YAML configuration and comprehensive documentation ([#170](https://github.com/joshrotenberg/docker-wrapper/pull/170))
+- *(redis-dev)* add YAML configuration support ([#162](https://github.com/joshrotenberg/docker-wrapper/pull/162))
+- enhance templates with readiness checks and complete Redis Developer CLI tool ([#161](https://github.com/joshrotenberg/docker-wrapper/pull/161))
+
+### Other
+
+- remove redis-dev example (extracted to standalone redis-up project) ([#171](https://github.com/joshrotenberg/docker-wrapper/pull/171))
+
 ### Added
 - Initial release of docker-wrapper
 - Complete container lifecycle management
