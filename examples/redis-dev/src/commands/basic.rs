@@ -115,7 +115,7 @@ async fn start_basic(args: BasicStartArgs, verbose: bool) -> Result<()> {
     if args.with_insight {
         use crate::commands::insight::{
             create_redis_connection, print_insight_instructions, start_insight, ConnectionType,
-            InsightConfig, RedisConnection,
+            InsightConfig,
         };
 
         let insight_config = InsightConfig::new(&name, args.insight_port);
@@ -290,7 +290,7 @@ async fn stop_basic(args: StopArgs, verbose: bool) -> Result<()> {
 
     // Stop and remove Insight container if it exists
     if let Some(insight_container) = instance.metadata.get("insight_container") {
-        if let Some(container_name) = insight_container.as_str() {
+        if let Some(_container_name) = insight_container.as_str() {
             if verbose {
                 println!("  {} Stopping RedisInsight...", "Cleanup:".cyan());
             }

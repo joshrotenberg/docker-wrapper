@@ -221,10 +221,9 @@ async fn start_enterprise(args: EnterpriseStartArgs, verbose: bool) -> Result<()
     if let Some(db_port) = connection_info.database_port {
         println!("\n{}", "Database:".bold().underline());
         println!(
-            "  {} redis-cli -p {} -a {}",
+            "  {} redis-cli -p {} -a <password>",
             "Connect:".yellow(),
-            db_port,
-            "<password>"
+            db_port
         );
     }
 

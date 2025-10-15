@@ -23,6 +23,7 @@ impl InsightConfig {
     }
 
     /// Set the network for Insight to connect to
+    #[allow(dead_code)]
     pub fn with_network(mut self, network: impl Into<String>) -> Self {
         self.network = Some(network.into());
         self
@@ -138,6 +139,7 @@ pub struct RedisConnection {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub enum ConnectionType {
     Standalone,
     Cluster,
@@ -163,6 +165,7 @@ pub fn create_redis_connection(
 }
 
 /// Check if Redis Insight container is running
+#[allow(dead_code)]
 pub async fn is_insight_running(name: &str) -> Result<bool> {
     use docker_wrapper::PsCommand;
 
@@ -177,6 +180,7 @@ pub async fn is_insight_running(name: &str) -> Result<bool> {
 }
 
 /// Get Redis Insight container info
+#[allow(dead_code)]
 pub async fn get_insight_info(name: &str) -> Result<HashMap<String, String>> {
     use docker_wrapper::InspectCommand;
 

@@ -1,13 +1,12 @@
 //! Integration tests for redis-dev CLI tool
 
 use redis_dev::config::{Config, InstanceType};
-use std::fs;
 use tempfile::TempDir;
 
 #[test]
 fn test_config_generation() {
     let temp_dir = TempDir::new().unwrap();
-    let config_path = temp_dir.path().join("instances.json");
+    let _config_path = temp_dir.path().join("instances.json");
 
     // Set up environment to use temp directory
     std::env::set_var("HOME", temp_dir.path());
@@ -47,7 +46,6 @@ fn test_password_generation() {
 
 #[cfg(feature = "docker-tests")]
 mod docker_tests {
-    use super::*;
     use docker_wrapper::{DockerCommand, PsCommand};
 
     #[tokio::test]
