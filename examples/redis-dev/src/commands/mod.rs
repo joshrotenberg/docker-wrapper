@@ -9,3 +9,4 @@ pub mod list;
 pub mod logs;
 pub mod sentinel;
 pub mod stack;
+pub mod yaml;

@@ -61,6 +61,12 @@ async fn main() -> Result<()> {
         }) => {
             commands::logs::handle_logs(name, follow, tail, timestamps, cli.verbose).await?;
         }
+        Some(Commands::Deploy { file }) => {
+            commands::yaml::deploy_from_yaml(&file, cli.verbose).await?;
+        }
+        Some(Commands::Examples { dir }) => {
+            commands::yaml::generate_examples(&dir).await?;
+        }
         None => {
             println!("{}", "Redis Developer Tool".bold().cyan());
             println!();
