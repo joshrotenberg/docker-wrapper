@@ -169,6 +169,9 @@ jobs:
           sudo systemctl start docker
           docker pull alpine:latest
 
+      - name: Create redis-dev config directory
+        run: mkdir -p ~/.config/redis-dev
+
       - name: Generate code coverage
         run: cargo tarpaulin --all-features --workspace --timeout 120 --out xml --skip-clean
 

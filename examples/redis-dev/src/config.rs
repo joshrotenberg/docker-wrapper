@@ -9,7 +9,7 @@ use std::path::PathBuf;
 /// Configuration directory name
 const CONFIG_DIR: &str = "redis-dev";
 
-/// Configuration file name  
+/// Configuration file name
 const CONFIG_FILE: &str = "instances.json";
 
 /// Instance types
@@ -84,6 +84,9 @@ impl Config {
 
     /// Save configuration to file
     pub fn save(&self) -> Result<()> {
+        // Ensure the config directory exists before writing
+        ensure_config_dir()?;
+
         let config_path = get_config_path()?;
 
         let content =
