@@ -309,10 +309,10 @@ impl RedisClusterTemplate {
             "create".to_string(),
         ];
 
-        // Add all node addresses
-        let host = self.announce_ip.as_deref().unwrap_or("127.0.0.1");
+        // Add all node addresses using container hostnames (internal port is always 6379)
         for i in 0..self.total_nodes() {
-            let port = self.port_base + i as u16;
+            let host = format!("{}-node-{}", self.name, i);
+            let port = 6379;
             create_args.push(format!("{}:{}", host, port));
         }
 
@@ -349,11 +349,7 @@ impl RedisClusterTemplate {
             "redis-cli".to_string(),
             "--cluster".to_string(),
             "info".to_string(),
-            format!(
-                "{}:{}",
-                self.announce_ip.as_deref().unwrap_or("127.0.0.1"),
-                self.port_base
-            ),
+            format!("{}-node-0:6379", self.name),
         ];
 
         if let Some(ref password) = self.password {
