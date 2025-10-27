@@ -300,6 +300,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.4](https://github.com/joshrotenberg/docker-wrapper/compare/v0.8.3...v0.8.4) - 2025-10-27
+
+### Fixed
+
+- use container hostnames for Redis cluster initialization ([#173](https://github.com/joshrotenberg/docker-wrapper/pull/173))
+
 ## [0.8.3](https://github.com/joshrotenberg/docker-wrapper/compare/v0.8.2...v0.8.3) - 2025-10-15
 
 ### Added
