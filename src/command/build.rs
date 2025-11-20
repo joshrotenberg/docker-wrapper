@@ -1322,7 +1322,7 @@ impl DockerCommand for BuildCommand {
 
     async fn execute(&self) -> Result<Self::Output> {
         let args = self.build_command_args();
-        let output = self.executor.execute_command("docker", args).await?;
+        let output = self.execute_command(args).await?;
 
         // Extract image ID from output
         let image_id = if self.quiet {
