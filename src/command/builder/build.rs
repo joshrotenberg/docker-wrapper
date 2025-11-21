@@ -142,6 +142,10 @@ impl BuilderBuildCommand {
 impl DockerCommand for BuilderBuildCommand {
     type Output = BuildOutput;
 
+    fn command_name() -> &str {
+        "builder build"
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.inner.executor
     }
@@ -151,16 +155,7 @@ impl DockerCommand for BuilderBuildCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Get the args from the inner build command
-        let mut inner_args = self.inner.build_command_args();
-
-        // Replace "build" with "builder build"
-        if !inner_args.is_empty() && inner_args[0] == "build" {
-            inner_args[0] = "builder".to_string();
-            inner_args.insert(1, "build".to_string());
-        }
-
-        inner_args
+        self.inner.build_command_args();
     }
 
     async fn execute(&self) -> Result<Self::Output> {

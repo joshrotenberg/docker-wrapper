@@ -16,97 +16,97 @@ use tokio::sync::mpsc;
 #[derive(Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct BuildCommand {
-    /// Build context (path, URL, or stdin)
+    /// Build context (path, URL, or stdin).
     context: String,
-    /// Command executor for extensibility
+    /// Command executor for extensibility.
     pub executor: CommandExecutor,
-    /// Custom host-to-IP mappings
+    /// Custom host-to-IP mappings.
     add_hosts: Vec<String>,
-    /// Build-time variables
+    /// Build-time variables.
     build_args: HashMap<String, String>,
-    /// Images to consider as cache sources
+    /// Images to consider as cache sources.
     cache_from: Vec<String>,
-    /// Parent cgroup for RUN instructions
+    /// Parent cgroup for RUN instructions.
     cgroup_parent: Option<String>,
-    /// Compress the build context using gzip
+    /// Compress the build context using gzip.
     compress: bool,
-    /// CPU limits
+    /// CPU limits.
     cpu_period: Option<i64>,
     cpu_quota: Option<i64>,
     cpu_shares: Option<i64>,
     cpuset_cpus: Option<String>,
     cpuset_mems: Option<String>,
-    /// Skip image verification
+    /// Skip image verification.
     disable_content_trust: bool,
-    /// Name of the Dockerfile
+    /// Name of the Dockerfile.
     file: Option<PathBuf>,
-    /// Always remove intermediate containers
+    /// Always remove intermediate containers.
     force_rm: bool,
-    /// Write the image ID to file
+    /// Writes the image ID to file.
     iidfile: Option<PathBuf>,
-    /// Container isolation technology
+    /// Container isolation technology.
     isolation: Option<String>,
-    /// Set metadata for an image
+    /// Sets metadata for an image.
     labels: HashMap<String, String>,
-    /// Memory limit
+    /// Memory limit.
     memory: Option<String>,
-    /// Memory + swap limit
+    /// Memory + swap limit.
     memory_swap: Option<String>,
-    /// Networking mode for RUN instructions
+    /// Networking mode for RUN instructions.
     network: Option<String>,
-    /// Do not use cache when building
+    /// Do not use cache when building.
     no_cache: bool,
-    /// Set platform for multi-platform builds
+    /// Set platform for multi-platform builds.
     platform: Option<String>,
-    /// Always attempt to pull newer base images
+    /// Always attempt to pull newer base images.
     pull: bool,
-    /// Suppress build output and print image ID on success
+    /// Suppresses build output and print image ID on success.
     quiet: bool,
-    /// Remove intermediate containers after successful build
+    /// Removes intermediate containers after successful build.
     rm: bool,
-    /// Security options
+    /// Security options.
     security_opts: Vec<String>,
-    /// Size of /dev/shm
+    /// Size of `/dev/shm`.
     shm_size: Option<String>,
-    /// Name and tag for the image
+    /// Name and tag for the image.
     tags: Vec<String>,
-    /// Target build stage
+    /// Target build stage.
     target: Option<String>,
-    /// Ulimit options
+    /// Ulimit options.
     ulimits: Vec<String>,
-    /// Extra privileged entitlements
+    /// Extra privileged entitlements.
     allow: Vec<String>,
-    /// Annotations to add to the image
+    /// Annotations to add to the image.
     annotations: Vec<String>,
-    /// Attestation parameters
+    /// Attestation parameters.
     attestations: Vec<String>,
-    /// Additional build contexts
+    /// Additional build contexts.
     build_contexts: Vec<String>,
-    /// Override the configured builder
+    /// Overrides the configured builder.
     builder: Option<String>,
-    /// Cache export destinations
+    /// Cache export destinations.
     cache_to: Vec<String>,
-    /// Method for evaluating build
+    /// Method for evaluating build.
     call: Option<String>,
-    /// Shorthand for "--call=check"
+    /// Shorthand for `--call=check`.
     check: bool,
-    /// Shorthand for "--output=type=docker"
+    /// Shorthand for `--output=type=docker`.
     load: bool,
-    /// Write build result metadata to file
+    /// Writes build result metadata to file.
     metadata_file: Option<PathBuf>,
-    /// Do not cache specified stages
+    /// Do not cache specified stages.
     no_cache_filter: Vec<String>,
-    /// Type of progress output
+    /// Type of progress output.
     progress: Option<String>,
-    /// Shorthand for "--attest=type=provenance"
+    /// Shorthand for `--attest=type=provenance`.
     provenance: Option<String>,
-    /// Shorthand for "--output=type=registry"
+    /// Shorthand for `--output=type=registry`.
     push: bool,
-    /// Shorthand for "--attest=type=sbom"
+    /// Shorthand for `--attest=type=sbom`.
     sbom: Option<String>,
-    /// Secrets to expose to the build
+    /// Secrets to expose to the build.
     secrets: Vec<String>,
-    /// SSH agent socket or keys to expose
+    /// SSH agent socket or keys to expose.
     ssh: Vec<String>,
 }
 
@@ -1049,19 +1049,19 @@ impl Default for BuildCommand {
 
 impl BuildCommand {
     fn add_basic_args(&self, args: &mut Vec<String>) {
-        // Add host mappings
+        // add host mappings
         for host in &self.add_hosts {
             args.push("--add-host".to_string());
             args.push(host.clone());
         }
 
-        // Add build arguments
+        // add build arguments
         for (key, value) in &self.build_args {
             args.push("--build-arg".to_string());
             args.push(format!("{key}={value}"));
         }
 
-        // Add cache sources
+        // add cache sources
         for cache in &self.cache_from {
             args.push("--cache-from".to_string());
             args.push(cache.clone());
@@ -1084,7 +1084,7 @@ impl BuildCommand {
             args.push("--quiet".to_string());
         }
 
-        // Add tags
+        // add tags
         for tag in &self.tags {
             args.push("--tag".to_string());
             args.push(tag.clone());
@@ -1186,13 +1186,13 @@ impl BuildCommand {
             args.push("--rm=false".to_string());
         }
 
-        // Add security options
+        // add security options
         for opt in &self.security_opts {
             args.push("--security-opt".to_string());
             args.push(opt.clone());
         }
 
-        // Add ulimits
+        // add ulimits
         for limit in &self.ulimits {
             args.push("--ulimit".to_string());
             args.push(limit.clone());
@@ -1200,7 +1200,7 @@ impl BuildCommand {
     }
 
     fn add_metadata_args(&self, args: &mut Vec<String>) {
-        // Add labels
+        // add labels
         for (key, value) in &self.labels {
             args.push("--label".to_string());
             args.push(format!("{key}={value}"));
@@ -1315,10 +1315,10 @@ impl DockerCommand for BuildCommand {
         self.add_resource_args(&mut args);
         self.add_advanced_args(&mut args);
 
-        // Add any additional raw arguments
+        // add any additional raw arguments
         args.extend(self.executor.raw_args.clone());
 
-        // Add build context (must be last)
+        // add build context (must be last)
         args.push(self.context.clone());
 
         args
@@ -1328,9 +1328,9 @@ impl DockerCommand for BuildCommand {
         let args = self.build_command_args();
         let output = self.execute_command(args).await?;
 
-        // Extract image ID from output
+        // extract image ID from output
         let image_id = if self.quiet {
-            // In quiet mode, the output should be just the image ID
+            // in quiet mode, the output should be just the image ID
             Some(output.stdout.trim().to_string())
         } else {
             let combined = if output.stderr.is_empty() {
@@ -1352,7 +1352,6 @@ impl DockerCommand for BuildCommand {
     }
 }
 
-// Streaming support for BuildCommand
 #[async_trait]
 impl StreamableCommand for BuildCommand {
     async fn stream<F>(&self, handler: F) -> Result<StreamResult>
@@ -1380,7 +1379,7 @@ impl StreamableCommand for BuildCommand {
 }
 
 impl BuildCommand {
-    /// Run the build command with streaming output
+    /// Runs the build command with streaming output.
     ///
     /// # Examples
     ///
@@ -1399,7 +1398,7 @@ impl BuildCommand {
     ///
     /// # Errors
     ///
-    /// Returns an error if the build fails or encounters an I/O error
+    /// Returns an error if the build fails or encounters an I/O error.
     pub async fn stream<F>(&self, handler: F) -> Result<StreamResult>
     where
         F: FnMut(OutputLine) + Send + 'static,
