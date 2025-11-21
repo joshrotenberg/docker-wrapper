@@ -1,18 +1,19 @@
-//! Docker builder build command
+//! Docker builder build command.
 //!
-//! Alternative interface to start a build (similar to `docker build`)
+//! Alternative interface to start a build (similar to `docker build`).
 
 use crate::command::build::{BuildCommand, BuildOutput};
 use crate::command::{CommandExecutor, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
-/// `docker builder build` command - alternative interface to docker build
+/// `docker builder build` command - alternative interface to docker build.
 ///
 /// This is essentially the same as `docker build` but accessed through
 /// the builder subcommand interface.
 ///
 /// # Example
+///
 /// ```no_run
 /// use docker_wrapper::command::builder::BuilderBuildCommand;
 /// use docker_wrapper::DockerCommand;

@@ -1,7 +1,7 @@
-//! Docker build command implementation.
+//! Implements the `docker build` command.
 //!
-//! This module provides a comprehensive implementation of the `docker build` command
-//! with support for all native options and an extensible architecture for any additional options.
+//! Provides a comprehensive implementation of the `docker build` command with support for
+//! all native options and an extensible architecture for additional options.
 
 use super::{CommandExecutor, DockerCommand};
 use crate::error::Result;
@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use tokio::process::Command as TokioCommand;
 use tokio::sync::mpsc;
 
-/// Docker build command builder with fluent API
+/// Provides a Docker build command builder with a fluent API.
 #[derive(Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct BuildCommand {
@@ -110,7 +110,7 @@ pub struct BuildCommand {
     ssh: Vec<String>,
 }
 
-/// Output from docker build command
+/// Represents output from the docker build command.
 #[derive(Debug, Clone)]
 pub struct BuildOutput {
     /// The raw stdout from the command
@@ -124,13 +124,13 @@ pub struct BuildOutput {
 }
 
 impl BuildOutput {
-    /// Check if the build executed successfully
+    /// Checks if the build executed successfully.
     #[must_use]
     pub fn success(&self) -> bool {
         self.exit_code == 0
     }
 
-    /// Get combined output (stdout + stderr)
+    /// Gets the combined output (stdout + stderr).
     #[must_use]
     pub fn combined_output(&self) -> String {
         if self.stderr.is_empty() {
@@ -142,19 +142,19 @@ impl BuildOutput {
         }
     }
 
-    /// Check if stdout is empty (ignoring whitespace)
+    /// Checks if stdout is empty (ignoring whitespace).
     #[must_use]
     pub fn stdout_is_empty(&self) -> bool {
         self.stdout.trim().is_empty()
     }
 
-    /// Check if stderr is empty (ignoring whitespace)
+    /// Checks if stderr is empty (ignoring whitespace).
     #[must_use]
     pub fn stderr_is_empty(&self) -> bool {
         self.stderr.trim().is_empty()
     }
 
-    /// Extract image ID from build output (best effort)
+    /// Extracts the image ID from build output (best effort).
     fn extract_image_id(output: &str) -> Option<String> {
         // Look for patterns like "Successfully built abc123def456" or "sha256:..."
         for line in output.lines() {
@@ -172,7 +172,7 @@ impl BuildOutput {
 }
 
 impl BuildCommand {
-    /// Create a new build command for the specified context
+    /// Creates a new build command for the specified context.
     ///
     /// # Examples
     ///
@@ -234,7 +234,7 @@ impl BuildCommand {
         }
     }
 
-    /// Add a custom host-to-IP mapping
+    /// Adds a custom host-to-IP mapping.
     ///
     /// # Examples
     ///
@@ -250,7 +250,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set a build-time variable
+    /// Sets a build-time variable.
     ///
     /// # Examples
     ///
@@ -267,7 +267,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set multiple build-time variables
+    /// Sets multiple build-time variables.
     ///
     /// # Examples
     ///
@@ -287,7 +287,7 @@ impl BuildCommand {
         self
     }
 
-    /// Add an image to consider as cache source
+    /// Adds an image to consider as a cache source.
     ///
     /// # Examples
     ///
@@ -303,7 +303,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set the parent cgroup for RUN instructions
+    /// Sets the parent cgroup for RUN instructions.
     ///
     /// # Examples
     ///
@@ -319,7 +319,7 @@ impl BuildCommand {
         self
     }
 
-    /// Compress the build context using gzip
+    /// Compresses the build context using gzip.
     ///
     /// # Examples
     ///
@@ -334,7 +334,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set CPU period limit
+    /// Sets the CPU period limit.
     ///
     /// # Examples
     ///
@@ -350,7 +350,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set CPU quota limit
+    /// Sets the CPU quota limit.
     ///
     /// # Examples
     ///
@@ -366,7 +366,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set CPU shares (relative weight)
+    /// Sets CPU shares (relative weight).
     ///
     /// # Examples
     ///
@@ -382,7 +382,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set CPUs in which to allow execution
+    /// Sets CPUs in which to allow execution.
     ///
     /// # Examples
     ///
@@ -398,7 +398,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set MEMs in which to allow execution
+    /// Sets MEMs in which to allow execution.
     ///
     /// # Examples
     ///
@@ -414,7 +414,7 @@ impl BuildCommand {
         self
     }
 
-    /// Skip image verification
+    /// Skips image verification.
     ///
     /// # Examples
     ///
@@ -430,7 +430,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set the name/path of the Dockerfile
+    /// Sets the name/path of the Dockerfile.
     ///
     /// # Examples
     ///
@@ -446,7 +446,7 @@ impl BuildCommand {
         self
     }
 
-    /// Always remove intermediate containers
+    /// Always removes intermediate containers.
     ///
     /// # Examples
     ///
@@ -462,7 +462,7 @@ impl BuildCommand {
         self
     }
 
-    /// Write the image ID to a file
+    /// Writes the image ID to a file.
     ///
     /// # Examples
     ///
@@ -478,7 +478,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set container isolation technology
+    /// Sets the container isolation technology.
     ///
     /// # Examples
     ///
@@ -494,7 +494,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set metadata label for the image
+    /// Sets a metadata label for the image.
     ///
     /// # Examples
     ///
@@ -511,7 +511,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set multiple metadata labels
+    /// Sets multiple metadata labels.
     ///
     /// # Examples
     ///
@@ -531,7 +531,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set memory limit
+    /// Sets the memory limit.
     ///
     /// # Examples
     ///
@@ -547,7 +547,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set memory + swap limit
+    /// Sets the memory + swap limit.
     ///
     /// # Examples
     ///
@@ -563,7 +563,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set networking mode for RUN instructions
+    /// Sets the networking mode for RUN instructions.
     ///
     /// # Examples
     ///
@@ -579,7 +579,7 @@ impl BuildCommand {
         self
     }
 
-    /// Do not use cache when building
+    /// Disables cache when building.
     ///
     /// # Examples
     ///
@@ -595,7 +595,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set platform for multi-platform builds
+    /// Sets the platform for multi-platform builds.
     ///
     /// # Examples
     ///
@@ -611,7 +611,7 @@ impl BuildCommand {
         self
     }
 
-    /// Always attempt to pull newer base images
+    /// Attempts to pull newer base images.
     ///
     /// # Examples
     ///
@@ -627,7 +627,7 @@ impl BuildCommand {
         self
     }
 
-    /// Suppress build output and print image ID on success
+    /// Suppresses build output and prints the image ID on success.
     ///
     /// # Examples
     ///
@@ -643,7 +643,7 @@ impl BuildCommand {
         self
     }
 
-    /// Remove intermediate containers after successful build (default: true)
+    /// Removes intermediate containers after a successful build (default: true).
     ///
     /// # Examples
     ///
@@ -659,7 +659,7 @@ impl BuildCommand {
         self
     }
 
-    /// Add a security option
+    /// Adds a security option.
     ///
     /// # Examples
     ///
@@ -675,7 +675,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set size of /dev/shm
+    /// Sets the size of `/dev/shm`.
     ///
     /// # Examples
     ///
@@ -691,7 +691,7 @@ impl BuildCommand {
         self
     }
 
-    /// Add a name and tag for the image
+    /// Adds a name and tag for the image.
     ///
     /// # Examples
     ///
@@ -708,7 +708,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set multiple tags for the image
+    /// Sets multiple tags for the image.
     ///
     /// # Examples
     ///
@@ -724,7 +724,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set the target build stage
+    /// Sets the target build stage.
     ///
     /// # Examples
     ///
@@ -740,7 +740,7 @@ impl BuildCommand {
         self
     }
 
-    /// Add a ulimit option
+    /// Adds a ulimit option.
     ///
     /// # Examples
     ///
@@ -756,7 +756,7 @@ impl BuildCommand {
         self
     }
 
-    /// Add an extra privileged entitlement
+    /// Adds an extra privileged entitlement.
     ///
     /// # Examples
     ///
@@ -772,7 +772,7 @@ impl BuildCommand {
         self
     }
 
-    /// Add an annotation to the image
+    /// Adds an annotation to the image.
     ///
     /// # Examples
     ///
@@ -788,7 +788,7 @@ impl BuildCommand {
         self
     }
 
-    /// Add attestation parameters
+    /// Adds attestation parameters.
     ///
     /// # Examples
     ///
@@ -804,7 +804,7 @@ impl BuildCommand {
         self
     }
 
-    /// Add additional build context
+    /// Adds additional build context.
     ///
     /// # Examples
     ///
@@ -820,7 +820,7 @@ impl BuildCommand {
         self
     }
 
-    /// Override the configured builder
+    /// Overrides the configured builder.
     ///
     /// # Examples
     ///
@@ -836,7 +836,7 @@ impl BuildCommand {
         self
     }
 
-    /// Add cache export destination
+    /// Adds a cache export destination.
     ///
     /// # Examples
     ///
@@ -852,7 +852,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set method for evaluating build
+    /// Sets the method for evaluating the build.
     ///
     /// # Examples
     ///
@@ -868,7 +868,7 @@ impl BuildCommand {
         self
     }
 
-    /// Enable check mode (shorthand for "--call=check")
+    /// Enables check mode (shorthand for "--call=check").
     ///
     /// # Examples
     ///
@@ -884,7 +884,7 @@ impl BuildCommand {
         self
     }
 
-    /// Enable load mode (shorthand for "--output=type=docker")
+    /// Enables load mode (shorthand for "--output=type=docker").
     ///
     /// # Examples
     ///
@@ -900,7 +900,7 @@ impl BuildCommand {
         self
     }
 
-    /// Write build result metadata to file
+    /// Writes build result metadata to a file.
     ///
     /// # Examples
     ///
@@ -916,7 +916,7 @@ impl BuildCommand {
         self
     }
 
-    /// Do not cache specified stage
+    /// Disables caching for specified stages.
     ///
     /// # Examples
     ///
@@ -932,7 +932,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set type of progress output
+    /// Sets the type of progress output.
     ///
     /// # Examples
     ///
@@ -948,7 +948,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set provenance attestation (shorthand for "--attest=type=provenance")
+    /// Sets provenance attestation (shorthand for "--attest=type=provenance").
     ///
     /// # Examples
     ///
@@ -964,7 +964,7 @@ impl BuildCommand {
         self
     }
 
-    /// Enable push mode (shorthand for "--output=type=registry")
+    /// Enables push mode (shorthand for "--output=type=registry").
     ///
     /// # Examples
     ///
@@ -980,7 +980,7 @@ impl BuildCommand {
         self
     }
 
-    /// Set SBOM attestation (shorthand for "--attest=type=sbom")
+    /// Sets SBOM attestation (shorthand for "--attest=type=sbom").
     ///
     /// # Examples
     ///
@@ -996,7 +996,7 @@ impl BuildCommand {
         self
     }
 
-    /// Add secret to expose to the build
+    /// Adds a secret to expose to the build.
     ///
     /// # Examples
     ///
@@ -1012,7 +1012,7 @@ impl BuildCommand {
         self
     }
 
-    /// Add SSH agent socket or keys to expose
+    /// Adds an SSH agent socket or keys to expose.
     ///
     /// # Examples
     ///
@@ -1028,15 +1028,15 @@ impl BuildCommand {
         self
     }
 
-    /// Get a reference to the command executor
+    /// Gets a reference to the command executor.
     #[must_use]
-    pub fn get_executor(&self) -> &CommandExecutor {
+    pub fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    /// Get a mutable reference to the command executor  
+    /// Gets a mutable reference to the command executor.
     #[must_use]
-    pub fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    pub fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 }
@@ -1296,6 +1296,10 @@ impl BuildCommand {
 impl DockerCommand for BuildCommand {
     type Output = BuildOutput;
 
+    fn command_name() -> &'static str {
+        "build"
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -1305,7 +1309,7 @@ impl DockerCommand for BuildCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        let mut args = vec!["build".to_string()];
+        let mut args = Vec::new();
 
         self.add_basic_args(&mut args);
         self.add_resource_args(&mut args);
