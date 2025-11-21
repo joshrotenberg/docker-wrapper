@@ -8,7 +8,7 @@ use async_trait::async_trait;
 ///
 /// Remove one or more Docker contexts.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::{ContextRmCommand, DockerCommand};

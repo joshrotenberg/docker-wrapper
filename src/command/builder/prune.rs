@@ -1,21 +1,22 @@
-//! Docker builder prune command
+//! Docker builder prune command.
 //!
-//! Remove build cache
+//! Removes build cache.
 
 use crate::command::{CommandExecutor, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
 
-/// `docker builder prune` command to remove build cache
+/// `docker builder prune` command to remove build cache.
 ///
-/// # Example
+/// # Examples
+///
 /// ```no_run
 /// use docker_wrapper::command::builder::BuilderPruneCommand;
 /// use docker_wrapper::DockerCommand;
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-/// // Remove all build cache
+/// // Removes all build cache.
 /// let result = BuilderPruneCommand::new()
 ///     .all()
 ///     .force()
@@ -28,37 +29,37 @@ use std::collections::HashMap;
 /// ```
 #[derive(Debug, Clone)]
 pub struct BuilderPruneCommand {
-    /// Remove all unused build cache, not just dangling ones
+    /// Removes all unused build cache, not just dangling ones.
     all: bool,
-    /// Provide filter values
+    /// Provides filter values.
     filters: HashMap<String, String>,
-    /// Do not prompt for confirmation
+    /// Do not prompt for confirmation.
     force: bool,
-    /// Amount of disk storage to keep for cache
+    /// Amount of disk storage to keep for cache.
     keep_storage: Option<String>,
-    /// Command executor
+    /// Command executor.
     pub executor: CommandExecutor,
 }
 
-/// Result of builder prune operation
+/// Result of builder prune operation.
 #[derive(Debug)]
 pub struct BuilderPruneResult {
-    /// IDs of deleted build cache entries
+    /// IDs of deleted build cache entries.
     pub deleted_cache_ids: Vec<String>,
-    /// Amount of disk space reclaimed in bytes
+    /// Amount of disk space reclaimed in bytes.
     pub space_reclaimed: Option<u64>,
-    /// Human-readable space reclaimed (e.g., "2.5GB")
+    /// Human-readable space reclaimed (e.g., "2.5GB").
     pub space_reclaimed_str: Option<String>,
-    /// Standard output from the command
+    /// Standard output from the command.
     pub stdout: String,
-    /// Standard error from the command
+    /// Standard error from the command.
     pub stderr: String,
-    /// Exit code
+    /// Exit code.
     pub exit_code: i32,
 }
 
 impl BuilderPruneCommand {
-    /// Create a new builder prune command
+    /// Creates a new builder prune command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -70,34 +71,35 @@ impl BuilderPruneCommand {
         }
     }
 
-    /// Remove all unused build cache, not just dangling ones
+    /// Removes all unused build cache, not just dangling ones.
     #[must_use]
     pub fn all(mut self) -> Self {
         self.all = true;
         self
     }
 
-    /// Add a filter to the prune operation
+    /// Adds a filter to the prune operation.
     ///
     /// Common filters:
-    /// - `until=<timestamp>` - only remove cache created before given timestamp
-    /// - `until=24h` - only remove cache older than 24 hours
+    /// - `until=<timestamp>` - only remove cache created before given timestamp;
+    /// - `until=24h` - only remove cache older than 24 hours.
     #[must_use]
     pub fn filter(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.filters.insert(key.into(), value.into());
         self
     }
 
-    /// Do not prompt for confirmation
+    /// Do not prompt for confirmation.
     #[must_use]
     pub fn force(mut self) -> Self {
         self.force = true;
         self
     }
 
-    /// Amount of disk storage to keep for cache
+    /// Amount of disk storage to keep for cache.
     ///
-    /// # Example
+    /// # Examples
+    ///
     /// ```no_run
     /// # use docker_wrapper::command::builder::BuilderPruneCommand;
     /// # use docker_wrapper::DockerCommand;
@@ -115,25 +117,25 @@ impl BuilderPruneCommand {
         self
     }
 
-    /// Parse the prune output to extract cache IDs and space reclaimed
+    /// Parses the prune output to extract cache IDs and space reclaimed.
     fn parse_output(output: &str) -> (Vec<String>, Option<u64>, Option<String>) {
         let mut cache_ids = Vec::new();
         let mut space_reclaimed = None;
         let mut space_reclaimed_str = None;
 
         for line in output.lines() {
-            // Parse deleted cache entries (format: "Deleted: sha256:...")
+            // parse deleted cache entries (format: "Deleted: sha256:...")
             if line.starts_with("Deleted:") || line.starts_with("deleted:") {
                 if let Some(id) = line.split_whitespace().nth(1) {
                     cache_ids.push(id.to_string());
                 }
             }
 
-            // Parse total reclaimed space
+            // parse total reclaimed space
             if line.contains("Total reclaimed space:") || line.contains("total reclaimed space:") {
                 space_reclaimed_str = line.split(':').nth(1).map(|s| s.trim().to_string());
 
-                // Try to parse the bytes value
+                // try to parse the bytes value
                 if let Some(size_str) = &space_reclaimed_str {
                     space_reclaimed = parse_size(size_str);
                 }
@@ -154,6 +156,10 @@ impl Default for BuilderPruneCommand {
 impl DockerCommand for BuilderPruneCommand {
     type Output = BuilderPruneResult;
 
+    fn command_name() -> &'static str {
+        "builder prune"
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -163,7 +169,7 @@ impl DockerCommand for BuilderPruneCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        let mut args = vec!["builder".to_string(), "prune".to_string()];
+        let mut args = Vec::new();
 
         if self.all {
             args.push("--all".to_string());
@@ -207,14 +213,14 @@ impl DockerCommand for BuilderPruneCommand {
     }
 }
 
-/// Parse a size string (e.g., "2.5GB", "100MB") into bytes
+/// Parses a size string (e.g., "2.5GB", "100MB") into bytes.
 #[allow(clippy::cast_possible_truncation)]
 #[allow(clippy::cast_sign_loss)]
 #[allow(clippy::cast_precision_loss)]
 fn parse_size(size_str: &str) -> Option<u64> {
     let size_str = size_str.trim();
 
-    // Try to extract number and unit
+    // try to extract number and unit
     let (num_str, unit) = if let Some(pos) = size_str.find(|c: char| c.is_alphabetic()) {
         (&size_str[..pos], &size_str[pos..])
     } else {

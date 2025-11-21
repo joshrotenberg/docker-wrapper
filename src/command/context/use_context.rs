@@ -8,7 +8,7 @@ use async_trait::async_trait;
 ///
 /// Switch to a different Docker context.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::{ContextUseCommand, DockerCommand};

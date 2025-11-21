@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker kill` command for sending signals to running containers.
 //!
-//! # Example
+//! # Examples
 //!
 //! ```rust,no_run
 //! use docker_wrapper::{DockerCommand, KillCommand, RunCommand};

@@ -10,7 +10,7 @@ use async_trait::async_trait;
 ///
 /// Attach local standard input, output, and error streams to a running container.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```no_run
 /// use docker_wrapper::AttachCommand;
@@ -46,7 +46,7 @@ pub struct AttachCommand {
 impl AttachCommand {
     /// Create a new attach command
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::AttachCommand;
@@ -66,7 +66,7 @@ impl AttachCommand {
 
     /// Override the key sequence for detaching a container
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::AttachCommand;
@@ -82,7 +82,7 @@ impl AttachCommand {
 
     /// Do not attach STDIN
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::AttachCommand;
@@ -98,7 +98,7 @@ impl AttachCommand {
 
     /// Do not proxy signals
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::AttachCommand;
@@ -120,7 +120,7 @@ impl AttachCommand {
     /// - The container doesn't exist
     /// - The container is not running
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::AttachCommand;

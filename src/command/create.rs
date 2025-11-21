@@ -12,7 +12,7 @@ use async_trait::async_trait;
 /// Create a new container without starting it. This is useful for preparing
 /// containers that will be started later.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::CreateCommand;
@@ -73,7 +73,7 @@ pub struct CreateCommand {
 impl CreateCommand {
     /// Create a new create command
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```
     /// use docker_wrapper::CreateCommand;
@@ -107,7 +107,7 @@ impl CreateCommand {
 
     /// Set the container name
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::CreateCommand;
@@ -123,7 +123,7 @@ impl CreateCommand {
 
     /// Set the command to run in the container
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::CreateCommand;
@@ -139,7 +139,7 @@ impl CreateCommand {
 
     /// Add an environment variable
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::CreateCommand;
@@ -156,7 +156,7 @@ impl CreateCommand {
 
     /// Add a port mapping
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::CreateCommand;
@@ -228,7 +228,7 @@ impl CreateCommand {
 
     /// Add a volume mount
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::CreateCommand;
@@ -279,7 +279,7 @@ impl CreateCommand {
     /// - The specified image doesn't exist
     /// - Invalid configuration options
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```no_run
     /// use docker_wrapper::CreateCommand;

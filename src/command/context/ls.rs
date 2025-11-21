@@ -33,7 +33,7 @@ pub struct ContextInfo {
 ///
 /// Lists all Docker contexts.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::{ContextLsCommand, DockerCommand};

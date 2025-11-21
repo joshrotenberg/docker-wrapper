@@ -11,7 +11,7 @@ use std::path::Path;
 ///
 /// Load an image from a tar archive or STDIN.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::LoadCommand;
@@ -41,7 +41,7 @@ pub struct LoadCommand {
 impl LoadCommand {
     /// Create a new load command
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::LoadCommand;
@@ -59,7 +59,7 @@ impl LoadCommand {
 
     /// Set input file path
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::LoadCommand;
@@ -76,7 +76,7 @@ impl LoadCommand {
 
     /// Suppress progress output during load
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::LoadCommand;
@@ -97,7 +97,7 @@ impl LoadCommand {
     /// - The input file doesn't exist or is not readable
     /// - The tar archive is corrupted or invalid
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::LoadCommand;

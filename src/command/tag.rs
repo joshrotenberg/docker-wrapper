@@ -10,7 +10,7 @@ use async_trait::async_trait;
 ///
 /// Create a tag `TARGET_IMAGE` that refers to `SOURCE_IMAGE`.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::TagCommand;
@@ -41,7 +41,7 @@ pub struct TagCommand {
 impl TagCommand {
     /// Create a new tag command
     ///
-    /// # Example
+    /// # Examplesss
     ///
     /// ```
     /// use docker_wrapper::TagCommand;
@@ -69,7 +69,7 @@ impl TagCommand {
     /// - The source image doesn't exist
     /// - The target image name is invalid
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::TagCommand;

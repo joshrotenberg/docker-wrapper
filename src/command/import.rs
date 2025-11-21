@@ -10,7 +10,7 @@ use async_trait::async_trait;
 ///
 /// Import the contents from a tarball to create a filesystem image.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::ImportCommand;
@@ -45,7 +45,7 @@ pub struct ImportCommand {
 impl ImportCommand {
     /// Create a new import command
     ///
-    /// # Example
+    /// # Examplesss
     ///
     /// ```
     /// use docker_wrapper::ImportCommand;
@@ -72,7 +72,7 @@ impl ImportCommand {
 
     /// Set repository name for the imported image
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::ImportCommand;
@@ -88,7 +88,7 @@ impl ImportCommand {
 
     /// Set commit message for the imported image
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::ImportCommand;
@@ -104,7 +104,7 @@ impl ImportCommand {
 
     /// Apply Dockerfile instruction while importing
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::ImportCommand;
@@ -121,7 +121,7 @@ impl ImportCommand {
 
     /// Apply multiple Dockerfile instructions while importing
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::ImportCommand;
@@ -153,7 +153,7 @@ impl ImportCommand {
     /// - Network issues (for URL sources)
     /// - Insufficient disk space
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::ImportCommand;

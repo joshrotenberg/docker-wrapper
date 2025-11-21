@@ -10,7 +10,7 @@ use async_trait::async_trait;
 ///
 /// Unpause all processes within one or more containers.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::UnpauseCommand;
@@ -39,7 +39,7 @@ pub struct UnpauseCommand {
 impl UnpauseCommand {
     /// Create a new unpause command for a single container
     ///
-    /// # Example
+    /// # Examplesss
     ///
     /// ```
     /// use docker_wrapper::UnpauseCommand;
@@ -56,7 +56,7 @@ impl UnpauseCommand {
 
     /// Create a new unpause command for multiple containers
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```
     /// use docker_wrapper::UnpauseCommand;
@@ -86,7 +86,7 @@ impl UnpauseCommand {
     /// - Any of the specified containers don't exist
     /// - Any container is not paused
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::UnpauseCommand;

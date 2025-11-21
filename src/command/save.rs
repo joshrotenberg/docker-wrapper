@@ -11,7 +11,7 @@ use std::path::Path;
 ///
 /// Save one or more images to a tar archive (streamed to STDOUT by default).
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::SaveCommand;
@@ -45,7 +45,7 @@ pub struct SaveCommand {
 impl SaveCommand {
     /// Create a new save command for a single image
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```
     /// use docker_wrapper::SaveCommand;
@@ -63,7 +63,7 @@ impl SaveCommand {
 
     /// Create a new save command for multiple images
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::SaveCommand;
@@ -88,7 +88,7 @@ impl SaveCommand {
 
     /// Set output file path
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::SaveCommand;
@@ -111,7 +111,7 @@ impl SaveCommand {
     /// - Any of the specified images don't exist
     /// - Cannot write to the output file
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::SaveCommand;

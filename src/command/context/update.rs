@@ -8,7 +8,7 @@ use async_trait::async_trait;
 ///
 /// Update an existing Docker context.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::{ContextUpdateCommand, DockerCommand};

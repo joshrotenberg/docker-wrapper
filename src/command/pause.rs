@@ -10,7 +10,7 @@ use async_trait::async_trait;
 ///
 /// Pause all processes within one or more containers.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::PauseCommand;
@@ -39,7 +39,7 @@ pub struct PauseCommand {
 impl PauseCommand {
     /// Create a new pause command for a single container
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```
     /// use docker_wrapper::PauseCommand;
@@ -56,7 +56,7 @@ impl PauseCommand {
 
     /// Create a new pause command for multiple containers
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::PauseCommand;
@@ -86,7 +86,7 @@ impl PauseCommand {
     /// - Any of the specified containers don't exist
     /// - Any container is not running
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::PauseCommand;

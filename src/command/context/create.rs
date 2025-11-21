@@ -8,7 +8,7 @@ use async_trait::async_trait;
 ///
 /// Create a new Docker context.
 ///
-/// # Example
+/// # Examplesss
 ///
 /// ```no_run
 /// use docker_wrapper::{ContextCreateCommand, DockerCommand};

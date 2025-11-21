@@ -9,7 +9,7 @@ use serde_json::Value;
 ///
 /// Display detailed information on one or more contexts.
 ///
-/// # Example
+/// # Examplesss
 ///
 /// ```no_run
 /// use docker_wrapper::{ContextInspectCommand, DockerCommand};

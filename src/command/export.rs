@@ -10,7 +10,7 @@ use async_trait::async_trait;
 ///
 /// Export a container's filesystem as a tar archive.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::ExportCommand;
@@ -41,7 +41,7 @@ pub struct ExportCommand {
 impl ExportCommand {
     /// Create a new export command
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```
     /// use docker_wrapper::ExportCommand;
@@ -59,7 +59,7 @@ impl ExportCommand {
 
     /// Set output file for the export
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::ExportCommand;
@@ -82,7 +82,7 @@ impl ExportCommand {
     /// - File I/O errors occur during export
     /// - Insufficient disk space
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::ExportCommand;

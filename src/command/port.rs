@@ -10,7 +10,7 @@ use async_trait::async_trait;
 ///
 /// List port mappings or a specific mapping for a container.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::PortCommand;
@@ -42,7 +42,7 @@ pub struct PortCommand {
 impl PortCommand {
     /// Create a new port command
     ///
-    /// # Example
+    /// # Examplesss
     ///
     /// ```
     /// use docker_wrapper::PortCommand;
@@ -60,7 +60,7 @@ impl PortCommand {
 
     /// Query specific port mapping
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```
     /// use docker_wrapper::PortCommand;
@@ -81,7 +81,7 @@ impl PortCommand {
     /// - The Docker daemon is not running
     /// - The container doesn't exist
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```no_run
     /// use docker_wrapper::PortCommand;

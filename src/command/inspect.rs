@@ -10,7 +10,7 @@ use serde_json::Value;
 
 /// Docker inspect command builder
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::InspectCommand;
@@ -44,7 +44,7 @@ pub struct InspectCommand {
 impl InspectCommand {
     /// Create a new inspect command for a single object
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```
     /// use docker_wrapper::InspectCommand;
@@ -64,7 +64,7 @@ impl InspectCommand {
 
     /// Create a new inspect command for multiple objects
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::InspectCommand;
@@ -91,7 +91,7 @@ impl InspectCommand {
 
     /// Set custom format string (Go template)
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::InspectCommand;
@@ -211,7 +211,7 @@ impl InspectOutput {
     /// # Errors
     /// Returns an error if the output is not valid JSON
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// # use docker_wrapper::InspectCommand;

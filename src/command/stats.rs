@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Display a live stream of container(s) resource usage statistics.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::StatsCommand;
@@ -59,7 +59,7 @@ pub struct StatsCommand {
 impl StatsCommand {
     /// Create a new stats command
     ///
-    /// # Example
+    /// # Examplesss
     ///
     /// ```
     /// use docker_wrapper::StatsCommand;
@@ -80,7 +80,7 @@ impl StatsCommand {
 
     /// Add a container to monitor
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::StatsCommand;
@@ -105,7 +105,7 @@ impl StatsCommand {
 
     /// Show stats for all containers (default shows only running)
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::StatsCommand;
@@ -120,7 +120,7 @@ impl StatsCommand {
 
     /// Set output format
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::StatsCommand;
@@ -139,7 +139,7 @@ impl StatsCommand {
 
     /// Disable streaming stats and only pull the first result
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::StatsCommand;
@@ -167,7 +167,7 @@ impl StatsCommand {
     /// - Any specified container doesn't exist
     /// - No containers are running (when no specific containers are specified)
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::StatsCommand;

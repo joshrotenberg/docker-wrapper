@@ -1,4 +1,4 @@
-//! Docker builder commands for build cache management
+//! Docker builder commands for build cache management.
 //!
 //! This module provides support for Docker builder commands that manage
 //! the build subsystem and build cache.

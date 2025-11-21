@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker rm` command for removing stopped containers.
 //!
-//! # Example
+//! # Examples
 //!
 //! ```rust,no_run
 //! use docker_wrapper::{DockerCommand, RmCommand, RunCommand, StopCommand};
