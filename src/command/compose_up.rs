@@ -79,7 +79,7 @@ impl std::fmt::Display for PullPolicy {
 pub struct ComposeUpResult {
     /// Raw stdout output
     pub stdout: String,
-    /// Raw stderr output  
+    /// Raw stderr output
     pub stderr: String,
     /// Success status
     pub success: bool,
@@ -273,11 +273,11 @@ impl Default for ComposeUpCommand {
 impl DockerCommand for ComposeUpCommand {
     type Output = ComposeUpResult;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -301,11 +301,11 @@ impl DockerCommand for ComposeUpCommand {
 }
 
 impl ComposeCommand for ComposeUpCommand {
-    fn get_config(&self) -> &ComposeConfig {
+    fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
-    fn get_config_mut(&mut self) -> &mut ComposeConfig {
+    fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
     }
 

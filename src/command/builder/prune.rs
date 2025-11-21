@@ -154,11 +154,11 @@ impl Default for BuilderPruneCommand {
 impl DockerCommand for BuilderPruneCommand {
     type Output = BuilderPruneResult;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -298,7 +298,7 @@ Total reclaimed space: 2.5GB";
     #[test]
     fn test_builder_prune_extensibility() {
         let mut cmd = BuilderPruneCommand::new();
-        cmd.get_executor_mut()
+        cmd.executor_mut()
             .raw_args
             .push("--custom-flag".to_string());
 

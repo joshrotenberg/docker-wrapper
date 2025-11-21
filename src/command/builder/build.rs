@@ -141,11 +141,11 @@ impl BuilderBuildCommand {
 impl DockerCommand for BuilderBuildCommand {
     type Output = BuildOutput;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.inner.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.inner.executor
     }
 

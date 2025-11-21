@@ -771,11 +771,11 @@ impl DockerCommand for BakeCommand {
             .await
     }
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 }
@@ -940,9 +940,9 @@ mod tests {
     #[test]
     fn test_bake_command_extensibility() {
         let mut bake_cmd = BakeCommand::new();
-        bake_cmd.get_executor_mut().add_arg("--experimental");
+        bake_cmd.executor_mut().add_arg("--experimental");
         bake_cmd
-            .get_executor_mut()
+            .executor_mut()
             .add_args(vec!["--custom", "value"]);
 
         // Extensibility is handled through the executor's raw_args

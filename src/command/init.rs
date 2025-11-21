@@ -121,11 +121,11 @@ impl Default for InitCommand {
 impl DockerCommand for InitCommand {
     type Output = InitOutput;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -317,7 +317,7 @@ mod tests {
         let mut cmd = InitCommand::new();
 
         // Test that we can add custom raw arguments
-        cmd.get_executor_mut()
+        cmd.executor_mut()
             .raw_args
             .push("--custom-flag".to_string());
 

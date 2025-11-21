@@ -68,11 +68,11 @@ impl Default for ComposeUnpauseCommand {
 impl DockerCommand for ComposeUnpauseCommand {
     type Output = ComposeUnpauseResult;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -95,11 +95,11 @@ impl DockerCommand for ComposeUnpauseCommand {
 }
 
 impl ComposeCommand for ComposeUnpauseCommand {
-    fn get_config(&self) -> &ComposeConfig {
+    fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
-    fn get_config_mut(&mut self) -> &mut ComposeConfig {
+    fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
     }
 
