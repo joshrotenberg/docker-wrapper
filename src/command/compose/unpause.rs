@@ -18,7 +18,7 @@ pub struct ComposeUnpauseCommand {
     pub services: Vec<String>,
 }
 
-/// Result from compose unpause command.
+/// Result from [`ComposeUnpauseCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeUnpauseResult {
     /// Raw stdout output.
@@ -32,7 +32,7 @@ pub struct ComposeUnpauseResult {
 }
 
 impl ComposeUnpauseCommand {
-    /// Creates a new compose unpause command.
+    /// Creates a new [`ComposeUnpauseCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

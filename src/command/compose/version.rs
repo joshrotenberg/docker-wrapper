@@ -48,7 +48,7 @@ pub struct VersionInfo {
     pub version: String,
 }
 
-/// Result from compose version command.
+/// Result from [`ComposeVersionCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeVersionResult {
     /// Raw stdout output.
@@ -62,7 +62,7 @@ pub struct ComposeVersionResult {
 }
 
 impl ComposeVersionCommand {
-    /// Creates a new compose version command.
+    /// Creates a new [`ComposeVersionCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

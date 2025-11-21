@@ -43,7 +43,7 @@ pub struct ComposeEvent {
     pub attributes: Option<serde_json::Value>,
 }
 
-/// Result from compose events command.
+/// Result from [`ComposeEventsCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeEventsResult {
     /// Raw stdout output.
@@ -59,7 +59,7 @@ pub struct ComposeEventsResult {
 }
 
 impl ComposeEventsCommand {
-    /// Creates a new compose events command.
+    /// Creates a new [`ComposeEventsCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

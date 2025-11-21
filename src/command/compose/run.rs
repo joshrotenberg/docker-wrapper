@@ -50,7 +50,7 @@ pub struct ComposeRunCommand {
     pub volume_rm: bool,
 }
 
-/// Result from compose run command.
+/// Result from [`ComposeRunCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeRunResult {
     /// Raw stdout output.
@@ -68,7 +68,7 @@ pub struct ComposeRunResult {
 }
 
 impl ComposeRunCommand {
-    /// Creates a new compose run command.
+    /// Creates a new [`ComposeRunCommand`].
     #[must_use]
     pub fn new(service: impl Into<String>) -> Self {
         Self {
@@ -470,11 +470,11 @@ mod tests {
 
         let args = cmd.build_subcommand_args();
 
-        // check flags
+        // checks flags
         assert!(args.contains(&"--detach".to_string()));
         assert!(args.contains(&"--rm".to_string()));
 
-        // check named parameters
+        // checks named parameters
         assert!(args.contains(&"--name".to_string()));
         assert!(args.contains(&"test-db".to_string()));
         assert!(args.contains(&"--user".to_string()));
@@ -488,11 +488,11 @@ mod tests {
         assert!(args.contains(&"--entrypoint".to_string()));
         assert!(args.contains(&"docker-entrypoint.sh".to_string()));
 
-        // check service and command
+        // checks service and command
         assert!(args.contains(&"database".to_string()));
         assert!(args.contains(&"postgres".to_string()));
 
-        // check env and labels
+        // checks env and labels
         assert!(args.contains(&"POSTGRES_DB=testdb".to_string()));
         assert!(args.contains(&"env=test".to_string()));
     }

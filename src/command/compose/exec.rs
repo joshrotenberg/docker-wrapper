@@ -38,7 +38,7 @@ pub struct ComposeExecCommand {
     pub privileged: bool,
 }
 
-/// Result from compose exec command.
+/// Result from [`ComposeExecCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeExecResult {
     /// Raw stdout output.
@@ -56,7 +56,7 @@ pub struct ComposeExecResult {
 }
 
 impl ComposeExecCommand {
-    /// Creates a new compose exec command.
+    /// Creates a new [`ComposeExecCommand`].
     #[must_use]
     pub fn new(service: impl Into<String>) -> Self {
         Self {

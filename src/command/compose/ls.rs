@@ -64,7 +64,7 @@ pub struct ComposeProject {
     pub created: String,
 }
 
-/// Result from ls command.
+/// Result from [`ComposeLsCommand`].
 #[derive(Debug, Clone)]
 pub struct LsResult {
     /// List of compose projects.
@@ -74,7 +74,7 @@ pub struct LsResult {
 }
 
 impl ComposeLsCommand {
-    /// Creates a new ls command.
+    /// Creates a new [`ComposeLsCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

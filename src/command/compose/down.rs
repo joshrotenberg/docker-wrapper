@@ -45,7 +45,7 @@ impl std::fmt::Display for RemoveImages {
     }
 }
 
-/// Result from compose down command.
+/// Result from [`ComposeDownCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeDownResult {
     /// Raw stdout output.
@@ -61,7 +61,7 @@ pub struct ComposeDownResult {
 }
 
 impl ComposeDownCommand {
-    /// Creates a new compose down command.
+    /// Creates a new [`ComposeDownCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

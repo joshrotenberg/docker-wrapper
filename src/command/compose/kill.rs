@@ -20,7 +20,7 @@ pub struct ComposeKillCommand {
     pub signal: Option<String>,
 }
 
-/// Result from compose kill command.
+/// Result from [`ComposeKillCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeKillResult {
     /// Raw stdout output.
@@ -34,7 +34,7 @@ pub struct ComposeKillResult {
 }
 
 impl ComposeKillCommand {
-    /// Creates a new compose kill command.
+    /// Creates a new [`ComposeKillCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

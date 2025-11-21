@@ -25,7 +25,7 @@ pub struct ComposeRmCommand {
     pub volumes: bool,
 }
 
-/// Result from compose rm command.
+/// Result from [`ComposeRmCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeRmResult {
     /// Raw stdout output.
@@ -41,7 +41,7 @@ pub struct ComposeRmResult {
 }
 
 impl ComposeRmCommand {
-    /// Creates a new compose rm command.
+    /// Creates a new [`ComposeRmCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

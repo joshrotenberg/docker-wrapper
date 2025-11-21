@@ -31,14 +31,14 @@ pub struct ComposeBuildCommand {
     /// Amount of memory for builds.
     pub memory: Option<String>,
     /// Builds with `BuildKit` progress output.
-    pub progress: Option<ProgressOutput>,
+    pub progress: Option<ProgressType>,
     /// Sets the SSH agent socket or key.
     pub ssh: Option<String>,
 }
 
 /// Build progress output type.
 #[derive(Debug, Default, Clone, Copy)]
-pub enum ProgressOutput {
+pub enum ProgressType {
     /// Auto-detects progress type.
     #[default]
     Auto,
@@ -48,7 +48,7 @@ pub enum ProgressOutput {
     Tty,
 }
 
-impl std::fmt::Display for ProgressOutput {
+impl std::fmt::Display for ProgressType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Auto => write!(f, "auto"),
@@ -58,7 +58,7 @@ impl std::fmt::Display for ProgressOutput {
     }
 }
 
-/// Result from compose build command.
+/// Result from [`ComposeBuildCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeBuildResult {
     /// Raw stdout output.
@@ -72,7 +72,7 @@ pub struct ComposeBuildResult {
 }
 
 impl ComposeBuildCommand {
-    /// Creates a new compose build command.
+    /// Creates a new [`ComposeBuildCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -159,7 +159,7 @@ impl ComposeBuildCommand {
 
     /// Sets progress output type.
     #[must_use]
-    pub fn progress(mut self, progress: ProgressOutput) -> Self {
+    pub fn progress(mut self, progress: ProgressType) -> Self {
         self.progress = Some(progress);
         self
     }
@@ -349,7 +349,7 @@ mod tests {
             .parallel()
             .build_arg("VERSION", "2.0")
             .memory("1g")
-            .progress(ProgressOutput::Plain)
+            .progress(ProgressType::Plain)
             .ssh("default")
             .services(vec!["web", "worker"]);
 
@@ -371,9 +371,9 @@ mod tests {
 
     #[test]
     fn test_progress_output_display() {
-        assert_eq!(ProgressOutput::Auto.to_string(), "auto");
-        assert_eq!(ProgressOutput::Plain.to_string(), "plain");
-        assert_eq!(ProgressOutput::Tty.to_string(), "tty");
+        assert_eq!(ProgressType::Auto.to_string(), "auto");
+        assert_eq!(ProgressType::Plain.to_string(), "plain");
+        assert_eq!(ProgressType::Tty.to_string(), "tty");
     }
 
     #[test]

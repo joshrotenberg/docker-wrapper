@@ -33,7 +33,7 @@ pub struct ComposeLogsCommand {
     pub no_color: bool,
 }
 
-/// Result from compose logs command.
+/// Result from [`ComposeLogsCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeLogsResult {
     /// Raw stdout output.
@@ -47,7 +47,7 @@ pub struct ComposeLogsResult {
 }
 
 impl ComposeLogsCommand {
-    /// Creates a new compose logs command.
+    /// Creates a new [`ComposeLogsCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

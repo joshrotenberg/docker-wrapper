@@ -60,7 +60,7 @@ impl std::fmt::Display for ConfigFormat {
     }
 }
 
-/// Result from compose config command.
+/// Result from [`ComposeConfigCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeConfigResult {
     /// Raw stdout output (configuration YAML/JSON).
@@ -74,7 +74,7 @@ pub struct ComposeConfigResult {
 }
 
 impl ComposeConfigCommand {
-    /// Creates a new compose config command.
+    /// Creates a new [`ComposeConfigCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

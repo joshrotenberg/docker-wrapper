@@ -56,7 +56,7 @@ impl std::fmt::Display for PullPolicy {
     }
 }
 
-/// Result from compose create command.
+/// Result from [`ComposeCreateCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeCreateResult {
     /// Raw stdout output.
@@ -70,7 +70,7 @@ pub struct ComposeCreateResult {
 }
 
 impl ComposeCreateCommand {
-    /// Creates a new compose create command.
+    /// Creates a new [`ComposeCreateCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

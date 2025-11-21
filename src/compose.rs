@@ -194,13 +194,13 @@ pub trait ComposeCommand: DockerCommand {
 
     /// Builds complete command arguments including subcommand name and global args.
     fn build_command_args(&self) -> Vec<String> {
-        let mut args = vec![Self::subcommand_name().to_string()];
+        let mut args = Vec::new();
 
         // add global compose arguments
         args.extend(self.config().build_global_args());
 
         // add the subcommand
-        args.push(self.subcommand().to_string());
+        args.push(Self::subcommand_name().to_string());
 
         // add command-specific arguments
         args.extend(self.build_subcommand_args());

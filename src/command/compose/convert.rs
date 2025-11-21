@@ -39,7 +39,7 @@ impl std::fmt::Display for ConvertFormat {
     }
 }
 
-/// Result from compose convert command.
+/// Result from [`ComposeConvertCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeConvertResult {
     /// Raw stdout output.
@@ -53,7 +53,7 @@ pub struct ComposeConvertResult {
 }
 
 impl ComposeConvertCommand {
-    /// Creates a new compose convert command.
+    /// Creates a new [`ComposeConvertCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

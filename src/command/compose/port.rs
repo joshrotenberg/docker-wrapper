@@ -24,7 +24,7 @@ pub struct ComposePortCommand {
     pub index: Option<u16>,
 }
 
-/// Result from compose port command.
+/// Result from [`ComposePortCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposePortResult {
     /// Raw stdout output.
@@ -40,7 +40,7 @@ pub struct ComposePortResult {
 }
 
 impl ComposePortCommand {
-    /// Creates a new compose port command.
+    /// Creates a new [`ComposePortCommand`].
     #[must_use]
     pub fn new(service: impl Into<String>) -> Self {
         Self {

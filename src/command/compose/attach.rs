@@ -18,7 +18,7 @@ pub struct ComposeAttachCommand {
     pub config: ComposeConfig,
     /// Service to attach to.
     pub service: String,
-    /// Detach keys sequence.
+    /// Overrides the key sequence for detaching.
     pub detach_keys: Option<String>,
     /// Container index if service has multiple instances.
     pub index: Option<u32>,
@@ -28,7 +28,7 @@ pub struct ComposeAttachCommand {
     pub sig_proxy: bool,
 }
 
-/// Result from attach command.
+/// Result from [`ComposeAttachCommand`].
 #[derive(Debug, Clone)]
 pub struct AttachResult {
     /// Output from the command.
@@ -38,7 +38,7 @@ pub struct AttachResult {
 }
 
 impl ComposeAttachCommand {
-    /// Creates a new attach command.
+    /// Creates a new [`ComposeAttachCommand`].
     #[must_use]
     pub fn new(service: impl Into<String>) -> Self {
         Self {
@@ -50,7 +50,7 @@ impl ComposeAttachCommand {
         }
     }
 
-    /// Sets detach keys.
+    /// Overrides the key sequence for detaching.
     #[must_use]
     pub fn detach_keys(mut self, keys: impl Into<String>) -> Self {
         self.detach_keys = Some(keys.into());

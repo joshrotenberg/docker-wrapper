@@ -23,7 +23,7 @@ pub struct ComposeWaitCommand {
     pub wait_for_healthy: bool,
 }
 
-/// Result from compose wait command.
+/// Result from [`ComposeWaitCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeWaitResult {
     /// Raw stdout output.
@@ -39,7 +39,7 @@ pub struct ComposeWaitResult {
 }
 
 impl ComposeWaitCommand {
-    /// Creates a new compose wait command.
+    /// Creates a new [`ComposeWaitCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

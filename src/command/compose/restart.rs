@@ -21,7 +21,7 @@ pub struct ComposeRestartCommand {
     pub timeout: Option<Duration>,
 }
 
-/// Result from compose restart command.
+/// Result from [`ComposeRestartCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeRestartResult {
     /// Raw stdout output.
@@ -35,7 +35,7 @@ pub struct ComposeRestartResult {
 }
 
 impl ComposeRestartCommand {
-    /// Creates a new compose restart command.
+    /// Creates a new [`ComposeRestartCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

@@ -22,7 +22,7 @@ pub struct ComposeWatchCommand {
     pub quiet: bool,
 }
 
-/// Result from compose watch command.
+/// Result from [`ComposeWatchCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeWatchResult {
     /// Raw stdout output.
@@ -36,7 +36,7 @@ pub struct ComposeWatchResult {
 }
 
 impl ComposeWatchCommand {
-    /// Creates a new compose watch command.
+    /// Creates a new [`ComposeWatchCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

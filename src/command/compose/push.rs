@@ -24,7 +24,7 @@ pub struct ComposePushCommand {
     pub quiet: bool,
 }
 
-/// Result from compose push command.
+/// Result from [`ComposePushCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposePushResult {
     /// Raw stdout output.
@@ -38,7 +38,7 @@ pub struct ComposePushResult {
 }
 
 impl ComposePushCommand {
-    /// Creates a new compose push command.
+    /// Creates a new [`ComposePushCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

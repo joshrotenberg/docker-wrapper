@@ -1,4 +1,4 @@
-//! Docker Bake Command Implementation
+//! Docker bake command implementation.
 //!
 //! This module provides a comprehensive implementation of the `docker bake` command,
 //! supporting all native Docker buildx bake options for building from configuration files.
@@ -13,7 +13,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Basic bake with default docker-bake.hcl file
+//!     // basic bake with default docker-bake.hcl file
 //!     let bake_cmd = BakeCommand::new();
 //!     let output = bake_cmd.execute().await?;
 //!     println!("Bake completed: {}", output.success);
@@ -29,7 +29,7 @@
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Advanced bake with custom file and targets
+//!     // advanced bake with custom file and targets
 //!     let bake_cmd = BakeCommand::new()
 //!         .file("docker-compose.yml")
 //!         .file("custom-bake.hcl")
@@ -51,7 +51,7 @@ use crate::error::Result;
 use async_trait::async_trait;
 use std::collections::HashMap;
 
-/// Docker Bake Command Builder
+/// Docker bake command builder.
 ///
 /// Implements the `docker bake` command for building from configuration files
 /// like docker-compose.yml, docker-bake.hcl, or custom bake definitions.
@@ -60,18 +60,18 @@ use std::collections::HashMap;
 ///
 /// The bake command allows you to build multiple targets defined in configuration
 /// files, supporting advanced features like:
-/// - Multi-platform builds
-/// - Build matrix configurations
-/// - Shared build contexts
-/// - Variable substitution
-/// - Target dependencies
+/// - Multi-platform builds;
+/// - Build matrix configurations;
+/// - Shared build contexts;
+/// - Variable substitution;
+/// - Target dependencies.
 ///
 /// # Supported File Formats
 ///
-/// - `docker-compose.yml` - Docker Compose service definitions
-/// - `docker-bake.hcl` - HCL (`HashiCorp` Configuration Language) format
-/// - `docker-bake.json` - JSON format
-/// - Custom build definition files
+/// - `docker-compose.yml` - Docker Compose service definitions;
+/// - `docker-bake.hcl` - HCL (`HashiCorp` Configuration Language) format;
+/// - `docker-bake.json` - JSON format;
+/// - Custom build definition files.
 ///
 /// # Examples
 ///
@@ -81,7 +81,7 @@ use std::collections::HashMap;
 ///
 /// #[tokio::main]
 /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     // Build all targets from docker-compose.yml
+///     // builds all targets from docker-compose.yml
 ///     let output = BakeCommand::new()
 ///         .file("docker-compose.yml")
 ///         .execute()
@@ -94,48 +94,100 @@ use std::collections::HashMap;
 #[derive(Debug, Clone)]
 #[allow(clippy::struct_excessive_bools)]
 pub struct BakeCommand {
-    /// Build targets to build (defaults to all targets if empty)
+    /// Build targets to build (defaults to all targets if empty).
     targets: Vec<String>,
-    /// Build definition files
+    /// Build definition files.
     files: Vec<String>,
-    /// Resource access permissions
+    /// Resource access permissions.
     allow: Vec<String>,
-    /// Builder instance override
+    /// Builder instance override.
     builder: Option<String>,
-    /// Evaluation method (build, check, outline, targets)
-    call: Option<String>,
-    /// Enable check mode (shorthand for --call=check)
+    /// Evaluation method to call.
+    call: Option<EvaluationMethod>,
+    /// Enables check mode (shorthand for `--call=check`).
     check: bool,
-    /// Enable debug logging
+    /// Enables debug logging.
     debug: bool,
-    /// List targets or variables
+    /// Lists targets or variables.
     list: Option<String>,
-    /// Load images to Docker daemon (shorthand for --set=*.output=type=docker)
+    /// Loads images to Docker daemon (shorthand for `--set=*.output=type=docker`).
     load: bool,
-    /// Build result metadata file
+    /// Build result metadata file.
     metadata_file: Option<String>,
-    /// Disable build cache
+    /// Disables build cache.
     no_cache: bool,
-    /// Print options without building
+    /// Prints options without building.
     print: bool,
-    /// Progress output type
-    progress: Option<String>,
-    /// Provenance attestation (shorthand for --set=*.attest=type=provenance)
+    /// Progress output type.
+    progress: Option<ProgressType>,
+    /// Provenance attestation (shorthand for `--set=*.attest=type=provenance`).
     provenance: Option<String>,
-    /// Always pull referenced images
+    /// Always pulls referenced images.
     pull: bool,
-    /// Push images to registry (shorthand for --set=*.output=type=registry)
+    /// Pushes images to registry (shorthand for `--set=*.output=type=registry`).
     push: bool,
-    /// SBOM attestation (shorthand for --set=*.attest=type=sbom)
+    /// SBOM attestation (shorthand for `--set=*.attest=type=sbom`).
     sbom: Option<String>,
-    /// Target value overrides (key=value pairs)
+    /// Target value overrides (key=value pairs).
     set_values: HashMap<String, String>,
-    /// Command executor for handling raw arguments and execution
+    /// Command executor for handling raw arguments and execution.
     pub executor: CommandExecutor,
 }
 
+/// Evaluation methods for the bake command.
+#[derive(Debug, Clone)]
+pub enum EvaluationMethod {
+    /// Builds the specified targets.
+    Build,
+    /// Validates the build configuration without executing.
+    Check,
+    /// Outlines the build plan without executing.
+    Outline,
+    /// Lists available build targets.
+    Targets,
+}
+
+impl std::fmt::Display for EvaluationMethod {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            EvaluationMethod::Build => write!(f, "build"),
+            EvaluationMethod::Check => write!(f, "check"),
+            EvaluationMethod::Outline => write!(f, "outline"),
+            EvaluationMethod::Targets => write!(f, "targets"),
+        }
+    }
+}
+
+/// Progress output types for the bake command.
+#[derive(Debug, Default, Clone)]
+pub enum ProgressType {
+    /// Auto-detects progress output type.
+    #[default]
+    Auto,
+    /// Quiet output.
+    Quiet,
+    /// Plain text output.
+    Plain,
+    /// TTY output.
+    Tty,
+    /// Raw JSON output.
+    RawJson,
+}
+
+impl std::fmt::Display for ProgressType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ProgressType::Auto => write!(f, "auto"),
+            ProgressType::Quiet => write!(f, "quiet"),
+            ProgressType::Plain => write!(f, "plain"),
+            ProgressType::Tty => write!(f, "tty"),
+            ProgressType::RawJson => write!(f, "rawjson"),
+        }
+    }
+}
+
 impl BakeCommand {
-    /// Create a new `BakeCommand` instance
+    /// Creates a new [`BakeCommand`].
     ///
     /// # Examples
     ///
@@ -190,7 +242,7 @@ impl BakeCommand {
         self
     }
 
-    /// Add multiple targets to build
+    /// Adds multiple targets to build.
     ///
     /// # Examples
     ///
@@ -211,7 +263,7 @@ impl BakeCommand {
         self
     }
 
-    /// Add a build definition file
+    /// Adds a build definition file.
     ///
     /// Supports docker-compose.yml, docker-bake.hcl, docker-bake.json,
     /// and custom build definition files.
@@ -231,7 +283,7 @@ impl BakeCommand {
         self
     }
 
-    /// Add multiple build definition files
+    /// Adds multiple build definition files.
     ///
     /// # Examples
     ///
@@ -252,7 +304,7 @@ impl BakeCommand {
         self
     }
 
-    /// Allow build to access specified resources
+    /// Allows build to access specified resources.
     ///
     /// Grants permission to access host resources during build.
     ///
@@ -271,75 +323,37 @@ impl BakeCommand {
         self
     }
 
-    /// Override the configured builder instance
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use docker_wrapper::BakeCommand;
-    ///
-    /// let bake_cmd = BakeCommand::new()
-    ///     .builder("mybuilder");
-    /// ```
+    /// Overrides the configured builder instance.
     #[must_use]
     pub fn builder<S: Into<String>>(mut self, builder: S) -> Self {
         self.builder = Some(builder.into());
         self
     }
 
-    /// Set method for evaluating build
-    ///
-    /// Valid values: "build", "check", "outline", "targets"
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use docker_wrapper::BakeCommand;
-    ///
-    /// let bake_cmd = BakeCommand::new()
-    ///     .call("check"); // Validate build configuration
-    /// ```
+    /// Sets method for evaluating build.
     #[must_use]
-    pub fn call<S: Into<String>>(mut self, method: S) -> Self {
-        self.call = Some(method.into());
+    pub fn call(mut self, method: EvaluationMethod) -> Self {
+        self.call = Some(method);
         self
     }
 
-    /// Enable check mode (shorthand for --call=check)
+    /// Enables check mode (shorthand for `--call=check`).
     ///
     /// Validates the build configuration without executing the build.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use docker_wrapper::BakeCommand;
-    ///
-    /// let bake_cmd = BakeCommand::new()
-    ///     .check();
-    /// ```
     #[must_use]
     pub fn check(mut self) -> Self {
         self.check = true;
         self
     }
 
-    /// Enable debug logging
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// use docker_wrapper::BakeCommand;
-    ///
-    /// let bake_cmd = BakeCommand::new()
-    ///     .debug();
-    /// ```
+    /// Enables debug logging.
     #[must_use]
     pub fn debug(mut self) -> Self {
         self.debug = true;
         self
     }
 
-    /// List targets or variables
+    /// Lists targets or variables.
     ///
     /// # Examples
     ///
@@ -347,7 +361,7 @@ impl BakeCommand {
     /// use docker_wrapper::BakeCommand;
     ///
     /// let bake_cmd = BakeCommand::new()
-    ///     .list("targets"); // List all available targets
+    ///     .list("targets"); // lists all available targets
     /// ```
     #[must_use]
     pub fn list<S: Into<String>>(mut self, list_type: S) -> Self {
@@ -355,7 +369,7 @@ impl BakeCommand {
         self
     }
 
-    /// Load images to Docker daemon (shorthand for --set=*.output=type=docker)
+    /// Loads images to Docker daemon (shorthand for `--set=*.output=type=docker`).
     ///
     /// # Examples
     ///
@@ -371,7 +385,7 @@ impl BakeCommand {
         self
     }
 
-    /// Write build result metadata to a file
+    /// Writes build result metadata to a file.
     ///
     /// # Examples
     ///
@@ -387,7 +401,7 @@ impl BakeCommand {
         self
     }
 
-    /// Do not use cache when building images
+    /// Doesn't use cache when building images.
     ///
     /// # Examples
     ///
@@ -403,7 +417,7 @@ impl BakeCommand {
         self
     }
 
-    /// Print the options without building
+    /// Prints the options without building.
     ///
     /// # Examples
     ///
@@ -419,9 +433,9 @@ impl BakeCommand {
         self
     }
 
-    /// Set type of progress output
+    /// Sets type of progress output.
     ///
-    /// Valid values: "auto", "quiet", "plain", "tty", "rawjson"
+    /// Valid values: `auto`, `quiet`, `plain`, `tty`, and `rawjson`.
     ///
     /// # Examples
     ///

@@ -26,7 +26,7 @@ pub struct ComposeCpCommand {
     pub index: Option<u32>,
 }
 
-/// Result from compose cp command.
+/// Result from [`ComposeCpCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeCpResult {
     /// Raw stdout output.
@@ -42,7 +42,7 @@ pub struct ComposeCpResult {
 }
 
 impl ComposeCpCommand {
-    /// Creates a new compose cp command.
+    /// Creates a new [`ComposeCpCommand`].
     #[must_use]
     pub fn new(source: impl Into<String>, destination: impl Into<String>) -> Self {
         Self {

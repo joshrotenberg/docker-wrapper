@@ -18,7 +18,7 @@ pub struct ComposeTopCommand {
     pub services: Vec<String>,
 }
 
-/// Result from compose top command.
+/// Result from [`ComposeTopCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeTopResult {
     /// Raw stdout output.
@@ -32,7 +32,7 @@ pub struct ComposeTopResult {
 }
 
 impl ComposeTopCommand {
-    /// Creates a new compose top command.
+    /// Creates a new [`ComposeTopCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

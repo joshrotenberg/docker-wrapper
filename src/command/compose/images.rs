@@ -58,7 +58,7 @@ pub struct ImageInfo {
     pub size: String,
 }
 
-/// Result from compose images command.
+/// Result from [`ComposeImagesCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeImagesResult {
     /// Raw stdout output.
@@ -74,7 +74,7 @@ pub struct ComposeImagesResult {
 }
 
 impl ComposeImagesCommand {
-    /// Creates a new compose images command.
+    /// Creates a new [`ComposeImagesCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

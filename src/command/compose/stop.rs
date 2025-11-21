@@ -21,7 +21,7 @@ pub struct ComposeStopCommand {
     pub timeout: Option<Duration>,
 }
 
-/// Result from compose stop command.
+/// Result from [`ComposeStopCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeStopResult {
     /// Raw stdout output.
@@ -35,7 +35,7 @@ pub struct ComposeStopResult {
 }
 
 impl ComposeStopCommand {
-    /// Creates a new compose stop command.
+    /// Creates a new [`ComposeStopCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

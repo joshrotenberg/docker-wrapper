@@ -21,7 +21,7 @@ pub struct ComposeScaleCommand {
     pub no_deps: bool,
 }
 
-/// Result from compose scale command.
+/// Result from [`ComposeScaleCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposeScaleResult {
     /// Raw stdout output.
@@ -35,7 +35,7 @@ pub struct ComposeScaleResult {
 }
 
 impl ComposeScaleCommand {
-    /// Creates a new compose scale command.
+    /// Creates a new [`ComposeScaleCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {

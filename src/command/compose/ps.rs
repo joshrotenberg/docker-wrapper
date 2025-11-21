@@ -95,7 +95,7 @@ pub struct PortPublisher {
     pub protocol: String,
 }
 
-/// Result from compose ps command.
+/// Result from [`ComposePsCommand`].
 #[derive(Debug, Clone)]
 pub struct ComposePsResult {
     /// Raw stdout output.
@@ -109,7 +109,7 @@ pub struct ComposePsResult {
 }
 
 impl ComposePsCommand {
-    /// Creates a new compose ps command.
+    /// Creates a new [`ComposePsCommand`].
     #[must_use]
     pub fn new() -> Self {
         Self {
