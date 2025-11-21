@@ -175,33 +175,37 @@ impl ComposeConfig {
 
 /// Extended trait for Docker Compose commands.
 pub trait ComposeCommand: DockerCommand {
+    /// Gets the base command name. This should always be `compose`.
+    fn command_name() -> &'static str {
+        "compose"
+    }
+
+    /// Gets the full subcommand name (e.g., `up`, `down`), which will be appended to the base command.
+    fn subcommand_name() -> &'static str;
+
     /// Gets the compose configuration.
     fn config(&self) -> &ComposeConfig;
 
     /// Gets the mutable compose configuration for builder pattern.
     fn config_mut(&mut self) -> &mut ComposeConfig;
 
-    /// Gets the compose subcommand name (e.g., `up`, `down`, `ps`).
-    fn subcommand(&self) -> &'static str;
-
     /// Builds command-specific arguments (without global compose args).
     fn build_subcommand_args(&self) -> Vec<String>;
 
-    /// Builds complete command arguments including "compose" and global args.
-    /// This provides the implementation for `DockerCommandV2::build_command_args`.
+    /// Builds complete command arguments including subcommand name and global args.
     fn build_command_args(&self) -> Vec<String> {
-        let mut args = vec!["compose".to_string()];
+        let mut args = vec![Self::subcommand_name().to_string()];
 
-        // Adds global compose arguments.
+        // add global compose arguments
         args.extend(self.config().build_global_args());
 
-        // Adds the subcommand.
+        // add the subcommand
         args.push(self.subcommand().to_string());
 
-        // Adds command-specific arguments.
+        // add command-specific arguments
         args.extend(self.build_subcommand_args());
 
-        // Adds raw arguments from executor.
+        // add raw arguments from executor
         args.extend(self.executor().raw_args.clone());
 
         args

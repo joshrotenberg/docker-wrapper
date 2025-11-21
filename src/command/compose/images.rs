@@ -1,31 +1,35 @@
 //! Docker Compose images command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 use serde::Deserialize;
 
-/// Docker Compose images command builder
+/// Docker Compose images command builder.
 #[derive(Debug, Clone)]
 pub struct ComposeImagesCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Output format
+    /// Output format.
     pub format: Option<ImagesFormat>,
-    /// Only display image IDs
+    /// Only displays image IDs.
     pub quiet: bool,
-    /// Services to list images for (empty for all)
+    /// Services to list images for (empty for all).
     pub services: Vec<String>,
 }
 
-/// Images output format
-#[derive(Debug, Clone, Copy)]
+/// Images output format.
+#[derive(Debug, Default, Clone, Copy)]
 pub enum ImagesFormat {
-    /// Table format (default)
+    /// Table format (default).
+    #[default]
     Table,
-    /// JSON format
+    /// JSON format.
     Json,
 }
 
@@ -38,39 +42,39 @@ impl std::fmt::Display for ImagesFormat {
     }
 }
 
-/// Image information from JSON output
+/// Image information from JSON output.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ImageInfo {
-    /// Container name
+    /// Container name.
     pub container: String,
-    /// Repository
+    /// Repository.
     pub repository: String,
-    /// Tag
+    /// Tag.
     pub tag: String,
-    /// Image ID
+    /// Image ID.
     #[serde(rename = "ID")]
     pub id: String,
-    /// Size
+    /// Size.
     pub size: String,
 }
 
-/// Result from compose images command
+/// Result from compose images command.
 #[derive(Debug, Clone)]
 pub struct ComposeImagesResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Parsed image information (if JSON format)
+    /// Parsed image information (if JSON format).
     pub images: Vec<ImageInfo>,
-    /// Services that were queried
+    /// Services that were queried.
     pub services: Vec<String>,
 }
 
 impl ComposeImagesCommand {
-    /// Create a new compose images command
+    /// Creates a new compose images command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -82,42 +86,42 @@ impl ComposeImagesCommand {
         }
     }
 
-    /// Set output format
+    /// Sets output format.
     #[must_use]
     pub fn format(mut self, format: ImagesFormat) -> Self {
         self.format = Some(format);
         self
     }
 
-    /// Set output format to JSON
+    /// Sets output format to JSON.
     #[must_use]
     pub fn format_json(mut self) -> Self {
         self.format = Some(ImagesFormat::Json);
         self
     }
 
-    /// Set output format to table
+    /// Sets output format to table.
     #[must_use]
     pub fn format_table(mut self) -> Self {
         self.format = Some(ImagesFormat::Table);
         self
     }
 
-    /// Only display image IDs
+    /// Only displays image IDs.
     #[must_use]
     pub fn quiet(mut self) -> Self {
         self.quiet = true;
         self
     }
 
-    /// Add a service to list images for
+    /// Adds a service to list images for.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services to list images for
+    /// Adds multiple services to list images for.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -139,11 +143,15 @@ impl Default for ComposeImagesCommand {
 impl DockerCommand for ComposeImagesCommand {
     type Output = ComposeImagesResult;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -172,16 +180,16 @@ impl DockerCommand for ComposeImagesCommand {
 }
 
 impl ComposeCommand for ComposeImagesCommand {
-    fn get_config(&self) -> &ComposeConfig {
+    fn subcommand_name() -> &'static str {
+        "images"
+    }
+
+    fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
-    fn get_config_mut(&mut self) -> &mut ComposeConfig {
+    fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "images"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -202,19 +210,19 @@ impl ComposeCommand for ComposeImagesCommand {
 }
 
 impl ComposeImagesResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get parsed image information
+    /// Gets parsed image information.
     #[must_use]
     pub fn images(&self) -> &[ImageInfo] {
         &self.images
     }
 
-    /// Get the services that were queried
+    /// Gets the services that were queried.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services

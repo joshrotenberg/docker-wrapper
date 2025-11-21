@@ -1,38 +1,41 @@
 //! Docker Compose restart command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 use std::time::Duration;
 
-/// Docker Compose restart command builder
+/// Docker Compose restart command builder.
 #[derive(Debug, Clone)]
 pub struct ComposeRestartCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Services to restart (empty for all)
+    /// Services to restart (empty for all).
     pub services: Vec<String>,
-    /// Timeout for stopping containers before restarting
+    /// Timeout for stopping containers before restarting.
     pub timeout: Option<Duration>,
 }
 
-/// Result from compose restart command
+/// Result from compose restart command.
 #[derive(Debug, Clone)]
 pub struct ComposeRestartResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services that were restarted
+    /// Services that were restarted.
     pub services: Vec<String>,
 }
 
 impl ComposeRestartCommand {
-    /// Create a new compose restart command
+    /// Creates a new compose restart command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -43,14 +46,14 @@ impl ComposeRestartCommand {
         }
     }
 
-    /// Add a service to restart
+    /// Adds a service to restart.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services to restart
+    /// Adds multiple services to restart.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -61,7 +64,7 @@ impl ComposeRestartCommand {
         self
     }
 
-    /// Set the timeout for stopping containers before restarting
+    /// Sets the timeout for stopping containers before restarting.
     #[must_use]
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
@@ -79,6 +82,10 @@ impl Default for ComposeRestartCommand {
 impl DockerCommand for ComposeRestartCommand {
     type Output = ComposeRestartResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -88,7 +95,6 @@ impl DockerCommand for ComposeRestartCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -106,16 +112,16 @@ impl DockerCommand for ComposeRestartCommand {
 }
 
 impl ComposeCommand for ComposeRestartCommand {
+    fn subcommand_name() -> &'static str {
+        "restart"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
     fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "restart"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -126,7 +132,7 @@ impl ComposeCommand for ComposeRestartCommand {
             args.push(timeout.as_secs().to_string());
         }
 
-        // Add service names at the end
+        // add service names at the end
         args.extend(self.services.clone());
 
         args
@@ -134,13 +140,13 @@ impl ComposeCommand for ComposeRestartCommand {
 }
 
 impl ComposeRestartResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services that were restarted
+    /// Gets the services that were restarted.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services

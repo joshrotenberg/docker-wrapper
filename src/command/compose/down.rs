@@ -1,35 +1,38 @@
 //! Docker Compose down command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 use std::time::Duration;
 
-/// Docker Compose down command builder
+/// Docker Compose down command builder.
 #[derive(Debug, Clone)]
 pub struct ComposeDownCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Remove images
+    /// Removes images.
     pub remove_images: Option<RemoveImages>,
-    /// Remove named volumes
+    /// Removes named volumes.
     pub volumes: bool,
-    /// Remove orphan containers
+    /// Removes orphan containers.
     pub remove_orphans: bool,
-    /// Timeout for container shutdown
+    /// Timeout for container shutdown.
     pub timeout: Option<Duration>,
-    /// Services to stop (empty for all)
+    /// Services to stop (empty for all).
     pub services: Vec<String>,
 }
 
-/// Image removal options for compose down
+/// Image removal options for compose down.
 #[derive(Debug, Clone, Copy)]
 pub enum RemoveImages {
-    /// Remove all images used by services
+    /// Removes all images used by services.
     All,
-    /// Remove only images that don't have a custom tag
+    /// Removes only images that don't have a custom tag.
     Local,
 }
 
@@ -42,23 +45,23 @@ impl std::fmt::Display for RemoveImages {
     }
 }
 
-/// Result from compose down command
+/// Result from compose down command.
 #[derive(Debug, Clone)]
 pub struct ComposeDownResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Whether volumes were removed
+    /// Whether volumes were removed.
     pub removed_volumes: bool,
-    /// Whether images were removed
+    /// Whether images were removed.
     pub removed_images: bool,
 }
 
 impl ComposeDownCommand {
-    /// Create a new compose down command
+    /// Creates a new compose down command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -72,42 +75,42 @@ impl ComposeDownCommand {
         }
     }
 
-    /// Remove images (all or local)
+    /// Removes images (all or local).
     #[must_use]
     pub fn remove_images(mut self, policy: RemoveImages) -> Self {
         self.remove_images = Some(policy);
         self
     }
 
-    /// Remove named volumes declared in the volumes section
+    /// Removes named volumes declared in the volumes section.
     #[must_use]
     pub fn volumes(mut self) -> Self {
         self.volumes = true;
         self
     }
 
-    /// Remove containers for services not defined in the compose file
+    /// Removes containers for services not defined in the compose file.
     #[must_use]
     pub fn remove_orphans(mut self) -> Self {
         self.remove_orphans = true;
         self
     }
 
-    /// Set timeout for container shutdown
+    /// Sets timeout for container shutdown.
     #[must_use]
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
 
-    /// Add a service to stop
+    /// Adds a service to stop.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services
+    /// Adds multiple services.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -129,6 +132,10 @@ impl Default for ComposeDownCommand {
 impl DockerCommand for ComposeDownCommand {
     type Output = ComposeDownResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -138,7 +145,6 @@ impl DockerCommand for ComposeDownCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -157,16 +163,16 @@ impl DockerCommand for ComposeDownCommand {
 }
 
 impl ComposeCommand for ComposeDownCommand {
+    fn subcommand_name() -> &'static str {
+        "down"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
     fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "down"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -190,7 +196,7 @@ impl ComposeCommand for ComposeDownCommand {
             args.push(timeout.as_secs().to_string());
         }
 
-        // Add service names at the end
+        // add service names at the end
         args.extend(self.services.clone());
 
         args
@@ -198,19 +204,19 @@ impl ComposeCommand for ComposeDownCommand {
 }
 
 impl ComposeDownResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Check if volumes were removed
+    /// Checks if volumes were removed.
     #[must_use]
     pub fn volumes_removed(&self) -> bool {
         self.removed_volumes
     }
 
-    /// Check if images were removed
+    /// Checks if images were removed.
     #[must_use]
     pub fn images_removed(&self) -> bool {
         self.removed_images

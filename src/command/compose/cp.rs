@@ -1,45 +1,48 @@
 //! Docker Compose cp command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 
-/// Docker Compose cp command builder
+/// Docker Compose cp command builder.
 #[derive(Debug, Clone)]
 pub struct ComposeCpCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Source path (can be service:path or local path)
+    /// Source path (can be service:path or local path).
     pub source: String,
-    /// Destination path (can be service:path or local path)  
+    /// Destination path (can be service:path or local path).
     pub destination: String,
-    /// Archive mode (preserve permissions)
+    /// Archive mode (preserve permissions).
     pub archive: bool,
-    /// Follow symbolic links
+    /// Follows symbolic links.
     pub follow_link: bool,
-    /// Index of the container (if service has multiple instances)
+    /// Index of the container (if service has multiple instances).
     pub index: Option<u32>,
 }
 
-/// Result from compose cp command
+/// Result from compose cp command.
 #[derive(Debug, Clone)]
 pub struct ComposeCpResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Source path used
+    /// Source path used.
     pub source: String,
-    /// Destination path used
+    /// Destination path used.
     pub destination: String,
 }
 
 impl ComposeCpCommand {
-    /// Create a new compose cp command
+    /// Creates a new compose cp command.
     #[must_use]
     pub fn new(source: impl Into<String>, destination: impl Into<String>) -> Self {
         Self {
@@ -53,21 +56,21 @@ impl ComposeCpCommand {
         }
     }
 
-    /// Enable archive mode (preserve permissions and ownership)
+    /// Enables archive mode (preserves permissions and ownership).
     #[must_use]
     pub fn archive(mut self) -> Self {
         self.archive = true;
         self
     }
 
-    /// Follow symbolic links in source path
+    /// Follows symbolic links in source path.
     #[must_use]
     pub fn follow_link(mut self) -> Self {
         self.follow_link = true;
         self
     }
 
-    /// Set container index if service has multiple instances
+    /// Sets container index if service has multiple instances.
     #[must_use]
     pub fn index(mut self, index: u32) -> Self {
         self.index = Some(index);
@@ -79,11 +82,15 @@ impl ComposeCpCommand {
 impl DockerCommand for ComposeCpCommand {
     type Output = ComposeCpResult;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -106,16 +113,16 @@ impl DockerCommand for ComposeCpCommand {
 }
 
 impl ComposeCommand for ComposeCpCommand {
-    fn get_config(&self) -> &ComposeConfig {
+    fn subcommand_name() -> &'static str {
+        "cp"
+    }
+
+    fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
-    fn get_config_mut(&mut self) -> &mut ComposeConfig {
+    fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "cp"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -142,19 +149,19 @@ impl ComposeCommand for ComposeCpCommand {
 }
 
 impl ComposeCpResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the source path used
+    /// Gets the source path used.
     #[must_use]
     pub fn source(&self) -> &str {
         &self.source
     }
 
-    /// Get the destination path used
+    /// Gets the destination path used.
     #[must_use]
     pub fn destination(&self) -> &str {
         &self.destination

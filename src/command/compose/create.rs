@@ -1,43 +1,47 @@
 //! Docker Compose create command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 
-/// Docker Compose create command builder
+/// Docker Compose create command builder.
 #[derive(Debug, Clone)]
-#[allow(clippy::struct_excessive_bools)] // Multiple boolean flags are appropriate for create command
+#[allow(clippy::struct_excessive_bools)] // multiple boolean flags are appropriate for create command
 pub struct ComposeCreateCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Build images before creating containers
+    /// Builds images before creating containers.
     pub build: bool,
-    /// Don't build images, even if missing
+    /// Doesn't build images, even if missing.
     pub no_build: bool,
-    /// Force recreate containers
+    /// Force recreates containers.
     pub force_recreate: bool,
-    /// Don't recreate containers if they exist
+    /// Doesn't recreate containers if they exist.
     pub no_recreate: bool,
-    /// Pull images before creating
+    /// Image pulling policy.
     pub pull: Option<PullPolicy>,
-    /// Remove orphaned containers
+    /// Removes orphaned containers.
     pub remove_orphans: bool,
-    /// Services to create (empty for all)
+    /// Services to create (empty for all).
     pub services: Vec<String>,
 }
 
-/// Pull policy for images
-#[derive(Debug, Clone, Copy)]
+/// Image pulling policy.
+#[derive(Debug, Default, Clone, Copy)]
 pub enum PullPolicy {
-    /// Always pull images
+    /// Always pulls images.
     Always,
-    /// Never pull images
+    /// Never pulls images.
     Never,
-    /// Pull missing images (default)
+    /// Pulls missing images (default).
+    #[default]
     Missing,
-    /// Pull images if local is older
+    /// Pulls images if local is older.
     Build,
 }
 
@@ -52,21 +56,21 @@ impl std::fmt::Display for PullPolicy {
     }
 }
 
-/// Result from compose create command
+/// Result from compose create command.
 #[derive(Debug, Clone)]
 pub struct ComposeCreateResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services that were created
+    /// Services that were created.
     pub services: Vec<String>,
 }
 
 impl ComposeCreateCommand {
-    /// Create a new compose create command
+    /// Creates a new compose create command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -82,56 +86,56 @@ impl ComposeCreateCommand {
         }
     }
 
-    /// Build images before creating containers
+    /// Builds images before creating containers.
     #[must_use]
     pub fn build(mut self) -> Self {
         self.build = true;
         self
     }
 
-    /// Don't build images, even if missing
+    /// Doesn't build images, even if missing.
     #[must_use]
     pub fn no_build(mut self) -> Self {
         self.no_build = true;
         self
     }
 
-    /// Force recreate containers
+    /// Force recreates containers.
     #[must_use]
     pub fn force_recreate(mut self) -> Self {
         self.force_recreate = true;
         self
     }
 
-    /// Don't recreate containers if they exist
+    /// Doesn't recreate containers if they exist.
     #[must_use]
     pub fn no_recreate(mut self) -> Self {
         self.no_recreate = true;
         self
     }
 
-    /// Set pull policy
+    /// Sets pull policy.
     #[must_use]
     pub fn pull(mut self, policy: PullPolicy) -> Self {
         self.pull = Some(policy);
         self
     }
 
-    /// Remove orphaned containers
+    /// Removes orphaned containers.
     #[must_use]
     pub fn remove_orphans(mut self) -> Self {
         self.remove_orphans = true;
         self
     }
 
-    /// Add a service to create
+    /// Adds a service to create.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services to create
+    /// Adds multiple services to create.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -153,6 +157,10 @@ impl Default for ComposeCreateCommand {
 impl DockerCommand for ComposeCreateCommand {
     type Output = ComposeCreateResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -162,7 +170,6 @@ impl DockerCommand for ComposeCreateCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -180,16 +187,16 @@ impl DockerCommand for ComposeCreateCommand {
 }
 
 impl ComposeCommand for ComposeCreateCommand {
+    fn subcommand_name() -> &'static str {
+        "create"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
     fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "create"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -215,13 +222,13 @@ impl ComposeCommand for ComposeCreateCommand {
             args.push("--remove-orphans".to_string());
         }
 
-        // Add pull policy
+        // add pull policy
         if let Some(pull) = self.pull {
             args.push("--pull".to_string());
             args.push(pull.to_string());
         }
 
-        // Add service names at the end
+        // add service names at the end
         args.extend(self.services.clone());
 
         args
@@ -229,13 +236,13 @@ impl ComposeCommand for ComposeCreateCommand {
 }
 
 impl ComposeCreateResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services that were created
+    /// Gets the services that were created.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services

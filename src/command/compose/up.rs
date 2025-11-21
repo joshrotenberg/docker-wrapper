@@ -1,66 +1,70 @@
 //! Docker Compose up command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 use std::time::Duration;
 
-/// Docker Compose up command builder
+/// Docker Compose up command builder.
 #[derive(Debug, Clone)]
-#[allow(clippy::struct_excessive_bools)] // Multiple boolean flags are needed for compose up options
+#[allow(clippy::struct_excessive_bools)] // multiple boolean flags are needed for compose up options
 pub struct ComposeUpCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Services to start (empty for all)
+    /// Services to start (empty for all).
     pub services: Vec<String>,
-    /// Run in detached mode
+    /// Runs in detached mode.
     pub detach: bool,
-    /// Don't start linked services
+    /// Doesn't start linked services.
     pub no_deps: bool,
-    /// Force recreate containers
+    /// Force recreates containers.
     pub force_recreate: bool,
-    /// Recreate containers even if configuration unchanged
+    /// Recreates containers even if configuration unchanged.
     pub always_recreate_deps: bool,
-    /// Don't recreate containers
+    /// Doesn't recreate containers.
     pub no_recreate: bool,
-    /// Don't build images
+    /// Doesn't build images.
     pub no_build: bool,
-    /// Don't start services
+    /// Doesn't start services.
     pub no_start: bool,
-    /// Build images before starting
+    /// Builds images before starting.
     pub build: bool,
-    /// Remove orphan containers
+    /// Removes orphan containers.
     pub remove_orphans: bool,
-    /// Scale SERVICE to NUM instances
+    /// Scales SERVICE to NUM instances.
     pub scale: Vec<(String, u32)>,
-    /// Timeout for container shutdown
+    /// Timeout for container shutdown.
     pub timeout: Option<Duration>,
-    /// Exit code from first container that stops
+    /// Exit code from first container that stops.
     pub exit_code_from: Option<String>,
-    /// Abort if containers are stopped
+    /// Aborts if containers are stopped.
     pub abort_on_container_exit: bool,
-    /// Attach to dependent containers
+    /// Attaches to dependent containers.
     pub attach_dependencies: bool,
-    /// Recreate anonymous volumes
+    /// Recreates anonymous volumes.
     pub renew_anon_volumes: bool,
-    /// Wait for services to be healthy
+    /// Waits for services to be healthy.
     pub wait: bool,
-    /// Maximum wait timeout
+    /// Maximum wait timeout.
     pub wait_timeout: Option<Duration>,
-    /// Pull image policy
+    /// Image pulling policy.
     pub pull: Option<PullPolicy>,
 }
 
-/// Image pull policy
-#[derive(Debug, Clone, Copy)]
+/// Image pulling policy
+#[derive(Debug, Default, Clone, Copy)]
 pub enum PullPolicy {
-    /// Always pull images
+    /// Always pulls images.
     Always,
-    /// Never pull images
+    /// Never pulls images.
     Never,
-    /// Pull missing images (default)
+    /// Pulls missing images (default).
+    #[default]
     Missing,
 }
 
@@ -74,23 +78,23 @@ impl std::fmt::Display for PullPolicy {
     }
 }
 
-/// Result from compose up command
+/// Result from compose up command.
 #[derive(Debug, Clone)]
 pub struct ComposeUpResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services that were started
+    /// Services that were started.
     pub services: Vec<String>,
-    /// Whether running in detached mode
+    /// Whether running in detached mode.
     pub detached: bool,
 }
 
 impl ComposeUpCommand {
-    /// Create a new compose up command
+    /// Creates a new compose up command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -118,14 +122,14 @@ impl ComposeUpCommand {
         }
     }
 
-    /// Add a service to start
+    /// Adds a service to start.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services
+    /// Adds multiple services.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -136,126 +140,126 @@ impl ComposeUpCommand {
         self
     }
 
-    /// Run in detached mode
+    /// Runs in detached mode.
     #[must_use]
     pub fn detach(mut self) -> Self {
         self.detach = true;
         self
     }
 
-    /// Don't start linked services
+    /// Doesn't start linked services.
     #[must_use]
     pub fn no_deps(mut self) -> Self {
         self.no_deps = true;
         self
     }
 
-    /// Force recreate containers
+    /// Force recreates containers.
     #[must_use]
     pub fn force_recreate(mut self) -> Self {
         self.force_recreate = true;
         self
     }
 
-    /// Always recreate dependent containers
+    /// Always recreates dependent containers.
     #[must_use]
     pub fn always_recreate_deps(mut self) -> Self {
         self.always_recreate_deps = true;
         self
     }
 
-    /// Don't recreate containers
+    /// Doesn't recreate containers.
     #[must_use]
     pub fn no_recreate(mut self) -> Self {
         self.no_recreate = true;
         self
     }
 
-    /// Don't build images
+    /// Doesn't build images.
     #[must_use]
     pub fn no_build(mut self) -> Self {
         self.no_build = true;
         self
     }
 
-    /// Don't start services after creating
+    /// Doesn't start services after creating.
     #[must_use]
     pub fn no_start(mut self) -> Self {
         self.no_start = true;
         self
     }
 
-    /// Build images before starting
+    /// Builds images before starting.
     #[must_use]
     pub fn build(mut self) -> Self {
         self.build = true;
         self
     }
 
-    /// Remove orphan containers
+    /// Removes orphan containers.
     #[must_use]
     pub fn remove_orphans(mut self) -> Self {
         self.remove_orphans = true;
         self
     }
 
-    /// Scale a service to a specific number of instances
+    /// Scales a service to a specific number of instances.
     #[must_use]
     pub fn scale(mut self, service: impl Into<String>, instances: u32) -> Self {
         self.scale.push((service.into(), instances));
         self
     }
 
-    /// Set timeout for container shutdown
+    /// Sets timeout for container shutdown.
     #[must_use]
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
 
-    /// Use exit code from specific container
+    /// Uses exit code from specific container.
     #[must_use]
     pub fn exit_code_from(mut self, service: impl Into<String>) -> Self {
         self.exit_code_from = Some(service.into());
         self
     }
 
-    /// Abort when containers stop
+    /// Aborts when containers stop.
     #[must_use]
     pub fn abort_on_container_exit(mut self) -> Self {
         self.abort_on_container_exit = true;
         self
     }
 
-    /// Attach to dependent containers
+    /// Attaches to dependent containers.
     #[must_use]
     pub fn attach_dependencies(mut self) -> Self {
         self.attach_dependencies = true;
         self
     }
 
-    /// Recreate anonymous volumes
+    /// Recreates anonymous volumes.
     #[must_use]
     pub fn renew_anon_volumes(mut self) -> Self {
         self.renew_anon_volumes = true;
         self
     }
 
-    /// Wait for services to be running/healthy
+    /// Waits for services to be running/healthy.
     #[must_use]
     pub fn wait(mut self) -> Self {
         self.wait = true;
         self
     }
 
-    /// Set maximum wait timeout
+    /// Sets maximum wait timeout.
     #[must_use]
     pub fn wait_timeout(mut self, timeout: Duration) -> Self {
         self.wait_timeout = Some(timeout);
         self
     }
 
-    /// Set pull policy
+    /// Sets image pulling policy.
     #[must_use]
     pub fn pull(mut self, policy: PullPolicy) -> Self {
         self.pull = Some(policy);
@@ -273,6 +277,10 @@ impl Default for ComposeUpCommand {
 impl DockerCommand for ComposeUpCommand {
     type Output = ComposeUpResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -282,7 +290,6 @@ impl DockerCommand for ComposeUpCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -301,16 +308,16 @@ impl DockerCommand for ComposeUpCommand {
 }
 
 impl ComposeCommand for ComposeUpCommand {
+    fn subcommand_name() -> &'static str {
+        "up"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
     fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "up"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -393,7 +400,7 @@ impl ComposeCommand for ComposeUpCommand {
             args.push(pull.to_string());
         }
 
-        // Add service names at the end
+        // add service names at the end
         args.extend(self.services.clone());
 
         args
@@ -401,19 +408,19 @@ impl ComposeCommand for ComposeUpCommand {
 }
 
 impl ComposeUpResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services that were started
+    /// Gets the services that were started.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services
     }
 
-    /// Check if running in detached mode
+    /// Checks if running in detached mode.
     #[must_use]
     pub fn is_detached(&self) -> bool {
         self.detached

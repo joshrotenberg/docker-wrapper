@@ -1,29 +1,33 @@
 //! Docker Compose version command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 use serde::Deserialize;
 
-/// Docker Compose version command builder
+/// Docker Compose version command builder.
 #[derive(Debug, Clone)]
 pub struct ComposeVersionCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Format output (pretty, json)
+    /// Format output (pretty, json).
     pub format: Option<VersionFormat>,
-    /// Short output
+    /// Short output.
     pub short: bool,
 }
 
-/// Version output format
-#[derive(Debug, Clone, Copy)]
+/// Version output format.
+#[derive(Debug, Default, Clone, Copy)]
 pub enum VersionFormat {
-    /// Pretty format (default)
+    /// Pretty format (default).
+    #[default]
     Pretty,
-    /// JSON format
+    /// JSON format.
     Json,
 }
 
@@ -36,29 +40,29 @@ impl std::fmt::Display for VersionFormat {
     }
 }
 
-/// Version information from JSON output
+/// Version information from JSON output.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct VersionInfo {
-    /// Compose version
+    /// Compose version.
     pub version: String,
 }
 
-/// Result from compose version command
+/// Result from compose version command.
 #[derive(Debug, Clone)]
 pub struct ComposeVersionResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Parsed version information (if JSON format)
+    /// Parsed version information (if JSON format).
     pub version_info: Option<VersionInfo>,
 }
 
 impl ComposeVersionCommand {
-    /// Create a new compose version command
+    /// Creates a new compose version command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -69,28 +73,28 @@ impl ComposeVersionCommand {
         }
     }
 
-    /// Set output format
+    /// Sets output format.
     #[must_use]
     pub fn format(mut self, format: VersionFormat) -> Self {
         self.format = Some(format);
         self
     }
 
-    /// Set output format to JSON
+    /// Sets output format to JSON.
     #[must_use]
     pub fn format_json(mut self) -> Self {
         self.format = Some(VersionFormat::Json);
         self
     }
 
-    /// Set output format to pretty
+    /// Sets output format to pretty.
     #[must_use]
     pub fn format_pretty(mut self) -> Self {
         self.format = Some(VersionFormat::Pretty);
         self
     }
 
-    /// Enable short output
+    /// Enables short output.
     #[must_use]
     pub fn short(mut self) -> Self {
         self.short = true;
@@ -106,18 +110,20 @@ impl Default for ComposeVersionCommand {
 
 #[async_trait]
 impl DockerCommand for ComposeVersionCommand {
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
     type Output = ComposeVersionResult;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -125,7 +131,7 @@ impl DockerCommand for ComposeVersionCommand {
         let args = <Self as ComposeCommand>::build_command_args(self);
         let output = self.execute_command(args).await?;
 
-        // Parse JSON output if format is JSON
+        // parses JSON output if format is JSON
         let version_info = if matches!(self.format, Some(VersionFormat::Json)) {
             serde_json::from_str(&output.stdout).ok()
         } else {
@@ -142,16 +148,16 @@ impl DockerCommand for ComposeVersionCommand {
 }
 
 impl ComposeCommand for ComposeVersionCommand {
-    fn get_config(&self) -> &ComposeConfig {
+    fn subcommand_name() -> &'static str {
+        "version"
+    }
+
+    fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
-    fn get_config_mut(&mut self) -> &mut ComposeConfig {
+    fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "version"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -171,25 +177,25 @@ impl ComposeCommand for ComposeVersionCommand {
 }
 
 impl ComposeVersionResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get parsed version information (if JSON format was used)
+    /// Gets parsed version information (if JSON format was used).
     #[must_use]
     pub fn version_info(&self) -> Option<&VersionInfo> {
         self.version_info.as_ref()
     }
 
-    /// Get the version string (from parsed info or raw output)
+    /// Gets the version string (from parsed info or raw output).
     #[must_use]
     pub fn version_string(&self) -> Option<String> {
         if let Some(info) = &self.version_info {
             Some(info.version.clone())
         } else {
-            // Try to extract version from raw output
+            // tries to extract version from raw output
             self.stdout
                 .lines()
                 .find(|line| line.contains("version"))

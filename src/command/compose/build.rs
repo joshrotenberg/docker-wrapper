@@ -1,46 +1,50 @@
 //! Docker Compose build command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
-/// Docker Compose build command builder
+/// Docker Compose build command builder.
 #[derive(Debug, Clone)]
-#[allow(clippy::struct_excessive_bools)] // Multiple boolean flags are appropriate for build command
+#[allow(clippy::struct_excessive_bools)] // multiple boolean flags are appropriate for build command
 pub struct ComposeBuildCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Services to build (empty for all)
+    /// Services to build (empty for all).
     pub services: Vec<String>,
-    /// Do not use cache when building the image
+    /// Doesn't use cache when building the image.
     pub no_cache: bool,
-    /// Always attempt to pull a newer version of the image
+    /// Always attempts to pull a newer version of the image.
     pub pull: bool,
-    /// Don't print anything to stdout
+    /// Doesn't print anything to stdout.
     pub quiet: bool,
-    /// Set build-time variables
+    /// Sets build-time variables.
     pub build_args: HashMap<String, String>,
-    /// Build images in parallel
+    /// Builds images in parallel.
     pub parallel: bool,
-    /// Amount of memory for builds
+    /// Amount of memory for builds.
     pub memory: Option<String>,
-    /// Build with `BuildKit` progress output
+    /// Builds with `BuildKit` progress output.
     pub progress: Option<ProgressOutput>,
-    /// Set the SSH agent socket or key
+    /// Sets the SSH agent socket or key.
     pub ssh: Option<String>,
 }
 
-/// Build progress output type
-#[derive(Debug, Clone, Copy)]
+/// Build progress output type.
+#[derive(Debug, Default, Clone, Copy)]
 pub enum ProgressOutput {
-    /// Auto-detect
+    /// Auto-detects progress type.
+    #[default]
     Auto,
-    /// Plain text progress
+    /// Plain text progress.
     Plain,
-    /// TTY progress
+    /// TTY progress.
     Tty,
 }
 
@@ -54,21 +58,21 @@ impl std::fmt::Display for ProgressOutput {
     }
 }
 
-/// Result from compose build command
+/// Result from compose build command.
 #[derive(Debug, Clone)]
 pub struct ComposeBuildResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services that were built
+    /// Services that were built.
     pub services: Vec<String>,
 }
 
 impl ComposeBuildCommand {
-    /// Create a new compose build command
+    /// Creates a new compose build command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -86,14 +90,14 @@ impl ComposeBuildCommand {
         }
     }
 
-    /// Add a service to build
+    /// Adds a service to build.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services
+    /// Adds multiple services.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -104,63 +108,63 @@ impl ComposeBuildCommand {
         self
     }
 
-    /// Do not use cache when building the image
+    /// Doesn't use cache when building the image.
     #[must_use]
     pub fn no_cache(mut self) -> Self {
         self.no_cache = true;
         self
     }
 
-    /// Always attempt to pull a newer version of the image
+    /// Always attempts to pull a newer version of the image.
     #[must_use]
     pub fn pull(mut self) -> Self {
         self.pull = true;
         self
     }
 
-    /// Don't print anything to stdout
+    /// Doesn't print anything to stdout.
     #[must_use]
     pub fn quiet(mut self) -> Self {
         self.quiet = true;
         self
     }
 
-    /// Add a build-time variable
+    /// Adds a build-time variable.
     #[must_use]
     pub fn build_arg(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.build_args.insert(key.into(), value.into());
         self
     }
 
-    /// Add multiple build-time variables
+    /// Adds multiple build-time variables.
     #[must_use]
     pub fn build_args(mut self, args: HashMap<String, String>) -> Self {
         self.build_args.extend(args);
         self
     }
 
-    /// Build images in parallel
+    /// Builds images in parallel.
     #[must_use]
     pub fn parallel(mut self) -> Self {
         self.parallel = true;
         self
     }
 
-    /// Set memory limit for builds
+    /// Sets memory limit for builds.
     #[must_use]
     pub fn memory(mut self, memory: impl Into<String>) -> Self {
         self.memory = Some(memory.into());
         self
     }
 
-    /// Set progress output type
+    /// Sets progress output type.
     #[must_use]
     pub fn progress(mut self, progress: ProgressOutput) -> Self {
         self.progress = Some(progress);
         self
     }
 
-    /// Set SSH agent socket or key
+    /// Sets SSH agent socket or key.
     #[must_use]
     pub fn ssh(mut self, ssh: impl Into<String>) -> Self {
         self.ssh = Some(ssh.into());
@@ -178,6 +182,10 @@ impl Default for ComposeBuildCommand {
 impl DockerCommand for ComposeBuildCommand {
     type Output = ComposeBuildResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -187,7 +195,6 @@ impl DockerCommand for ComposeBuildCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -205,16 +212,16 @@ impl DockerCommand for ComposeBuildCommand {
 }
 
 impl ComposeCommand for ComposeBuildCommand {
+    fn subcommand_name() -> &'static str {
+        "build"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
     fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "build"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -236,31 +243,31 @@ impl ComposeCommand for ComposeBuildCommand {
             args.push("--parallel".to_string());
         }
 
-        // Add build args
+        // add build args
         for (key, value) in &self.build_args {
             args.push("--build-arg".to_string());
             args.push(format!("{key}={value}"));
         }
 
-        // Add memory limit
+        // add memory limit
         if let Some(ref memory) = self.memory {
             args.push("--memory".to_string());
             args.push(memory.clone());
         }
 
-        // Add progress output
+        // add progress output
         if let Some(progress) = self.progress {
             args.push("--progress".to_string());
             args.push(progress.to_string());
         }
 
-        // Add SSH configuration
+        // add SSH configuration
         if let Some(ref ssh) = self.ssh {
             args.push("--ssh".to_string());
             args.push(ssh.clone());
         }
 
-        // Add service names at the end
+        // add service names at the end
         args.extend(self.services.clone());
 
         args
@@ -268,13 +275,13 @@ impl ComposeCommand for ComposeBuildCommand {
 }
 
 impl ComposeBuildResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services that were built
+    /// Gets the services that were built.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services

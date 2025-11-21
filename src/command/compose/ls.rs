@@ -1,40 +1,44 @@
 //! Docker Compose ls command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 use serde::Deserialize;
 
-/// Docker Compose ls command
+/// Docker Compose ls command.
 ///
-/// List running compose projects.
+/// Lists running compose projects.
 #[derive(Debug, Clone, Default)]
 pub struct ComposeLsCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Show all projects (including stopped)
+    /// Shows all projects (including stopped).
     pub all: bool,
-    /// Filter by name
+    /// Filters by name.
     pub filter: Option<String>,
-    /// Format output (table, json)
+    /// Formats output (table, json).
     pub format: Option<LsFormat>,
-    /// Only display project names
+    /// Only displays project names.
     pub quiet: bool,
 }
 
-/// Ls output format
-#[derive(Debug, Clone, Copy)]
+/// Ls output format.
+#[derive(Debug, Default, Clone, Copy)]
 pub enum LsFormat {
-    /// Table format (default)
+    /// Table format (default).
+    #[default]
     Table,
-    /// JSON format
+    /// JSON format.
     Json,
 }
 
 impl LsFormat {
-    /// Convert to command line argument
+    /// Converts to command line argument.
     #[must_use]
     pub fn as_arg(&self) -> &str {
         match self {
@@ -44,33 +48,33 @@ impl LsFormat {
     }
 }
 
-/// Compose project information
+/// Compose project information.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct ComposeProject {
-    /// Project name
+    /// Project name.
     pub name: String,
-    /// Status
+    /// Status.
     pub status: String,
-    /// Configuration files
+    /// Configuration files.
     #[serde(default)]
     pub config_files: String,
-    /// Created timestamp
+    /// Created timestamp.
     #[serde(default)]
     pub created: String,
 }
 
-/// Result from ls command
+/// Result from ls command.
 #[derive(Debug, Clone)]
 pub struct LsResult {
-    /// List of compose projects
+    /// List of compose projects.
     pub projects: Vec<ComposeProject>,
-    /// Raw output (for non-JSON formats)
+    /// Raw output (for non-JSON formats).
     pub raw_output: String,
 }
 
 impl ComposeLsCommand {
-    /// Create a new ls command
+    /// Creates a new ls command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -80,35 +84,35 @@ impl ComposeLsCommand {
         }
     }
 
-    /// Show all projects
+    /// Shows all projects.
     #[must_use]
     pub fn all(mut self) -> Self {
         self.all = true;
         self
     }
 
-    /// Filter projects
+    /// Filters projects.
     #[must_use]
     pub fn filter(mut self, filter: impl Into<String>) -> Self {
         self.filter = Some(filter.into());
         self
     }
 
-    /// Set output format
+    /// Sets output format.
     #[must_use]
     pub fn format(mut self, format: LsFormat) -> Self {
         self.format = Some(format);
         self
     }
 
-    /// Set output format to JSON
+    /// Sets output format to JSON.
     #[must_use]
     pub fn format_json(mut self) -> Self {
         self.format = Some(LsFormat::Json);
         self
     }
 
-    /// Only display project names
+    /// Only displays project names.
     #[must_use]
     pub fn quiet(mut self) -> Self {
         self.quiet = true;
@@ -120,6 +124,10 @@ impl ComposeLsCommand {
 impl DockerCommand for ComposeLsCommand {
     type Output = LsResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -129,7 +137,6 @@ impl DockerCommand for ComposeLsCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -137,7 +144,7 @@ impl DockerCommand for ComposeLsCommand {
         let args = <Self as ComposeCommand>::build_command_args(self);
         let output = self.execute_command(args).await?;
 
-        // Parse JSON output if format is JSON
+        // parses JSON output if format is JSON
         let projects = if matches!(self.format, Some(LsFormat::Json)) {
             serde_json::from_str(&output.stdout).unwrap_or_default()
         } else {
@@ -152,6 +159,10 @@ impl DockerCommand for ComposeLsCommand {
 }
 
 impl ComposeCommand for ComposeLsCommand {
+    fn subcommand_name() -> &'static str {
+        "ls"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
@@ -160,14 +171,10 @@ impl ComposeCommand for ComposeLsCommand {
         &mut self.config
     }
 
-    fn subcommand(&self) -> &'static str {
-        "ls"
-    }
-
     fn build_subcommand_args(&self) -> Vec<String> {
         let mut args = Vec::new();
 
-        // Add flags
+        // add flags
         if self.all {
             args.push("--all".to_string());
         }
@@ -175,13 +182,13 @@ impl ComposeCommand for ComposeLsCommand {
             args.push("--quiet".to_string());
         }
 
-        // Add filter
+        // add filter
         if let Some(filter) = &self.filter {
             args.push("--filter".to_string());
             args.push(filter.clone());
         }
 
-        // Add format
+        // add format
         if let Some(format) = &self.format {
             args.push("--format".to_string());
             args.push(format.as_arg().to_string());
@@ -192,19 +199,19 @@ impl ComposeCommand for ComposeLsCommand {
 }
 
 impl LsResult {
-    /// Get project names
+    /// Gets project names.
     #[must_use]
     pub fn project_names(&self) -> Vec<String> {
         self.projects.iter().map(|p| p.name.clone()).collect()
     }
 
-    /// Check if a project exists
+    /// Checks if a project exists.
     #[must_use]
     pub fn has_project(&self, name: &str) -> bool {
         self.projects.iter().any(|p| p.name == name)
     }
 
-    /// Get running projects
+    /// Gets running projects.
     #[must_use]
     pub fn running_projects(&self) -> Vec<&ComposeProject> {
         self.projects
@@ -222,7 +229,7 @@ mod tests {
     fn test_ls_command_basic() {
         let cmd = ComposeLsCommand::new();
         let _args = cmd.build_subcommand_args();
-        // No specific args for basic command
+        // no specific args for basic command
 
         let full_args = ComposeCommand::build_command_args(&cmd);
         assert_eq!(full_args[0], "compose");

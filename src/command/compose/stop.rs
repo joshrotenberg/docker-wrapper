@@ -1,38 +1,41 @@
 //! Docker Compose stop command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 use std::time::Duration;
 
-/// Docker Compose stop command builder
+/// Docker Compose stop command builder.
 #[derive(Debug, Clone)]
 pub struct ComposeStopCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Services to stop (empty for all)
+    /// Services to stop (empty for all).
     pub services: Vec<String>,
-    /// Timeout for stopping containers
+    /// Timeout for stopping containers.
     pub timeout: Option<Duration>,
 }
 
-/// Result from compose stop command
+/// Result from compose stop command.
 #[derive(Debug, Clone)]
 pub struct ComposeStopResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services that were stopped
+    /// Services that were stopped.
     pub services: Vec<String>,
 }
 
 impl ComposeStopCommand {
-    /// Create a new compose stop command
+    /// Creates a new compose stop command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -43,14 +46,14 @@ impl ComposeStopCommand {
         }
     }
 
-    /// Add a service to stop
+    /// Adds a service to stop.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services to stop
+    /// Adds multiple services to stop.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -61,7 +64,7 @@ impl ComposeStopCommand {
         self
     }
 
-    /// Set the timeout for stopping containers
+    /// Sets the timeout for stopping containers.
     #[must_use]
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
@@ -79,6 +82,10 @@ impl Default for ComposeStopCommand {
 impl DockerCommand for ComposeStopCommand {
     type Output = ComposeStopResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -88,7 +95,6 @@ impl DockerCommand for ComposeStopCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -106,16 +112,16 @@ impl DockerCommand for ComposeStopCommand {
 }
 
 impl ComposeCommand for ComposeStopCommand {
+    fn subcommand_name() -> &'static str {
+        "stop"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
     fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "stop"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -134,13 +140,13 @@ impl ComposeCommand for ComposeStopCommand {
 }
 
 impl ComposeStopResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services that were stopped
+    /// Gets the services that were stopped.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services

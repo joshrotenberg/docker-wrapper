@@ -1,35 +1,38 @@
 //! Docker Compose top command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 
-/// Docker Compose top command builder
+/// Docker Compose top command builder.
 #[derive(Debug, Clone)]
 pub struct ComposeTopCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Services to show processes for (empty for all)
+    /// Services to show processes for (empty for all).
     pub services: Vec<String>,
 }
 
-/// Result from compose top command
+/// Result from compose top command.
 #[derive(Debug, Clone)]
 pub struct ComposeTopResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services that were queried
+    /// Services that were queried.
     pub services: Vec<String>,
 }
 
 impl ComposeTopCommand {
-    /// Create a new compose top command
+    /// Creates a new compose top command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -39,14 +42,14 @@ impl ComposeTopCommand {
         }
     }
 
-    /// Add a service to show processes for
+    /// Adds a service to show processes for.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services to show processes for
+    /// Adds multiple services to show processes for.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -68,11 +71,15 @@ impl Default for ComposeTopCommand {
 impl DockerCommand for ComposeTopCommand {
     type Output = ComposeTopResult;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -94,16 +101,16 @@ impl DockerCommand for ComposeTopCommand {
 }
 
 impl ComposeCommand for ComposeTopCommand {
-    fn get_config(&self) -> &ComposeConfig {
+    fn subcommand_name() -> &'static str {
+        "top"
+    }
+
+    fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
-    fn get_config_mut(&mut self) -> &mut ComposeConfig {
+    fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "top"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -112,13 +119,13 @@ impl ComposeCommand for ComposeTopCommand {
 }
 
 impl ComposeTopResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services that were queried
+    /// Gets the services that were queried.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services

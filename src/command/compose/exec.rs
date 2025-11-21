@@ -1,59 +1,62 @@
 //! Docker Compose exec command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
-/// Docker Compose exec command builder
+/// Docker Compose exec command builder.
 #[derive(Debug, Clone)]
-#[allow(clippy::struct_excessive_bools)] // Multiple boolean flags are appropriate for exec command
+#[allow(clippy::struct_excessive_bools)] // multiple boolean flags are appropriate for exec command
 pub struct ComposeExecCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Service to execute command in
+    /// Service to execute command in.
     pub service: String,
-    /// Command and arguments to execute
+    /// Command and arguments to execute.
     pub command: Vec<String>,
-    /// Run in detached mode
+    /// Runs in detached mode.
     pub detach: bool,
-    /// Disable pseudo-TTY allocation
+    /// Disables pseudo-TTY allocation.
     pub no_tty: bool,
-    /// Keep STDIN open even if not attached
+    /// Keeps STDIN open even if not attached.
     pub interactive: bool,
-    /// Run as specified user
+    /// Runs as specified user.
     pub user: Option<String>,
-    /// Working directory inside the container
+    /// Working directory inside the container.
     pub workdir: Option<String>,
-    /// Set environment variables
+    /// Sets environment variables.
     pub env: HashMap<String, String>,
-    /// Container index (if service has multiple instances)
+    /// Container index (if service has multiple instances).
     pub index: Option<u32>,
-    /// Use privileged mode
+    /// Uses privileged mode.
     pub privileged: bool,
 }
 
-/// Result from compose exec command
+/// Result from compose exec command.
 #[derive(Debug, Clone)]
 pub struct ComposeExecResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Exit code from the command
+    /// Exit code from the command.
     pub exit_code: i32,
-    /// Service that the command was executed in
+    /// Service that the command was executed in.
     pub service: String,
-    /// Whether the command was run in detached mode
+    /// Whether the command was run in detached mode.
     pub detached: bool,
 }
 
 impl ComposeExecCommand {
-    /// Create a new compose exec command
+    /// Creates a new compose exec command.
     #[must_use]
     pub fn new(service: impl Into<String>) -> Self {
         Self {
@@ -72,7 +75,7 @@ impl ComposeExecCommand {
         }
     }
 
-    /// Set the command to execute
+    /// Sets the command to execute.
     #[must_use]
     pub fn cmd<I, S>(mut self, command: I) -> Self
     where
@@ -83,14 +86,14 @@ impl ComposeExecCommand {
         self
     }
 
-    /// Add a command argument
+    /// Adds a command argument.
     #[must_use]
     pub fn arg(mut self, arg: impl Into<String>) -> Self {
         self.command.push(arg.into());
         self
     }
 
-    /// Add multiple arguments
+    /// Adds multiple arguments.
     #[must_use]
     pub fn args<I, S>(mut self, args: I) -> Self
     where
@@ -101,63 +104,63 @@ impl ComposeExecCommand {
         self
     }
 
-    /// Run in detached mode
+    /// Runs in detached mode.
     #[must_use]
     pub fn detach(mut self) -> Self {
         self.detach = true;
         self
     }
 
-    /// Disable pseudo-TTY allocation
+    /// Disables pseudo-TTY allocation.
     #[must_use]
     pub fn no_tty(mut self) -> Self {
         self.no_tty = true;
         self
     }
 
-    /// Keep STDIN open even if not attached
+    /// Keeps STDIN open even if not attached.
     #[must_use]
     pub fn interactive(mut self) -> Self {
         self.interactive = true;
         self
     }
 
-    /// Run as specified user
+    /// Runs as specified user.
     #[must_use]
     pub fn user(mut self, user: impl Into<String>) -> Self {
         self.user = Some(user.into());
         self
     }
 
-    /// Set working directory inside the container
+    /// Sets working directory inside the container.
     #[must_use]
     pub fn workdir(mut self, workdir: impl Into<String>) -> Self {
         self.workdir = Some(workdir.into());
         self
     }
 
-    /// Set an environment variable
+    /// Sets an environment variable.
     #[must_use]
     pub fn env(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.env.insert(key.into(), value.into());
         self
     }
 
-    /// Set multiple environment variables
+    /// Sets multiple environment variables.
     #[must_use]
     pub fn envs(mut self, env_vars: HashMap<String, String>) -> Self {
         self.env.extend(env_vars);
         self
     }
 
-    /// Set container index (for services with multiple instances)
+    /// Sets container index (for services with multiple instances).
     #[must_use]
     pub fn index(mut self, index: u32) -> Self {
         self.index = Some(index);
         self
     }
 
-    /// Use privileged mode
+    /// Uses privileged mode.
     #[must_use]
     pub fn privileged(mut self) -> Self {
         self.privileged = true;
@@ -169,6 +172,10 @@ impl ComposeExecCommand {
 impl DockerCommand for ComposeExecCommand {
     type Output = ComposeExecResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -178,7 +185,6 @@ impl DockerCommand for ComposeExecCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -198,16 +204,16 @@ impl DockerCommand for ComposeExecCommand {
 }
 
 impl ComposeCommand for ComposeExecCommand {
+    fn subcommand_name() -> &'static str {
+        "exec"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
     fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "exec"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -225,25 +231,25 @@ impl ComposeCommand for ComposeExecCommand {
             args.push("--interactive".to_string());
         }
 
-        // Add user
+        // add user
         if let Some(ref user) = self.user {
             args.push("--user".to_string());
             args.push(user.clone());
         }
 
-        // Add working directory
+        // add working directory
         if let Some(ref workdir) = self.workdir {
             args.push("--workdir".to_string());
             args.push(workdir.clone());
         }
 
-        // Add environment variables
+        // add environment variables
         for (key, value) in &self.env {
             args.push("--env".to_string());
             args.push(format!("{key}={value}"));
         }
 
-        // Add container index
+        // add container index
         if let Some(index) = self.index {
             args.push("--index".to_string());
             args.push(index.to_string());
@@ -253,10 +259,10 @@ impl ComposeCommand for ComposeExecCommand {
             args.push("--privileged".to_string());
         }
 
-        // Add service name
+        // add service name
         args.push(self.service.clone());
 
-        // Add command and arguments
+        // add command and arguments
         args.extend(self.command.clone());
 
         args
@@ -264,25 +270,25 @@ impl ComposeCommand for ComposeExecCommand {
 }
 
 impl ComposeExecResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the exit code from the command
+    /// Gets the exit code from the command.
     #[must_use]
     pub fn exit_code(&self) -> i32 {
         self.exit_code
     }
 
-    /// Get the service that the command was executed in
+    /// Gets the service that the command was executed in.
     #[must_use]
     pub fn service(&self) -> &str {
         &self.service
     }
 
-    /// Check if the command was run in detached mode
+    /// Checks if the command was run in detached mode.
     #[must_use]
     pub fn is_detached(&self) -> bool {
         self.detached

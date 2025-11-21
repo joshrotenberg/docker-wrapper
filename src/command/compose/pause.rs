@@ -1,35 +1,38 @@
 //! Docker Compose pause command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 
-/// Docker Compose pause command builder
+/// Docker Compose pause command builder.
 #[derive(Debug, Clone)]
 pub struct ComposePauseCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Services to pause (empty for all)
+    /// Services to pause (empty for all).
     pub services: Vec<String>,
 }
 
-/// Result from compose pause command
+/// Result from compose pause command.
 #[derive(Debug, Clone)]
 pub struct ComposePauseResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services that were paused
+    /// Services that were paused.
     pub services: Vec<String>,
 }
 
 impl ComposePauseCommand {
-    /// Create a new compose pause command
+    /// Creates a new compose pause command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -39,14 +42,14 @@ impl ComposePauseCommand {
         }
     }
 
-    /// Add a service to pause
+    /// Adds a service to pause.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services to pause
+    /// Adds multiple services to pause.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -68,6 +71,10 @@ impl Default for ComposePauseCommand {
 impl DockerCommand for ComposePauseCommand {
     type Output = ComposePauseResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -77,7 +84,6 @@ impl DockerCommand for ComposePauseCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -95,6 +101,10 @@ impl DockerCommand for ComposePauseCommand {
 }
 
 impl ComposeCommand for ComposePauseCommand {
+    fn subcommand_name() -> &'static str {
+        "pause"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
@@ -103,24 +113,19 @@ impl ComposeCommand for ComposePauseCommand {
         &mut self.config
     }
 
-    fn subcommand(&self) -> &'static str {
-        "pause"
-    }
-
     fn build_subcommand_args(&self) -> Vec<String> {
-        // Pause command just takes service names
         self.services.clone()
     }
 }
 
 impl ComposePauseResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services that were paused
+    /// Gets the services that were paused.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services

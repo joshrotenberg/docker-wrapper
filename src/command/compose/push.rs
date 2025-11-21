@@ -1,41 +1,44 @@
 //! Docker Compose push command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 
-/// Docker Compose push command builder
+/// Docker Compose push command builder.
 #[derive(Debug, Clone)]
 pub struct ComposePushCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Services to push images for (empty for all)
+    /// Services to push images for (empty for all).
     pub services: Vec<String>,
-    /// Ignore build failures
+    /// Ignore build failures.
     pub ignore_build_failures: bool,
-    /// Include dependencies
+    /// Include dependencies.
     pub include_deps: bool,
-    /// Quiet mode
+    /// Quiet mode.
     pub quiet: bool,
 }
 
-/// Result from compose push command
+/// Result from compose push command.
 #[derive(Debug, Clone)]
 pub struct ComposePushResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services that were pushed
+    /// Services that were pushed.
     pub services: Vec<String>,
 }
 
 impl ComposePushCommand {
-    /// Create a new compose push command
+    /// Creates a new compose push command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -48,14 +51,14 @@ impl ComposePushCommand {
         }
     }
 
-    /// Add a service to push
+    /// Adds a service to push.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services to push
+    /// Adds multiple services to push.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -66,21 +69,21 @@ impl ComposePushCommand {
         self
     }
 
-    /// Ignore build failures
+    /// Ignores build failures.
     #[must_use]
     pub fn ignore_build_failures(mut self) -> Self {
         self.ignore_build_failures = true;
         self
     }
 
-    /// Include dependencies
+    /// Includes dependencies.
     #[must_use]
     pub fn include_deps(mut self) -> Self {
         self.include_deps = true;
         self
     }
 
-    /// Enable quiet mode
+    /// Enables quiet mode.
     #[must_use]
     pub fn quiet(mut self) -> Self {
         self.quiet = true;
@@ -98,11 +101,15 @@ impl Default for ComposePushCommand {
 impl DockerCommand for ComposePushCommand {
     type Output = ComposePushResult;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -124,16 +131,16 @@ impl DockerCommand for ComposePushCommand {
 }
 
 impl ComposeCommand for ComposePushCommand {
-    fn get_config(&self) -> &ComposeConfig {
+    fn subcommand_name() -> &'static str {
+        "push"
+    }
+
+    fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
-    fn get_config_mut(&mut self) -> &mut ComposeConfig {
+    fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "push"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -157,13 +164,13 @@ impl ComposeCommand for ComposePushCommand {
 }
 
 impl ComposePushResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services that were pushed
+    /// Gets the services that were pushed.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services

@@ -1,62 +1,65 @@
 //! Docker Compose events command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 use serde::Deserialize;
 
-/// Docker Compose events command builder
+/// Docker Compose events command builder.
 #[derive(Debug, Clone)]
 pub struct ComposeEventsCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Output format as JSON
+    /// Output format as JSON.
     pub json: bool,
-    /// Start timestamp
+    /// Start timestamp.
     pub since: Option<String>,
-    /// End timestamp
+    /// End timestamp.
     pub until: Option<String>,
-    /// Services to get events for (empty for all)
+    /// Services to get events for (empty for all).
     pub services: Vec<String>,
 }
 
-/// Event from Docker Compose
+/// Event from Docker Compose.
 #[derive(Debug, Clone, Deserialize)]
 pub struct ComposeEvent {
-    /// Time of the event
+    /// Time of the event.
     pub time: String,
-    /// Type of the event
+    /// Type of the event.
     #[serde(rename = "type")]
     pub event_type: String,
-    /// Action that occurred
+    /// Action that occurred.
     pub action: String,
-    /// Service name
+    /// Service name.
     pub service: Option<String>,
-    /// Container ID
+    /// Container ID.
     pub container: Option<String>,
-    /// Additional attributes
+    /// Additional attributes.
     pub attributes: Option<serde_json::Value>,
 }
 
-/// Result from compose events command
+/// Result from compose events command.
 #[derive(Debug, Clone)]
 pub struct ComposeEventsResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Parsed events (if JSON format was used)
+    /// Parsed events (if JSON format was used).
     pub events: Vec<ComposeEvent>,
-    /// Services that were monitored
+    /// Services that were monitored.
     pub services: Vec<String>,
 }
 
 impl ComposeEventsCommand {
-    /// Create a new compose events command
+    /// Creates a new compose events command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -69,35 +72,35 @@ impl ComposeEventsCommand {
         }
     }
 
-    /// Output events in JSON format
+    /// Outputs events in JSON format.
     #[must_use]
     pub fn json(mut self) -> Self {
         self.json = true;
         self
     }
 
-    /// Set start timestamp for events
+    /// Sets start timestamp for events.
     #[must_use]
     pub fn since(mut self, timestamp: impl Into<String>) -> Self {
         self.since = Some(timestamp.into());
         self
     }
 
-    /// Set end timestamp for events
+    /// Sets end timestamp for events.
     #[must_use]
     pub fn until(mut self, timestamp: impl Into<String>) -> Self {
         self.until = Some(timestamp.into());
         self
     }
 
-    /// Add a service to monitor events for
+    /// Adds a service to monitor events for.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services to monitor events for
+    /// Adds multiple services to monitor events for.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -117,18 +120,20 @@ impl Default for ComposeEventsCommand {
 
 #[async_trait]
 impl DockerCommand for ComposeEventsCommand {
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
     type Output = ComposeEventsResult;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -164,16 +169,16 @@ impl DockerCommand for ComposeEventsCommand {
 }
 
 impl ComposeCommand for ComposeEventsCommand {
-    fn get_config(&self) -> &ComposeConfig {
+    fn subcommand_name() -> &'static str {
+        "events"
+    }
+
+    fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
-    fn get_config_mut(&mut self) -> &mut ComposeConfig {
+    fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "events"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -193,7 +198,7 @@ impl ComposeCommand for ComposeEventsCommand {
             args.push(until.clone());
         }
 
-        // Add service names at the end
+        // add service names at the end
         args.extend(self.services.clone());
 
         args
@@ -201,25 +206,25 @@ impl ComposeCommand for ComposeEventsCommand {
 }
 
 impl ComposeEventsResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get parsed events (if JSON format was used)
+    /// Gets parsed events (if JSON format was used).
     #[must_use]
     pub fn events(&self) -> &[ComposeEvent] {
         &self.events
     }
 
-    /// Get the services that were monitored
+    /// Gets the services that were monitored.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services
     }
 
-    /// Get events for a specific service
+    /// Gets events for a specific service.
     #[must_use]
     pub fn events_for_service(&self, service: &str) -> Vec<&ComposeEvent> {
         self.events

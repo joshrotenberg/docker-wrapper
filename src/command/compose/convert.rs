@@ -1,28 +1,32 @@
 //! Docker Compose convert command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 
-/// Docker Compose convert command builder
+/// Docker Compose convert command builder.
 #[derive(Debug, Clone)]
 pub struct ComposeConvertCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Output format
+    /// Output format.
     pub format: Option<ConvertFormat>,
-    /// Output file path
+    /// Output file path.
     pub output: Option<String>,
 }
 
-/// Convert output format
-#[derive(Debug, Clone, Copy)]
+/// Convert output format.
+#[derive(Debug, Default, Clone, Copy)]
 pub enum ConvertFormat {
-    /// YAML format (default)
+    /// YAML format (default).
+    #[default]
     Yaml,
-    /// JSON format
+    /// JSON format.
     Json,
 }
 
@@ -35,21 +39,21 @@ impl std::fmt::Display for ConvertFormat {
     }
 }
 
-/// Result from compose convert command
+/// Result from compose convert command.
 #[derive(Debug, Clone)]
 pub struct ComposeConvertResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Converted configuration
+    /// Converted configuration.
     pub converted_config: String,
 }
 
 impl ComposeConvertCommand {
-    /// Create a new compose convert command
+    /// Creates a new compose convert command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -60,28 +64,28 @@ impl ComposeConvertCommand {
         }
     }
 
-    /// Set output format
+    /// Sets output format.
     #[must_use]
     pub fn format(mut self, format: ConvertFormat) -> Self {
         self.format = Some(format);
         self
     }
 
-    /// Set output format to JSON
+    /// Sets output format to JSON.
     #[must_use]
     pub fn format_json(mut self) -> Self {
         self.format = Some(ConvertFormat::Json);
         self
     }
 
-    /// Set output format to YAML
+    /// Sets output format to YAML.
     #[must_use]
     pub fn format_yaml(mut self) -> Self {
         self.format = Some(ConvertFormat::Yaml);
         self
     }
 
-    /// Set output file path
+    /// Sets output file path.
     #[must_use]
     pub fn output(mut self, output: impl Into<String>) -> Self {
         self.output = Some(output.into());
@@ -99,11 +103,15 @@ impl Default for ComposeConvertCommand {
 impl DockerCommand for ComposeConvertCommand {
     type Output = ComposeConvertResult;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -125,16 +133,16 @@ impl DockerCommand for ComposeConvertCommand {
 }
 
 impl ComposeCommand for ComposeConvertCommand {
-    fn get_config(&self) -> &ComposeConfig {
+    fn subcommand_name() -> &'static str {
+        "convert"
+    }
+
+    fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
-    fn get_config_mut(&mut self) -> &mut ComposeConfig {
+    fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "convert"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -155,13 +163,13 @@ impl ComposeCommand for ComposeConvertCommand {
 }
 
 impl ComposeConvertResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the converted configuration
+    /// Gets the converted configuration.
     #[must_use]
     pub fn converted_config(&self) -> &str {
         &self.converted_config

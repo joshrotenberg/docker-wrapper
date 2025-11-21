@@ -1,50 +1,53 @@
 //! Docker Compose logs command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 
-/// Docker Compose logs command builder
+/// Docker Compose logs command builder.
 #[derive(Debug, Clone)]
-#[allow(clippy::struct_excessive_bools)] // Multiple boolean flags are appropriate for logs command
+#[allow(clippy::struct_excessive_bools)] // multiple boolean flags are appropriate for logs command
 pub struct ComposeLogsCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Services to show logs for (empty for all)
+    /// Services to show logs for (empty for all).
     pub services: Vec<String>,
-    /// Follow log output
+    /// Follows log output.
     pub follow: bool,
-    /// Show timestamps
+    /// Shows timestamps.
     pub timestamps: bool,
-    /// Number of lines to show from the end
+    /// Number of lines to show from the end.
     pub tail: Option<String>,
-    /// Show logs since timestamp
+    /// Shows logs since timestamp.
     pub since: Option<String>,
-    /// Show logs until timestamp
+    /// Shows logs until timestamp.
     pub until: Option<String>,
-    /// Don't print prefix
+    /// Doesn't print prefix.
     pub no_log_prefix: bool,
-    /// Don't use colors
+    /// Doesn't use colors.
     pub no_color: bool,
 }
 
-/// Result from compose logs command
+/// Result from compose logs command.
 #[derive(Debug, Clone)]
 pub struct ComposeLogsResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services logs were fetched for
+    /// Services logs were fetched for.
     pub services: Vec<String>,
 }
 
 impl ComposeLogsCommand {
-    /// Create a new compose logs command
+    /// Creates a new compose logs command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -61,14 +64,14 @@ impl ComposeLogsCommand {
         }
     }
 
-    /// Add a service to show logs for
+    /// Adds a service to show logs for.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services
+    /// Adds multiple services.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -79,49 +82,49 @@ impl ComposeLogsCommand {
         self
     }
 
-    /// Follow log output
+    /// Follows log output.
     #[must_use]
     pub fn follow(mut self) -> Self {
         self.follow = true;
         self
     }
 
-    /// Show timestamps
+    /// Shows timestamps.
     #[must_use]
     pub fn timestamps(mut self) -> Self {
         self.timestamps = true;
         self
     }
 
-    /// Number of lines to show from the end
+    /// Number of lines to show from the end.
     #[must_use]
     pub fn tail(mut self, lines: impl Into<String>) -> Self {
         self.tail = Some(lines.into());
         self
     }
 
-    /// Show logs since timestamp
+    /// Shows logs since timestamp.
     #[must_use]
     pub fn since(mut self, timestamp: impl Into<String>) -> Self {
         self.since = Some(timestamp.into());
         self
     }
 
-    /// Show logs until timestamp
+    /// Shows logs until timestamp.
     #[must_use]
     pub fn until(mut self, timestamp: impl Into<String>) -> Self {
         self.until = Some(timestamp.into());
         self
     }
 
-    /// Don't print prefix
+    /// Doesn't print prefix.
     #[must_use]
     pub fn no_log_prefix(mut self) -> Self {
         self.no_log_prefix = true;
         self
     }
 
-    /// Don't use colors
+    /// Doesn't use colors.
     #[must_use]
     pub fn no_color(mut self) -> Self {
         self.no_color = true;
@@ -139,6 +142,10 @@ impl Default for ComposeLogsCommand {
 impl DockerCommand for ComposeLogsCommand {
     type Output = ComposeLogsResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -148,7 +155,6 @@ impl DockerCommand for ComposeLogsCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -166,16 +172,16 @@ impl DockerCommand for ComposeLogsCommand {
 }
 
 impl ComposeCommand for ComposeLogsCommand {
+    fn subcommand_name() -> &'static str {
+        "logs"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
     fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "logs"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -212,7 +218,7 @@ impl ComposeCommand for ComposeLogsCommand {
             args.push("--no-color".to_string());
         }
 
-        // Add service names at the end
+        // add service names at the end
         args.extend(self.services.clone());
 
         args
@@ -220,13 +226,13 @@ impl ComposeCommand for ComposeLogsCommand {
 }
 
 impl ComposeLogsResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services logs were fetched for
+    /// Gets the services logs were fetched for.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services

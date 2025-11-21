@@ -171,7 +171,7 @@ impl BakeCommand {
 
     /// Add a target to build
     ///
-    /// Multiple targets can be specified. If no targets are specified,
+    /// multiple targets can be specified. If no targets are specified,
     /// all targets defined in the bake file will be built.
     ///
     /// # Examples
@@ -941,9 +941,7 @@ mod tests {
     fn test_bake_command_extensibility() {
         let mut bake_cmd = BakeCommand::new();
         bake_cmd.executor_mut().add_arg("--experimental");
-        bake_cmd
-            .executor_mut()
-            .add_args(vec!["--custom", "value"]);
+        bake_cmd.executor_mut().add_args(vec!["--custom", "value"]);
 
         // Extensibility is handled through the executor's raw_args
         // The actual testing of raw args is done in command.rs tests

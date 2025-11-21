@@ -1,49 +1,53 @@
 //! Docker Compose config command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 
-/// Docker Compose config command builder
+/// Docker Compose config command builder.
 #[derive(Debug, Clone)]
-#[allow(clippy::struct_excessive_bools)] // Multiple boolean flags are appropriate for config command
+#[allow(clippy::struct_excessive_bools)] // multiple boolean flags are appropriate for config command
 pub struct ComposeConfigCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Output format
+    /// Output format.
     pub format: Option<ConfigFormat>,
-    /// Resolve image digests
+    /// Resolves image digests.
     pub resolve_image_digests: bool,
-    /// Don't interpolate environment variables
+    /// Doesn't interpolate environment variables.
     pub no_interpolate: bool,
-    /// Don't normalize paths
+    /// Doesn't normalize paths.
     pub no_normalize: bool,
-    /// Don't check consistency
+    /// Doesn't check consistency.
     pub no_consistency: bool,
-    /// Show services only
+    /// Shows services only.
     pub services: bool,
-    /// Show volumes only
+    /// Shows volumes only.
     pub volumes: bool,
-    /// Show profiles only
+    /// Shows profiles only.
     pub profiles: bool,
-    /// Show images only
+    /// Shows images only.
     pub images: bool,
-    /// Hash of services to include
+    /// Hash of services to include.
     pub hash: Option<String>,
-    /// Output file path
+    /// Output file path.
     pub output: Option<String>,
-    /// Quiet mode
+    /// Quiet mode.
     pub quiet: bool,
 }
 
-/// Config output format
-#[derive(Debug, Clone, Copy)]
+/// Config output format.
+#[derive(Debug, Default, Clone, Copy)]
 pub enum ConfigFormat {
-    /// YAML format (default)
+    /// YAML format (default).
+    #[default]
     Yaml,
-    /// JSON format
+    /// JSON format.
     Json,
 }
 
@@ -56,21 +60,21 @@ impl std::fmt::Display for ConfigFormat {
     }
 }
 
-/// Result from compose config command
+/// Result from compose config command.
 #[derive(Debug, Clone)]
 pub struct ComposeConfigResult {
-    /// Raw stdout output (configuration YAML/JSON)
+    /// Raw stdout output (configuration YAML/JSON).
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Whether configuration is valid
+    /// Whether configuration is valid.
     pub is_valid: bool,
 }
 
 impl ComposeConfigCommand {
-    /// Create a new compose config command
+    /// Creates a new compose config command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -91,98 +95,98 @@ impl ComposeConfigCommand {
         }
     }
 
-    /// Set output format
+    /// Sets output format.
     #[must_use]
     pub fn format(mut self, format: ConfigFormat) -> Self {
         self.format = Some(format);
         self
     }
 
-    /// Set output format to JSON
+    /// Sets output format to JSON.
     #[must_use]
     pub fn format_json(mut self) -> Self {
         self.format = Some(ConfigFormat::Json);
         self
     }
 
-    /// Set output format to YAML
+    /// Sets output format to YAML.
     #[must_use]
     pub fn format_yaml(mut self) -> Self {
         self.format = Some(ConfigFormat::Yaml);
         self
     }
 
-    /// Resolve image digests
+    /// Resolves image digests.
     #[must_use]
     pub fn resolve_image_digests(mut self) -> Self {
         self.resolve_image_digests = true;
         self
     }
 
-    /// Don't interpolate environment variables
+    /// Doesn't interpolate environment variables.
     #[must_use]
     pub fn no_interpolate(mut self) -> Self {
         self.no_interpolate = true;
         self
     }
 
-    /// Don't normalize paths
+    /// Doesn't normalize paths.
     #[must_use]
     pub fn no_normalize(mut self) -> Self {
         self.no_normalize = true;
         self
     }
 
-    /// Don't check consistency
+    /// Doesn't check consistency.
     #[must_use]
     pub fn no_consistency(mut self) -> Self {
         self.no_consistency = true;
         self
     }
 
-    /// Show services only
+    /// Shows services only.
     #[must_use]
     pub fn services(mut self) -> Self {
         self.services = true;
         self
     }
 
-    /// Show volumes only
+    /// Shows volumes only.
     #[must_use]
     pub fn volumes(mut self) -> Self {
         self.volumes = true;
         self
     }
 
-    /// Show profiles only
+    /// Shows profiles only.
     #[must_use]
     pub fn profiles(mut self) -> Self {
         self.profiles = true;
         self
     }
 
-    /// Show images only
+    /// Shows images only.
     #[must_use]
     pub fn images(mut self) -> Self {
         self.images = true;
         self
     }
 
-    /// Set hash of services to include
+    /// Sets hash of services to include.
     #[must_use]
     pub fn hash(mut self, hash: impl Into<String>) -> Self {
         self.hash = Some(hash.into());
         self
     }
 
-    /// Set output file path
+    /// Sets output file path.
     #[must_use]
     pub fn output(mut self, output: impl Into<String>) -> Self {
         self.output = Some(output.into());
         self
     }
 
-    /// Enable quiet mode
+    /// Enables quiet mode.
     #[must_use]
     pub fn quiet(mut self) -> Self {
         self.quiet = true;
@@ -200,16 +204,19 @@ impl Default for ComposeConfigCommand {
 impl DockerCommand for ComposeConfigCommand {
     type Output = ComposeConfigResult;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -227,16 +234,16 @@ impl DockerCommand for ComposeConfigCommand {
 }
 
 impl ComposeCommand for ComposeConfigCommand {
-    fn get_config(&self) -> &ComposeConfig {
+    fn subcommand_name() -> &'static str {
+        "config"
+    }
+
+    fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
-    fn get_config_mut(&mut self) -> &mut ComposeConfig {
+    fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "config"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -298,19 +305,19 @@ impl ComposeCommand for ComposeConfigCommand {
 }
 
 impl ComposeConfigResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Check if the configuration is valid
+    /// Checks if the configuration is valid.
     #[must_use]
     pub fn is_valid(&self) -> bool {
         self.is_valid
     }
 
-    /// Get the configuration output
+    /// Gets the configuration output.
     #[must_use]
     pub fn config_output(&self) -> &str {
         &self.stdout

@@ -1,39 +1,42 @@
 //! Docker Compose watch command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 
-/// Docker Compose watch command builder
+/// Docker Compose watch command builder.
 #[derive(Debug, Clone)]
 pub struct ComposeWatchCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Services to watch for changes (empty for all)
+    /// Services to watch for changes (empty for all).
     pub services: Vec<String>,
-    /// Don't build images before starting
+    /// Doesn't build images before starting.
     pub no_up: bool,
-    /// Quiet mode
+    /// Quiet mode.
     pub quiet: bool,
 }
 
-/// Result from compose watch command
+/// Result from compose watch command.
 #[derive(Debug, Clone)]
 pub struct ComposeWatchResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services that were watched
+    /// Services that were watched.
     pub services: Vec<String>,
 }
 
 impl ComposeWatchCommand {
-    /// Create a new compose watch command
+    /// Creates a new compose watch command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -45,14 +48,14 @@ impl ComposeWatchCommand {
         }
     }
 
-    /// Add a service to watch
+    /// Adds a service to watch.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services to watch
+    /// Adds multiple services to watch.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -63,14 +66,14 @@ impl ComposeWatchCommand {
         self
     }
 
-    /// Don't build images before starting
+    /// Doesn't build images before starting.
     #[must_use]
     pub fn no_up(mut self) -> Self {
         self.no_up = true;
         self
     }
 
-    /// Enable quiet mode
+    /// Enables quiet mode.
     #[must_use]
     pub fn quiet(mut self) -> Self {
         self.quiet = true;
@@ -86,13 +89,16 @@ impl Default for ComposeWatchCommand {
 
 #[async_trait]
 impl DockerCommand for ComposeWatchCommand {
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
     type Output = ComposeWatchResult;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -114,16 +120,16 @@ impl DockerCommand for ComposeWatchCommand {
 }
 
 impl ComposeCommand for ComposeWatchCommand {
-    fn get_config(&self) -> &ComposeConfig {
+    fn subcommand_name() -> &'static str {
+        "watch"
+    }
+
+    fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
-    fn get_config_mut(&mut self) -> &mut ComposeConfig {
+    fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "watch"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -143,13 +149,13 @@ impl ComposeCommand for ComposeWatchCommand {
 }
 
 impl ComposeWatchResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services that were watched
+    /// Gets the services that were watched.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services

@@ -1,35 +1,38 @@
 //! Docker Compose unpause command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 
-/// Docker Compose unpause command builder
+/// Docker Compose unpause command builder.
 #[derive(Debug, Clone)]
 pub struct ComposeUnpauseCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Services to unpause (empty for all)
+    /// Services to unpause (empty for all).
     pub services: Vec<String>,
 }
 
-/// Result from compose unpause command
+/// Result from compose unpause command.
 #[derive(Debug, Clone)]
 pub struct ComposeUnpauseResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services that were unpaused
+    /// Services that were unpaused.
     pub services: Vec<String>,
 }
 
 impl ComposeUnpauseCommand {
-    /// Create a new compose unpause command
+    /// Creates a new compose unpause command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -39,14 +42,14 @@ impl ComposeUnpauseCommand {
         }
     }
 
-    /// Add a service to unpause
+    /// Adds a service to unpause.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services to unpause
+    /// Adds multiple services to unpause.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -68,6 +71,10 @@ impl Default for ComposeUnpauseCommand {
 impl DockerCommand for ComposeUnpauseCommand {
     type Output = ComposeUnpauseResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -77,7 +84,6 @@ impl DockerCommand for ComposeUnpauseCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -95,6 +101,10 @@ impl DockerCommand for ComposeUnpauseCommand {
 }
 
 impl ComposeCommand for ComposeUnpauseCommand {
+    fn subcommand_name() -> &'static str {
+        "unpause"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
@@ -103,24 +113,19 @@ impl ComposeCommand for ComposeUnpauseCommand {
         &mut self.config
     }
 
-    fn subcommand(&self) -> &'static str {
-        "unpause"
-    }
-
     fn build_subcommand_args(&self) -> Vec<String> {
-        // Unpause command just takes service names
         self.services.clone()
     }
 }
 
 impl ComposeUnpauseResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services that were unpaused
+    /// Gets the services that were unpaused.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services

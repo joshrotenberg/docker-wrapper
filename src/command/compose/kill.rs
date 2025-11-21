@@ -1,37 +1,40 @@
 //! Docker Compose kill command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 
-/// Docker Compose kill command builder
+/// Docker Compose kill command builder.
 #[derive(Debug, Clone)]
 pub struct ComposeKillCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Services to kill (empty for all)
+    /// Services to kill (empty for all).
     pub services: Vec<String>,
-    /// Signal to send to containers
+    /// Signal to send to containers.
     pub signal: Option<String>,
 }
 
-/// Result from compose kill command
+/// Result from compose kill command.
 #[derive(Debug, Clone)]
 pub struct ComposeKillResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services that were killed
+    /// Services that were killed.
     pub services: Vec<String>,
 }
 
 impl ComposeKillCommand {
-    /// Create a new compose kill command
+    /// Creates a new compose kill command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -42,14 +45,14 @@ impl ComposeKillCommand {
         }
     }
 
-    /// Add a service to kill
+    /// Adds a service to kill.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services to kill
+    /// Adds multiple services to kill.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -60,7 +63,7 @@ impl ComposeKillCommand {
         self
     }
 
-    /// Set signal to send to containers
+    /// Sets signal to send to containers.
     #[must_use]
     pub fn signal(mut self, signal: impl Into<String>) -> Self {
         self.signal = Some(signal.into());
@@ -78,6 +81,10 @@ impl Default for ComposeKillCommand {
 impl DockerCommand for ComposeKillCommand {
     type Output = ComposeKillResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -87,7 +94,6 @@ impl DockerCommand for ComposeKillCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -105,16 +111,16 @@ impl DockerCommand for ComposeKillCommand {
 }
 
 impl ComposeCommand for ComposeKillCommand {
+    fn subcommand_name() -> &'static str {
+        "kill"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
     fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "kill"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -125,7 +131,7 @@ impl ComposeCommand for ComposeKillCommand {
             args.push(signal.clone());
         }
 
-        // Add service names at the end
+        // add service names at the end
         args.extend(self.services.clone());
 
         args
@@ -133,13 +139,13 @@ impl ComposeCommand for ComposeKillCommand {
 }
 
 impl ComposeKillResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services that were killed
+    /// Gets the services that were killed.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services

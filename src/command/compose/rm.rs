@@ -1,44 +1,47 @@
 //! Docker Compose rm command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 
-/// Docker Compose rm command builder
+/// Docker Compose rm command builder.
 #[derive(Debug, Clone)]
-#[allow(clippy::struct_excessive_bools)] // Multiple boolean flags are appropriate for rm command
+#[allow(clippy::struct_excessive_bools)] // multiple boolean flags are appropriate for rm command
 pub struct ComposeRmCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Services to remove (empty for all)
+    /// Services to remove (empty for all).
     pub services: Vec<String>,
-    /// Force removal without confirmation
+    /// Forces removal without confirmation.
     pub force: bool,
-    /// Stop containers if running
+    /// Stops containers if running.
     pub stop: bool,
-    /// Remove volumes associated with containers
+    /// Removes volumes associated with containers.
     pub volumes: bool,
 }
 
-/// Result from compose rm command
+/// Result from compose rm command.
 #[derive(Debug, Clone)]
 pub struct ComposeRmResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services that were removed
+    /// Services that were removed.
     pub services: Vec<String>,
-    /// Whether volumes were removed
+    /// Whether volumes were removed.
     pub volumes_removed: bool,
 }
 
 impl ComposeRmCommand {
-    /// Create a new compose rm command
+    /// Creates a new compose rm command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -51,14 +54,14 @@ impl ComposeRmCommand {
         }
     }
 
-    /// Add a service to remove
+    /// Adds a service to remove.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services to remove
+    /// Adds multiple services to remove.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -69,21 +72,21 @@ impl ComposeRmCommand {
         self
     }
 
-    /// Force removal without confirmation
+    /// Forces removal without confirmation.
     #[must_use]
     pub fn force(mut self) -> Self {
         self.force = true;
         self
     }
 
-    /// Stop containers if running
+    /// Stops containers if running.
     #[must_use]
     pub fn stop(mut self) -> Self {
         self.stop = true;
         self
     }
 
-    /// Remove volumes associated with containers
+    /// Removes volumes associated with containers.
     #[must_use]
     pub fn volumes(mut self) -> Self {
         self.volumes = true;
@@ -101,6 +104,10 @@ impl Default for ComposeRmCommand {
 impl DockerCommand for ComposeRmCommand {
     type Output = ComposeRmResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -110,7 +117,6 @@ impl DockerCommand for ComposeRmCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -129,16 +135,16 @@ impl DockerCommand for ComposeRmCommand {
 }
 
 impl ComposeCommand for ComposeRmCommand {
+    fn subcommand_name() -> &'static str {
+        "rm"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
     fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "rm"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -156,7 +162,7 @@ impl ComposeCommand for ComposeRmCommand {
             args.push("--volumes".to_string());
         }
 
-        // Add service names at the end
+        // add service names at the end
         args.extend(self.services.clone());
 
         args
@@ -164,19 +170,19 @@ impl ComposeCommand for ComposeRmCommand {
 }
 
 impl ComposeRmResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services that were removed
+    /// Gets the services that were removed.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services
     }
 
-    /// Check if volumes were removed
+    /// Checks if volumes were removed.
     #[must_use]
     pub fn volumes_removed(&self) -> bool {
         self.volumes_removed

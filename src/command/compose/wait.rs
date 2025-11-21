@@ -1,42 +1,45 @@
 //! Docker Compose wait command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 use std::time::Duration;
 
-/// Docker Compose wait command builder
+/// Docker Compose wait command builder.
 #[derive(Debug, Clone)]
 pub struct ComposeWaitCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Services to wait for (empty for all)
+    /// Services to wait for (empty for all).
     pub services: Vec<String>,
-    /// Timeout for waiting
+    /// Timeout for waiting.
     pub timeout: Option<Duration>,
-    /// Wait for services to be healthy (with health checks)
+    /// Waits for services to be healthy (with health checks).
     pub wait_for_healthy: bool,
 }
 
-/// Result from compose wait command
+/// Result from compose wait command.
 #[derive(Debug, Clone)]
 pub struct ComposeWaitResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services that were waited for
+    /// Services that were waited for.
     pub services: Vec<String>,
-    /// Whether all services became ready/healthy
+    /// Whether all services became ready/healthy.
     pub all_ready: bool,
 }
 
 impl ComposeWaitCommand {
-    /// Create a new compose wait command
+    /// Creates a new compose wait command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -48,14 +51,14 @@ impl ComposeWaitCommand {
         }
     }
 
-    /// Add a service to wait for
+    /// Adds a service to wait for.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services to wait for
+    /// Adds multiple services to wait for.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -66,14 +69,14 @@ impl ComposeWaitCommand {
         self
     }
 
-    /// Set timeout for waiting
+    /// Sets timeout for waiting.
     #[must_use]
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
         self
     }
 
-    /// Wait for services to be healthy (requires health checks)
+    /// Waits for services to be healthy (requires health checks).
     #[must_use]
     pub fn wait_for_healthy(mut self) -> Self {
         self.wait_for_healthy = true;
@@ -89,13 +92,16 @@ impl Default for ComposeWaitCommand {
 
 #[async_trait]
 impl DockerCommand for ComposeWaitCommand {
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
     type Output = ComposeWaitResult;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -118,16 +124,16 @@ impl DockerCommand for ComposeWaitCommand {
 }
 
 impl ComposeCommand for ComposeWaitCommand {
-    fn get_config(&self) -> &ComposeConfig {
+    fn subcommand_name() -> &'static str {
+        "wait"
+    }
+
+    fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
-    fn get_config_mut(&mut self) -> &mut ComposeConfig {
+    fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "wait"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -148,19 +154,19 @@ impl ComposeCommand for ComposeWaitCommand {
 }
 
 impl ComposeWaitResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services that were waited for
+    /// Gets the services that were waited for.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services
     }
 
-    /// Check if all services became ready/healthy
+    /// Checks if all services became ready/healthy.
     #[must_use]
     pub fn all_ready(&self) -> bool {
         self.all_ready

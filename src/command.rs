@@ -124,9 +124,10 @@ pub trait DockerCommand {
 }
 
 /// Progress output type for compose commands.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum ProgressType {
     /// Auto-detects progress output.
+    #[default]
     Auto,
     /// TTY output.
     Tty,
@@ -151,13 +152,14 @@ impl std::fmt::Display for ProgressType {
 }
 
 /// ANSI control character mode.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Default, Clone, Copy)]
 pub enum AnsiMode {
     /// Never prints ANSI.
     Never,
     /// Always prints ANSI.
     Always,
     /// Auto-detects ANSI.
+    #[default]
     Auto,
 }
 

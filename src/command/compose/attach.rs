@@ -1,41 +1,44 @@
 //! Docker Compose attach command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 
-/// Docker Compose attach command
+/// Docker Compose attach command.
 ///
 /// Attach to a running container's output.
 #[derive(Debug, Clone, Default)]
 pub struct ComposeAttachCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Service to attach to
+    /// Service to attach to.
     pub service: String,
-    /// Detach keys sequence
+    /// Detach keys sequence.
     pub detach_keys: Option<String>,
-    /// Container index if service has multiple instances
+    /// Container index if service has multiple instances.
     pub index: Option<u32>,
-    /// Don't stream STDIN
+    /// Doesn't stream STDIN.
     pub no_stdin: bool,
-    /// Use a pseudo-TTY
+    /// Uses a pseudo-TTY.
     pub sig_proxy: bool,
 }
 
-/// Result from attach command
+/// Result from attach command.
 #[derive(Debug, Clone)]
 pub struct AttachResult {
-    /// Output from the command
+    /// Output from the command.
     pub output: String,
-    /// Whether the operation succeeded
+    /// Whether the operation succeeded.
     pub success: bool,
 }
 
 impl ComposeAttachCommand {
-    /// Create a new attach command
+    /// Creates a new attach command.
     #[must_use]
     pub fn new(service: impl Into<String>) -> Self {
         Self {
@@ -47,28 +50,28 @@ impl ComposeAttachCommand {
         }
     }
 
-    /// Set detach keys
+    /// Sets detach keys.
     #[must_use]
     pub fn detach_keys(mut self, keys: impl Into<String>) -> Self {
         self.detach_keys = Some(keys.into());
         self
     }
 
-    /// Set container index
+    /// Sets container index.
     #[must_use]
     pub fn index(mut self, index: u32) -> Self {
         self.index = Some(index);
         self
     }
 
-    /// Don't attach to STDIN
+    /// Doesn't attach to STDIN.
     #[must_use]
     pub fn no_stdin(mut self) -> Self {
         self.no_stdin = true;
         self
     }
 
-    /// Disable signal proxy
+    /// Disables signal proxy.
     #[must_use]
     pub fn no_sig_proxy(mut self) -> Self {
         self.sig_proxy = false;
@@ -80,6 +83,10 @@ impl ComposeAttachCommand {
 impl DockerCommand for ComposeAttachCommand {
     type Output = AttachResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -89,7 +96,6 @@ impl DockerCommand for ComposeAttachCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -105,6 +111,10 @@ impl DockerCommand for ComposeAttachCommand {
 }
 
 impl ComposeCommand for ComposeAttachCommand {
+    fn subcommand_name() -> &'static str {
+        "attach"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
@@ -113,14 +123,10 @@ impl ComposeCommand for ComposeAttachCommand {
         &mut self.config
     }
 
-    fn subcommand(&self) -> &'static str {
-        "attach"
-    }
-
     fn build_subcommand_args(&self) -> Vec<String> {
         let mut args = Vec::new();
 
-        // Add flags
+        // add flags
         if let Some(ref keys) = self.detach_keys {
             args.push("--detach-keys".to_string());
             args.push(keys.clone());

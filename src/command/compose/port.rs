@@ -1,43 +1,46 @@
 //! Docker Compose port command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 
-/// Docker Compose port command builder
+/// Docker Compose port command builder.
 #[derive(Debug, Clone)]
 pub struct ComposePortCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Service name
+    /// Service name.
     pub service: String,
-    /// Private port to query
+    /// Private port to query.
     pub private_port: Option<u16>,
-    /// Protocol (tcp/udp)
+    /// Protocol (tcp/udp).
     pub protocol: Option<String>,
-    /// Index of container if service has multiple instances
+    /// Index of container if service has multiple instances.
     pub index: Option<u16>,
 }
 
-/// Result from compose port command
+/// Result from compose port command.
 #[derive(Debug, Clone)]
 pub struct ComposePortResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Service that was queried
+    /// Service that was queried.
     pub service: String,
-    /// Port mappings found
+    /// Port mappings found.
     pub port_mappings: Vec<String>,
 }
 
 impl ComposePortCommand {
-    /// Create a new compose port command
+    /// Creates a new compose port command.
     #[must_use]
     pub fn new(service: impl Into<String>) -> Self {
         Self {
@@ -50,21 +53,21 @@ impl ComposePortCommand {
         }
     }
 
-    /// Set private port to query
+    /// Sets private port to query.
     #[must_use]
     pub fn private_port(mut self, port: u16) -> Self {
         self.private_port = Some(port);
         self
     }
 
-    /// Set protocol (tcp or udp)
+    /// Sets protocol (tcp or udp).
     #[must_use]
     pub fn protocol(mut self, protocol: impl Into<String>) -> Self {
         self.protocol = Some(protocol.into());
         self
     }
 
-    /// Set container index if service has multiple instances
+    /// Sets container index if service has multiple instances.
     #[must_use]
     pub fn index(mut self, index: u16) -> Self {
         self.index = Some(index);
@@ -74,13 +77,16 @@ impl ComposePortCommand {
 
 #[async_trait]
 impl DockerCommand for ComposePortCommand {
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
     type Output = ComposePortResult;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -110,16 +116,16 @@ impl DockerCommand for ComposePortCommand {
 }
 
 impl ComposeCommand for ComposePortCommand {
-    fn get_config(&self) -> &ComposeConfig {
+    fn subcommand_name() -> &'static str {
+        "port"
+    }
+
+    fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
-    fn get_config_mut(&mut self) -> &mut ComposeConfig {
+    fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "port"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -146,19 +152,19 @@ impl ComposeCommand for ComposePortCommand {
 }
 
 impl ComposePortResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the service that was queried
+    /// Gets the service that was queried.
     #[must_use]
     pub fn service(&self) -> &str {
         &self.service
     }
 
-    /// Get port mappings
+    /// Gets port mappings.
     #[must_use]
     pub fn port_mappings(&self) -> &[String] {
         &self.port_mappings

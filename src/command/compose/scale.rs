@@ -1,38 +1,41 @@
 //! Docker Compose scale command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
-/// Docker Compose scale command builder
+/// Docker Compose scale command builder.
 #[derive(Debug, Clone)]
 pub struct ComposeScaleCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Service scaling configurations (`service_name` -> replicas)
+    /// Service scaling configurations (`service_name` -> replicas).
     pub services: HashMap<String, u32>,
-    /// Don't start linked services
+    /// Doesn't start linked services.
     pub no_deps: bool,
 }
 
-/// Result from compose scale command
+/// Result from compose scale command.
 #[derive(Debug, Clone)]
 pub struct ComposeScaleResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services that were scaled
+    /// Services that were scaled.
     pub scaled_services: HashMap<String, u32>,
 }
 
 impl ComposeScaleCommand {
-    /// Create a new compose scale command
+    /// Creates a new compose scale command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -43,21 +46,21 @@ impl ComposeScaleCommand {
         }
     }
 
-    /// Add a service to scale
+    /// Adds a service to scale.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>, replicas: u32) -> Self {
         self.services.insert(service.into(), replicas);
         self
     }
 
-    /// Add multiple services to scale
+    /// Adds multiple services to scale.
     #[must_use]
     pub fn services(mut self, services: HashMap<String, u32>) -> Self {
         self.services.extend(services);
         self
     }
 
-    /// Don't start linked services
+    /// Doesn't start linked services.
     #[must_use]
     pub fn no_deps(mut self) -> Self {
         self.no_deps = true;
@@ -75,11 +78,15 @@ impl Default for ComposeScaleCommand {
 impl DockerCommand for ComposeScaleCommand {
     type Output = ComposeScaleResult;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -101,16 +108,16 @@ impl DockerCommand for ComposeScaleCommand {
 }
 
 impl ComposeCommand for ComposeScaleCommand {
-    fn get_config(&self) -> &ComposeConfig {
+    fn subcommand_name() -> &'static str {
+        "scale"
+    }
+
+    fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
-    fn get_config_mut(&mut self) -> &mut ComposeConfig {
+    fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "scale"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -129,13 +136,13 @@ impl ComposeCommand for ComposeScaleCommand {
 }
 
 impl ComposeScaleResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services that were scaled
+    /// Gets the services that were scaled.
     #[must_use]
     pub fn scaled_services(&self) -> &HashMap<String, u32> {
         &self.scaled_services

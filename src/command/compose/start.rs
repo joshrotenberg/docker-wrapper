@@ -1,35 +1,38 @@
 //! Docker Compose start command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 
-/// Docker Compose start command builder
+/// Docker Compose start command builder.
 #[derive(Debug, Clone)]
 pub struct ComposeStartCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Services to start (empty for all)
+    /// Services to start (empty for all).
     pub services: Vec<String>,
 }
 
-/// Result from compose start command
+/// Result from compose start command.
 #[derive(Debug, Clone)]
 pub struct ComposeStartResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Services that were started
+    /// Services that were started.
     pub services: Vec<String>,
 }
 
 impl ComposeStartCommand {
-    /// Create a new compose start command
+    /// Creates a new compose start command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -39,14 +42,14 @@ impl ComposeStartCommand {
         }
     }
 
-    /// Add a service to start
+    /// Adds a service to start.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Add multiple services to start
+    /// Adds multiple services to start.
     #[must_use]
     pub fn services<I, S>(mut self, services: I) -> Self
     where
@@ -68,6 +71,10 @@ impl Default for ComposeStartCommand {
 impl DockerCommand for ComposeStartCommand {
     type Output = ComposeStartResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -77,7 +84,6 @@ impl DockerCommand for ComposeStartCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -95,6 +101,10 @@ impl DockerCommand for ComposeStartCommand {
 }
 
 impl ComposeCommand for ComposeStartCommand {
+    fn subcommand_name() -> &'static str {
+        "start"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
@@ -103,24 +113,19 @@ impl ComposeCommand for ComposeStartCommand {
         &mut self.config
     }
 
-    fn subcommand(&self) -> &'static str {
-        "start"
-    }
-
     fn build_subcommand_args(&self) -> Vec<String> {
-        // Start command just takes service names
         self.services.clone()
     }
 }
 
 impl ComposeStartResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get the services that were started
+    /// Gets the services that were started.
     #[must_use]
     pub fn services(&self) -> &[String] {
         &self.services

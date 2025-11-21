@@ -1,43 +1,46 @@
 //! Docker Compose ps command implementation using unified trait pattern.
 
-use super::{CommandExecutor, ComposeCommand, ComposeConfig, DockerCommand};
-use crate::error::Result;
+use crate::{
+    compose::{ComposeCommand, ComposeConfig},
+    error::Result,
+    CommandExecutor, DockerCommand,
+};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-/// Docker Compose ps command builder
+/// Docker Compose ps command builder.
 #[derive(Debug, Clone)]
 pub struct ComposePsCommand {
-    /// Base command executor
+    /// Base command executor.
     pub executor: CommandExecutor,
-    /// Base compose configuration
+    /// Base compose configuration.
     pub config: ComposeConfig,
-    /// Services to list (empty for all)
+    /// Services to list (empty for all).
     pub services: Vec<String>,
-    /// Show all containers (including stopped)
+    /// Shows all containers (including stopped).
     pub all: bool,
-    /// Only display container IDs
+    /// Only displays container IDs.
     pub quiet: bool,
-    /// Show services
+    /// Shows services.
     pub show_services: bool,
-    /// Filter containers
+    /// Filters containers.
     pub filter: Vec<String>,
-    /// Output format
+    /// Output format.
     pub format: Option<String>,
-    /// Only show running containers
+    /// Only shows running containers.
     pub status: Option<Vec<ContainerStatus>>,
 }
 
-/// Container status filter
+/// Container status filter.
 #[derive(Debug, Clone, Copy)]
 pub enum ContainerStatus {
-    /// Paused containers
+    /// Paused containers.
     Paused,
-    /// Restarting containers
+    /// Restarting containers.
     Restarting,
-    /// Running containers
+    /// Running containers.
     Running,
-    /// Stopped containers
+    /// Stopped containers.
     Stopped,
 }
 
@@ -52,61 +55,61 @@ impl std::fmt::Display for ContainerStatus {
     }
 }
 
-/// Container information from compose ps
+/// Container information from compose ps.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ComposeContainerInfo {
-    /// Container ID
+    /// Container ID.
     #[serde(rename = "ID")]
     pub id: String,
-    /// Container name
+    /// Container name.
     #[serde(rename = "Name")]
     pub name: String,
-    /// Service name
+    /// Service name.
     #[serde(rename = "Service")]
     pub service: String,
-    /// Container state
+    /// Container state.
     #[serde(rename = "State")]
     pub state: String,
-    /// Health status
+    /// Health status.
     #[serde(rename = "Health")]
     pub health: Option<String>,
-    /// Exit code
+    /// Exit code.
     #[serde(rename = "ExitCode")]
     pub exit_code: Option<i32>,
-    /// Published ports
+    /// Published ports.
     #[serde(rename = "Publishers")]
     pub publishers: Option<Vec<PortPublisher>>,
 }
 
-/// Port publishing information
+/// Port publishing information.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PortPublisher {
-    /// Target port
+    /// Target port.
     #[serde(rename = "TargetPort")]
     pub target_port: u16,
-    /// Published port
+    /// Published port.
     #[serde(rename = "PublishedPort")]
     pub published_port: Option<u16>,
-    /// Protocol
+    /// Protocol.
     #[serde(rename = "Protocol")]
     pub protocol: String,
 }
 
-/// Result from compose ps command
+/// Result from compose ps command.
 #[derive(Debug, Clone)]
 pub struct ComposePsResult {
-    /// Raw stdout output
+    /// Raw stdout output.
     pub stdout: String,
-    /// Raw stderr output
+    /// Raw stderr output.
     pub stderr: String,
-    /// Success status
+    /// Success status.
     pub success: bool,
-    /// Parsed container information (if JSON format)
+    /// Parsed container information (if JSON format).
     pub containers: Vec<ComposeContainerInfo>,
 }
 
 impl ComposePsCommand {
-    /// Create a new compose ps command
+    /// Creates a new compose ps command.
     #[must_use]
     pub fn new() -> Self {
         Self {
@@ -122,63 +125,63 @@ impl ComposePsCommand {
         }
     }
 
-    /// Add a service to list
+    /// Adds a service to list.
     #[must_use]
     pub fn service(mut self, service: impl Into<String>) -> Self {
         self.services.push(service.into());
         self
     }
 
-    /// Show all containers (default shows only running)
+    /// Shows all containers (default shows only running).
     #[must_use]
     pub fn all(mut self) -> Self {
         self.all = true;
         self
     }
 
-    /// Only display container IDs
+    /// Only displays container IDs.
     #[must_use]
     pub fn quiet(mut self) -> Self {
         self.quiet = true;
         self
     }
 
-    /// Display services
+    /// Displays services.
     #[must_use]
     pub fn services(mut self) -> Self {
         self.show_services = true;
         self
     }
 
-    /// Add a filter
+    /// Adds a filter.
     #[must_use]
     pub fn filter(mut self, filter: impl Into<String>) -> Self {
         self.filter.push(filter.into());
         self
     }
 
-    /// Set output format
+    /// Sets output format.
     #[must_use]
     pub fn format(mut self, format: impl Into<String>) -> Self {
         self.format = Some(format.into());
         self
     }
 
-    /// Filter by status
+    /// Filters by status.
     #[must_use]
     pub fn status(mut self, status: ContainerStatus) -> Self {
         self.status.get_or_insert_with(Vec::new).push(status);
         self
     }
 
-    /// Use JSON output format
+    /// Uses JSON output format.
     #[must_use]
     pub fn json(mut self) -> Self {
         self.format = Some("json".to_string());
         self
     }
 
-    /// Parse JSON output into container info
+    /// Parses JSON output into container info.
     fn parse_json_output(stdout: &str) -> Vec<ComposeContainerInfo> {
         stdout
             .lines()
@@ -198,6 +201,10 @@ impl Default for ComposePsCommand {
 impl DockerCommand for ComposePsCommand {
     type Output = ComposePsResult;
 
+    fn command_name() -> &'static str {
+        <Self as ComposeCommand>::command_name()
+    }
+
     fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
@@ -207,7 +214,6 @@ impl DockerCommand for ComposePsCommand {
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Use the ComposeCommand implementation explicitly
         <Self as ComposeCommand>::build_command_args(self)
     }
 
@@ -215,7 +221,7 @@ impl DockerCommand for ComposePsCommand {
         let args = <Self as ComposeCommand>::build_command_args(self);
         let output = self.execute_command(args).await?;
 
-        // Parse JSON output if format is json
+        // parses JSON output if format is json
         let containers = if self.format.as_deref() == Some("json") {
             Self::parse_json_output(&output.stdout)
         } else {
@@ -232,16 +238,16 @@ impl DockerCommand for ComposePsCommand {
 }
 
 impl ComposeCommand for ComposePsCommand {
+    fn subcommand_name() -> &'static str {
+        "ps"
+    }
+
     fn config(&self) -> &ComposeConfig {
         &self.config
     }
 
     fn config_mut(&mut self) -> &mut ComposeConfig {
         &mut self.config
-    }
-
-    fn subcommand(&self) -> &'static str {
-        "ps"
     }
 
     fn build_subcommand_args(&self) -> Vec<String> {
@@ -284,26 +290,26 @@ impl ComposeCommand for ComposePsCommand {
 }
 
 impl ComposePsResult {
-    /// Check if the command was successful
+    /// Checks if the command was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.success
     }
 
-    /// Get container information
+    /// Gets container information.
     #[must_use]
     pub fn containers(&self) -> &[ComposeContainerInfo] {
         &self.containers
     }
 
-    /// Get container IDs from output
+    /// Gets container IDs from output.
     #[must_use]
     pub fn container_ids(&self) -> Vec<String> {
         if self.containers.is_empty() {
-            // Parse from text output if not JSON
+            // parses from text output if not JSON
             self.stdout
                 .lines()
-                .skip(1) // Skip header
+                .skip(1) // skips header
                 .filter_map(|line| line.split_whitespace().next())
                 .map(String::from)
                 .collect()
@@ -312,7 +318,7 @@ impl ComposePsResult {
         }
     }
 
-    /// Get stdout lines
+    /// Gets stdout lines.
     #[must_use]
     pub fn stdout_lines(&self) -> Vec<&str> {
         self.stdout.lines().collect()
