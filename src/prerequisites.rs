@@ -168,12 +168,8 @@ impl DockerPrerequisites {
     async fn find_docker_binary(&self) -> Result<String> {
         use which::which;
 
-        let result = which("docker").unwrap();
-        if let Some(path) = result.to_str() {
-            return Ok(path.to_string());
-        } else {
-            return Err(Error::DockerNotFound);
-        }
+        let path = which("docker").map_err(|_| Error::DockerNotFound)?;
+        Ok(path.to_string_lossy().to_string())
     }
 
     /// Get Docker client version
