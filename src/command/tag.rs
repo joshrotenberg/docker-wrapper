@@ -130,7 +130,7 @@ impl DockerCommand for TagCommand {
 
     async fn execute(&self) -> Result<Self::Output> {
         let args = self.build_command_args();
-        self.executor.execute_command("docker", args).await
+        self.execute_command(args).await
     }
 }
 

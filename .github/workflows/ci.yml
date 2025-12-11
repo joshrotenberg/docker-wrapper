@@ -46,6 +46,17 @@ jobs:
         if: matrix.rust == 'stable' && matrix.os == 'ubuntu-latest'
         run: cargo fmt -- --check
 
+      - name: Check for executor.execute_command antipattern
+        if: matrix.rust == 'stable' && matrix.os == 'ubuntu-latest'
+        run: |
+          # Commands should use self.execute_command(args) not self.executor.execute_command("docker", args)
+          # The latter causes "docker docker <cmd>" double-command bug
+          if grep -r 'executor\.execute_command("docker"' src/command/; then
+            echo "ERROR: Found executor.execute_command(\"docker\", ...) antipattern!"
+            echo "Use self.execute_command(args) instead to avoid 'docker docker' bug."
+            exit 1
+          fi
+
       - name: Run Clippy
         if: matrix.rust == 'stable'
         run: cargo clippy --all-targets --all-features -- -D warnings

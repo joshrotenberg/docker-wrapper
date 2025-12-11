@@ -63,9 +63,8 @@ async fn test_container_pause_unpause() {
         let _ = StartCommand::new(&container_name).execute().await;
 
         // Pause the container
-        let pause_result = PauseCommand::new(&container_name).execute().await;
-        if pause_result.is_ok() {
-            assert!(!pause_result.unwrap().stdout.is_empty());
+        if let Ok(pause_output) = PauseCommand::new(&container_name).execute().await {
+            assert!(!pause_output.stdout.is_empty());
 
             // Unpause the container
             let unpause_result = UnpauseCommand::new(&container_name)
@@ -100,8 +99,8 @@ async fn test_container_restart() {
             .execute()
             .await;
 
-        if restart_result.is_ok() {
-            assert!(!restart_result.unwrap().stdout.is_empty());
+        if let Ok(restart_output) = restart_result {
+            assert!(!restart_output.stdout.is_empty());
         }
 
         // Clean up
@@ -125,8 +124,8 @@ async fn test_container_rename() {
         // Rename the container
         let rename_result = RenameCommand::new(&old_name, &new_name).execute().await;
 
-        if rename_result.is_ok() {
-            assert!(!rename_result.unwrap().stderr.contains("Error"));
+        if let Ok(rename_output) = rename_result {
+            assert!(!rename_output.stderr.contains("Error"));
             // Clean up with new name
             let _ = RmCommand::new(&new_name).force().execute().await;
         } else {
@@ -156,8 +155,8 @@ async fn test_container_kill() {
             .execute()
             .await;
 
-        if kill_result.is_ok() {
-            assert!(!kill_result.unwrap().stdout.is_empty());
+        if let Ok(kill_output) = kill_result {
+            assert!(!kill_output.stdout.is_empty());
         }
 
         // Clean up
@@ -184,8 +183,8 @@ async fn test_container_update() {
             .execute()
             .await;
 
-        if update_result.is_ok() {
-            assert!(!update_result.unwrap().stdout.is_empty());
+        if let Ok(update_output) = update_result {
+            assert!(!update_output.stdout.is_empty());
         }
 
         // Clean up
@@ -210,10 +209,9 @@ async fn test_container_wait() {
         // Wait for container to exit
         let wait_result = WaitCommand::new(&container_name).execute().await;
 
-        if wait_result.is_ok() {
-            let output = wait_result.unwrap();
+        if let Ok(wait_output) = wait_result {
             // The output should contain the exit code (0)
-            assert!(output.stdout.contains("0"));
+            assert!(wait_output.stdout.contains("0"));
         }
 
         // Clean up
@@ -243,8 +241,8 @@ async fn test_container_commit() {
             .execute()
             .await;
 
-        if commit_result.is_ok() {
-            assert!(!commit_result.unwrap().stdout.is_empty());
+        if let Ok(commit_output) = commit_result {
+            assert!(!commit_output.stdout.is_empty());
 
             // Clean up the image
             let _ = docker_wrapper::RmiCommand::new(format!("{}:latest", image_name))
