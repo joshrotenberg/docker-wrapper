@@ -6,22 +6,22 @@ use super::{CommandExecutor, CommandOutput, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
-/// Docker attach command builder
+/// Docker attach command builder.
 ///
 /// Attach local standard input, output, and error streams to a running container.
 ///
-/// # Example
+/// # Examples
 ///
 /// ```no_run
 /// use docker_wrapper::AttachCommand;
 ///
 /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
-/// // Attach to a running container
+/// // attach to a running container
 /// AttachCommand::new("my-container")
 ///     .run()
 ///     .await?;
 ///
-/// // Attach without stdin
+/// // attach without stdin
 /// AttachCommand::new("my-container")
 ///     .no_stdin()
 ///     .run()
@@ -31,22 +31,22 @@ use async_trait::async_trait;
 /// ```
 #[derive(Debug, Clone)]
 pub struct AttachCommand {
-    /// Container name or ID
+    /// Container name or ID.
     container: String,
-    /// Override the key sequence for detaching
+    /// Overrides the key sequence for detaching.
     detach_keys: Option<String>,
-    /// Do not attach STDIN
+    /// Doesn't attach STDIN.
     no_stdin: bool,
-    /// Proxy all received signals to the process
+    /// Proxies all received signals to the process.
     sig_proxy: bool,
-    /// Command executor
+    /// Command executor.
     pub executor: CommandExecutor,
 }
 
 impl AttachCommand {
-    /// Create a new attach command
+    /// Creates a new [`AttachCommand`].
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::AttachCommand;
@@ -64,9 +64,9 @@ impl AttachCommand {
         }
     }
 
-    /// Override the key sequence for detaching a container
+    /// Overrides the key sequence for detaching a container.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::AttachCommand;
@@ -80,9 +80,9 @@ impl AttachCommand {
         self
     }
 
-    /// Do not attach STDIN
+    /// Doesn't attach STDIN.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::AttachCommand;
@@ -96,9 +96,9 @@ impl AttachCommand {
         self
     }
 
-    /// Do not proxy signals
+    /// Doesn't proxy signals.
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::AttachCommand;
@@ -112,15 +112,16 @@ impl AttachCommand {
         self
     }
 
-    /// Execute the attach command
+    /// Executes the attach command.
     ///
     /// # Errors
-    /// Returns an error if:
-    /// - The Docker daemon is not running
-    /// - The container doesn't exist
-    /// - The container is not running
     ///
-    /// # Example
+    /// Returns an error if:
+    /// - The Docker daemon is not running;
+    /// - The container doesn't exist;
+    /// - The container is not running.
+    ///
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::AttachCommand;
@@ -149,11 +150,15 @@ impl AttachCommand {
 impl DockerCommand for AttachCommand {
     type Output = CommandOutput;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn command_name() -> &'static str {
+        "attach"
+    }
+
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -173,10 +178,10 @@ impl DockerCommand for AttachCommand {
             args.push("--sig-proxy=false".to_string());
         }
 
-        // Add container name/ID
+        // add container name/ID
         args.push(self.container.clone());
 
-        // Add raw arguments from executor
+        // add raw arguments from executor
         args.extend(self.executor.raw_args.clone());
 
         args
@@ -188,23 +193,23 @@ impl DockerCommand for AttachCommand {
     }
 }
 
-/// Result from the attach command
+/// Result from the attach command.
 #[derive(Debug, Clone)]
 pub struct AttachResult {
-    /// Raw command output
+    /// Raw command output.
     pub output: CommandOutput,
-    /// Container that was attached to
+    /// Container that was attached to.
     pub container: String,
 }
 
 impl AttachResult {
-    /// Check if the attach was successful
+    /// Checks if the attach was successful.
     #[must_use]
     pub fn success(&self) -> bool {
         self.output.success
     }
 
-    /// Get the container name
+    /// Gets the container name.
     #[must_use]
     pub fn container(&self) -> &str {
         &self.container

@@ -10,7 +10,7 @@ use async_trait::async_trait;
 ///
 /// Update configuration of one or more containers.
 ///
-/// # Example
+/// # Examplesss
 ///
 /// ```no_run
 /// use docker_wrapper::UpdateCommand;
@@ -65,7 +65,7 @@ pub struct UpdateCommand {
 impl UpdateCommand {
     /// Create a new update command for a single container
     ///
-    /// # Example
+    /// # Examplessssss
     ///
     /// ```
     /// use docker_wrapper::UpdateCommand;
@@ -95,7 +95,7 @@ impl UpdateCommand {
 
     /// Create a new update command for multiple containers
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```
     /// use docker_wrapper::UpdateCommand;
@@ -132,7 +132,7 @@ impl UpdateCommand {
 
     /// Set memory limit
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::UpdateCommand;
@@ -148,7 +148,7 @@ impl UpdateCommand {
 
     /// Set memory reservation (soft limit)
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::UpdateCommand;
@@ -164,7 +164,7 @@ impl UpdateCommand {
 
     /// Set memory swap limit
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::UpdateCommand;
@@ -180,7 +180,7 @@ impl UpdateCommand {
 
     /// Set CPU shares (relative weight)
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::UpdateCommand;
@@ -196,7 +196,7 @@ impl UpdateCommand {
 
     /// Set CPU period
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::UpdateCommand;
@@ -212,7 +212,7 @@ impl UpdateCommand {
 
     /// Set CPU quota
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::UpdateCommand;
@@ -228,7 +228,7 @@ impl UpdateCommand {
 
     /// Set number of CPUs
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::UpdateCommand;
@@ -244,7 +244,7 @@ impl UpdateCommand {
 
     /// Set CPU set
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::UpdateCommand;
@@ -260,7 +260,7 @@ impl UpdateCommand {
 
     /// Set memory nodes
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::UpdateCommand;
@@ -276,7 +276,7 @@ impl UpdateCommand {
 
     /// Set block IO weight
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::UpdateCommand;
@@ -292,7 +292,7 @@ impl UpdateCommand {
 
     /// Set kernel memory limit
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::UpdateCommand;
@@ -308,7 +308,7 @@ impl UpdateCommand {
 
     /// Set restart policy
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::UpdateCommand;
@@ -324,7 +324,7 @@ impl UpdateCommand {
 
     /// Set PID limit
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::UpdateCommand;
@@ -346,7 +346,7 @@ impl UpdateCommand {
     /// - Any of the specified containers don't exist
     /// - Invalid resource limits are specified
     ///
-    /// # Example
+    /// # Examplesss
     ///
     /// ```no_run
     /// use docker_wrapper::UpdateCommand;
@@ -451,11 +451,11 @@ impl DockerCommand for UpdateCommand {
         args
     }
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 

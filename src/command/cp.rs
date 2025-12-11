@@ -13,7 +13,7 @@ use std::path::Path;
 /// Copy files/folders between a container and the local filesystem.
 /// Use `-` as the source to read from stdin or as the destination to write to stdout.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::CpCommand;
@@ -53,7 +53,7 @@ pub struct CpCommand {
 impl CpCommand {
     /// Create a cp command copying from container to host
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```
     /// use docker_wrapper::CpCommand;
@@ -77,7 +77,7 @@ impl CpCommand {
 
     /// Create a cp command copying from host to container
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::CpCommand;
@@ -114,7 +114,7 @@ impl CpCommand {
 
     /// Archive mode - preserve UIDs/GIDs and permissions
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::CpCommand;
@@ -189,11 +189,11 @@ impl DockerCommand for CpCommand {
         args
     }
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 

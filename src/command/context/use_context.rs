@@ -8,7 +8,7 @@ use async_trait::async_trait;
 ///
 /// Switch to a different Docker context.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::{ContextUseCommand, DockerCommand};
@@ -44,11 +44,11 @@ impl ContextUseCommand {
 impl DockerCommand for ContextUseCommand {
     type Output = CommandOutput;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 

@@ -10,7 +10,7 @@ use async_trait::async_trait;
 ///
 /// Display the running processes of a container.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::TopCommand;
@@ -42,7 +42,7 @@ pub struct TopCommand {
 impl TopCommand {
     /// Create a new top command
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::TopCommand;
@@ -60,7 +60,7 @@ impl TopCommand {
 
     /// Set ps command options
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::TopCommand;
@@ -87,7 +87,7 @@ impl TopCommand {
     /// - The container doesn't exist
     /// - The container is not running
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::TopCommand;
@@ -197,11 +197,11 @@ impl TopCommand {
 impl DockerCommand for TopCommand {
     type Output = CommandOutput;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 

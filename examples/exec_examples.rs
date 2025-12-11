@@ -175,7 +175,7 @@ async fn env_exec_example(container_id: &str) {
         }
     }
 
-    // Multiple environment variables from HashMap
+    // multiple environment variables from HashMap
     let mut env_vars = HashMap::new();
     env_vars.insert("DEBUG".to_string(), "true".to_string());
     env_vars.insert("LOG_LEVEL".to_string(), "info".to_string());

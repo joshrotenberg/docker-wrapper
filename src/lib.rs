@@ -8,15 +8,15 @@
 //!
 //! ## Features
 //!
-//! - **Complete Docker CLI coverage**: Implements all 35 essential Docker commands
-//! - **Type-safe builder pattern**: Compile-time validation of command construction
-//! - **Async/await support**: Built on Tokio for efficient async operations
-//! - **Streaming support**: Real-time output streaming for long-running commands
-//! - **Docker Compose support**: Optional feature for multi-container orchestration
-//! - **Container templates**: Pre-configured templates for Redis, `PostgreSQL`, `MongoDB`, etc.
-//! - **Zero dependencies on Docker SDK**: Works directly with the Docker CLI
-//! - **Comprehensive error handling**: Detailed error messages and types
-//! - **Well-tested**: Extensive unit and integration test coverage
+//! - **Complete Docker CLI coverage**: Implements all 35 essential Docker commands;
+//! - **Type-safe builder pattern**: Compile-time validation of command construction;
+//! - **Async/await support**: Built on Tokio for efficient async operations;
+//! - **Streaming support**: Real-time output streaming for long-running commands;
+//! - **Docker Compose support**: Optional feature for multi-container orchestration;
+//! - **Container templates**: Pre-configured templates for Redis, `PostgreSQL`, `MongoDB`, etc.;
+//! - **Zero dependencies on Docker SDK**: Works directly with the Docker CLI;
+//! - **Comprehensive error handling**: Detailed error messages and types;
+//! - **Well-tested**: Extensive unit and integration test coverage.
 //!
 //! ## Quick Start
 //!
@@ -229,6 +229,7 @@
 //! ## Command Coverage
 //!
 //! ### Container Commands
+//!
 //! - `run` - Run a new container
 //! - `exec` - Execute commands in running containers
 //! - `ps` - List containers
@@ -254,6 +255,7 @@
 //! - `commit` - Create image from container
 //!
 //! ### Image Commands
+//!
 //! - `images` - List images
 //! - `pull` - Pull images from registry
 //! - `push` - Push images to registry
@@ -268,6 +270,7 @@
 //! - `search` - Search Docker Hub for images
 //!
 //! ### System Commands
+//!
 //! - `info` - Display system information
 //! - `version` - Show Docker version
 //! - `events` - Monitor Docker events
@@ -303,13 +306,13 @@
 //! # use docker_wrapper::{DockerCommand, RunCommand, RmCommand};
 //! # #[tokio::main]
 //! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! // Use auto-remove for temporary containers
+//! // use auto-remove for temporary containers
 //! RunCommand::new("alpine")
-//!     .remove()  // Automatically remove when stopped
+//!     .remove()  // automatically removes when stopped
 //!     .execute()
 //!     .await?;
 //!
-//! // Or manually remove containers
+//! // or manually remove containers
 //! RmCommand::new("my-container")
 //!     .force()
 //!     .execute()
@@ -348,11 +351,11 @@
 //!
 //! The `examples/` directory contains comprehensive examples:
 //!
-//! - `basic_usage.rs` - Common Docker operations
-//! - `container_lifecycle.rs` - Container management patterns
-//! - `docker_compose.rs` - Docker Compose usage
-//! - `streaming.rs` - Real-time output streaming
-//! - `error_handling.rs` - Error handling patterns
+//! - `basic_usage.rs` - Common Docker operations;
+//! - `container_lifecycle.rs` - Container management patterns;
+//! - `docker_compose.rs` - Docker Compose usage;
+//! - `streaming.rs` - Real-time output streaming;
+//! - `error_handling.rs` - Error handling patterns.
 //!
 //! Run examples with:
 //!
@@ -367,11 +370,13 @@
 //! Migrating from shell scripts to `docker-wrapper` is straightforward:
 //!
 //! **Shell:**
+//!
 //! ```bash
 //! docker run -d --name web -p 8080:80 nginx:latest
 //! ```
 //!
 //! **Rust:**
+//!
 //! ```rust,no_run
 //! # use docker_wrapper::{DockerCommand, RunCommand};
 //! # #[tokio::main]

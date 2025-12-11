@@ -10,7 +10,7 @@ use async_trait::async_trait;
 ///
 /// Rename a container.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::RenameCommand;
@@ -40,7 +40,7 @@ pub struct RenameCommand {
 impl RenameCommand {
     /// Create a new rename command
     ///
-    /// # Example
+    /// # Examplesss
     ///
     /// ```
     /// use docker_wrapper::RenameCommand;
@@ -65,7 +65,7 @@ impl RenameCommand {
     /// - The new name is already in use
     /// - The container is running (some Docker versions)
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```no_run
     /// use docker_wrapper::RenameCommand;
@@ -97,11 +97,11 @@ impl RenameCommand {
 impl DockerCommand for RenameCommand {
     type Output = CommandOutput;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 

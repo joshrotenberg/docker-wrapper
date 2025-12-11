@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker rm` command for removing stopped containers.
 //!
-//! # Example
+//! # Examples
 //!
 //! ```rust,no_run
 //! use docker_wrapper::{DockerCommand, RmCommand, RunCommand, StopCommand};
@@ -148,11 +148,11 @@ impl RmCommand {
 impl DockerCommand for RmCommand {
     type Output = CommandOutput;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 

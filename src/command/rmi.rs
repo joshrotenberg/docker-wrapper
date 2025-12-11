@@ -10,7 +10,7 @@ use async_trait::async_trait;
 ///
 /// Remove one or more images.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::RmiCommand;
@@ -44,7 +44,7 @@ pub struct RmiCommand {
 impl RmiCommand {
     /// Create a new rmi command for a single image
     ///
-    /// # Example
+    /// # Examplesss
     ///
     /// ```
     /// use docker_wrapper::RmiCommand;
@@ -63,7 +63,7 @@ impl RmiCommand {
 
     /// Create a new rmi command for multiple images
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```
     /// use docker_wrapper::RmiCommand;
@@ -89,7 +89,7 @@ impl RmiCommand {
 
     /// Force removal of the images
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::RmiCommand;
@@ -118,7 +118,7 @@ impl RmiCommand {
     /// - Any of the specified images don't exist
     /// - Images are in use by containers (unless force is used)
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::RmiCommand;
@@ -189,11 +189,11 @@ impl DockerCommand for RmiCommand {
         args
     }
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 

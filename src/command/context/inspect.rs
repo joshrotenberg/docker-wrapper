@@ -9,7 +9,7 @@ use serde_json::Value;
 ///
 /// Display detailed information on one or more contexts.
 ///
-/// # Example
+/// # Examplesss
 ///
 /// ```no_run
 /// use docker_wrapper::{ContextInspectCommand, DockerCommand};
@@ -63,11 +63,11 @@ impl ContextInspectCommand {
 impl DockerCommand for ContextInspectCommand {
     type Output = CommandOutput;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 

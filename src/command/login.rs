@@ -198,11 +198,11 @@ impl LoginOutput {
 impl DockerCommand for LoginCommand {
     type Output = LoginOutput;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -234,7 +234,7 @@ impl DockerCommand for LoginCommand {
 
     async fn execute(&self) -> Result<Self::Output> {
         let args = self.build_command_args();
-        let output = self.executor.execute_command("docker", args).await?;
+        let output = self.execute_command(args).await?;
 
         Ok(LoginOutput { output })
     }

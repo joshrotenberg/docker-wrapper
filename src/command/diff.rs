@@ -10,7 +10,7 @@ use async_trait::async_trait;
 ///
 /// Inspect changes to files or folders on a container's filesystem.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::DiffCommand;
@@ -38,7 +38,7 @@ pub struct DiffCommand {
 impl DiffCommand {
     /// Create a new diff command
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```
     /// use docker_wrapper::DiffCommand;
@@ -60,7 +60,7 @@ impl DiffCommand {
     /// - The Docker daemon is not running
     /// - The container doesn't exist
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::DiffCommand;
@@ -136,11 +136,11 @@ impl DockerCommand for DiffCommand {
         args
     }
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 

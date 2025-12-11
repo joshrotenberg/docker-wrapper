@@ -10,7 +10,7 @@ use async_trait::async_trait;
 ///
 /// Create a tag `TARGET_IMAGE` that refers to `SOURCE_IMAGE`.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::TagCommand;
@@ -41,7 +41,7 @@ pub struct TagCommand {
 impl TagCommand {
     /// Create a new tag command
     ///
-    /// # Example
+    /// # Examplesss
     ///
     /// ```
     /// use docker_wrapper::TagCommand;
@@ -69,7 +69,7 @@ impl TagCommand {
     /// - The source image doesn't exist
     /// - The target image name is invalid
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::TagCommand;
@@ -111,11 +111,11 @@ impl TagCommand {
 impl DockerCommand for TagCommand {
     type Output = CommandOutput;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -130,7 +130,7 @@ impl DockerCommand for TagCommand {
 
     async fn execute(&self) -> Result<Self::Output> {
         let args = self.build_command_args();
-        self.executor.execute_command("docker", args).await
+        self.execute_command(args).await
     }
 }
 

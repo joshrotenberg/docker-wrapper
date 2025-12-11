@@ -10,7 +10,7 @@ use async_trait::async_trait;
 ///
 /// Block until one or more containers stop, then print their exit codes.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::WaitCommand;
@@ -41,7 +41,7 @@ pub struct WaitCommand {
 impl WaitCommand {
     /// Create a new wait command for a single container
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::WaitCommand;
@@ -58,7 +58,7 @@ impl WaitCommand {
 
     /// Create a new wait command for multiple containers
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::WaitCommand;
@@ -87,7 +87,7 @@ impl WaitCommand {
     /// - The Docker daemon is not running
     /// - Any of the specified containers don't exist
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::WaitCommand;
@@ -129,11 +129,11 @@ impl WaitCommand {
 impl DockerCommand for WaitCommand {
     type Output = CommandOutput;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 

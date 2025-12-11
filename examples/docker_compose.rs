@@ -1,9 +1,9 @@
-//! Docker Compose example demonstrating multi-container application management
+//! Docker Compose example demonstrating multi-container application management.
 //!
 //! This example shows how to use the compose feature to manage
 //! multi-container applications with Docker Compose.
 //!
-//! Run with: cargo run --example docker_compose --features compose
+//! Run with: cargo run --example docker_compose --features compose.
 
 #[cfg(feature = "compose")]
 use docker_wrapper::compose::down::RemoveImages;

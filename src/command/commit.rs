@@ -11,7 +11,7 @@ use async_trait::async_trait;
 ///
 /// Create a new image from a container's changes.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::CommitCommand;
@@ -53,7 +53,7 @@ pub struct CommitCommand {
 impl CommitCommand {
     /// Create a new commit command
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```
     /// use docker_wrapper::CommitCommand;
@@ -76,7 +76,7 @@ impl CommitCommand {
 
     /// Set the repository name for the new image
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::CommitCommand;
@@ -92,7 +92,7 @@ impl CommitCommand {
 
     /// Set the tag for the new image
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::CommitCommand;
@@ -116,7 +116,7 @@ impl CommitCommand {
 
     /// Set the author
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::CommitCommand;
@@ -139,7 +139,7 @@ impl CommitCommand {
 
     /// Apply Dockerfile instruction to the created image
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::CommitCommand;
@@ -163,7 +163,7 @@ impl CommitCommand {
     /// - The container doesn't exist
     /// - The repository/tag format is invalid
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```no_run
     /// use docker_wrapper::CommitCommand;
@@ -232,11 +232,11 @@ impl DockerCommand for CommitCommand {
         args
     }
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 

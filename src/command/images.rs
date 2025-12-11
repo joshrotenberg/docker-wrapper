@@ -806,11 +806,11 @@ impl ImagesOutput {
 impl DockerCommand for ImagesCommand {
     type Output = ImagesOutput;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -820,7 +820,7 @@ impl DockerCommand for ImagesCommand {
 
     async fn execute(&self) -> Result<Self::Output> {
         let args = self.build_command_args();
-        let output = self.executor.execute_command("docker", args).await?;
+        let output = self.execute_command(args).await?;
 
         let images = self.parse_output(&output);
 

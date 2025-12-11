@@ -429,7 +429,7 @@ async fn test_images_command_validation() {
     let test_cases = vec![
         (ImagesCommand::new(), 0),                               // Basic command
         (ImagesCommand::new().all(), 1),                         // With --all
-        (ImagesCommand::new().quiet().no_trunc(), 2),            // Multiple flags
+        (ImagesCommand::new().quiet().no_trunc(), 2),            // multiple flags
         (ImagesCommand::new().repository("nginx").digests(), 2), // With repository
     ];
 

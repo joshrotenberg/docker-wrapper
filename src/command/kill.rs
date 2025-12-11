@@ -2,7 +2,7 @@
 //!
 //! This module provides the `docker kill` command for sending signals to running containers.
 //!
-//! # Example
+//! # Examples
 //!
 //! ```rust,no_run
 //! use docker_wrapper::{DockerCommand, KillCommand, RunCommand};
@@ -140,11 +140,11 @@ impl DockerCommand for KillCommand {
         args
     }
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 

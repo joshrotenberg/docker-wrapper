@@ -314,11 +314,11 @@ impl Default for PushCommand {
 impl DockerCommand for PushCommand {
     type Output = CommandOutput;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 
@@ -357,7 +357,7 @@ impl DockerCommand for PushCommand {
 
     async fn execute(&self) -> Result<Self::Output> {
         let args = self.build_command_args();
-        self.executor.execute_command("docker", args).await
+        self.execute_command(args).await
     }
 }
 

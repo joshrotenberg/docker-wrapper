@@ -1,18 +1,19 @@
-//! Docker builder build command
+//! Docker builder build command.
 //!
-//! Alternative interface to start a build (similar to `docker build`)
+//! Alternative interface to start a build (similar to `docker build`).
 
 use crate::command::build::{BuildCommand, BuildOutput};
 use crate::command::{CommandExecutor, DockerCommand};
 use crate::error::Result;
 use async_trait::async_trait;
 
-/// `docker builder build` command - alternative interface to docker build
+/// `docker builder build` command - alternative interface to docker build.
 ///
 /// This is essentially the same as `docker build` but accessed through
 /// the builder subcommand interface.
 ///
-/// # Example
+/// # Examples
+///
 /// ```no_run
 /// use docker_wrapper::command::builder::BuilderBuildCommand;
 /// use docker_wrapper::DockerCommand;
@@ -32,64 +33,65 @@ use async_trait::async_trait;
 /// ```
 #[derive(Debug, Clone)]
 pub struct BuilderBuildCommand {
-    /// Underlying build command
+    /// Underlying build command.
     inner: BuildCommand,
 }
 
 impl BuilderBuildCommand {
-    /// Create a new builder build command
+    /// Creates a new builder build command.
     ///
     /// # Arguments
-    /// * `context` - Build context path (e.g., ".", "/path/to/dir")
+    ///
+    /// * `context` - Build context path (e.g., `.`, `/path/to/dir`).
     pub fn new(context: impl Into<String>) -> Self {
         Self {
             inner: BuildCommand::new(context),
         }
     }
 
-    /// Set the Dockerfile to use
+    /// Sets the Dockerfile to use.
     #[must_use]
     pub fn dockerfile(mut self, path: impl Into<String>) -> Self {
         self.inner = self.inner.file(path.into());
         self
     }
 
-    /// Tag the image
+    /// Tags the image.
     #[must_use]
     pub fn tag(mut self, tag: impl Into<String>) -> Self {
         self.inner = self.inner.tag(tag);
         self
     }
 
-    /// Do not use cache when building
+    /// Do not use cache when building.
     #[must_use]
     pub fn no_cache(mut self) -> Self {
         self.inner = self.inner.no_cache();
         self
     }
 
-    /// Set build-time variables
+    /// Sets build-time variables.
     #[must_use]
     pub fn build_arg(mut self, key: impl Into<String>, value: impl Into<String>) -> Self {
         self.inner = self.inner.build_arg(key, value);
         self
     }
 
-    /// Set target build stage
+    /// Sets target build stage.
     #[must_use]
     pub fn target(mut self, target: impl Into<String>) -> Self {
         self.inner = self.inner.target(target);
         self
     }
 
-    /// Set platform for multi-platform builds
+    /// Sets platform for multi-platform builds.
     #[must_use]
     pub fn platform(mut self, platform: impl Into<String>) -> Self {
         self.inner = self.inner.platform(platform);
         self
     }
 
-    /// Enable `BuildKit` backend
+    /// Enables `BuildKit` backend.
     #[must_use]
     pub fn buildkit(mut self) -> Self {
         // This would normally set DOCKER_BUILDKIT=1 environment variable
@@ -101,35 +103,35 @@ impl BuilderBuildCommand {
         self
     }
 
-    /// Enable quiet mode
+    /// Enables quiet mode.
     #[must_use]
     pub fn quiet(mut self) -> Self {
         self.inner = self.inner.quiet();
         self
     }
 
-    /// Always remove intermediate containers
+    /// Always removes intermediate containers.
     #[must_use]
     pub fn force_rm(mut self) -> Self {
         self.inner = self.inner.force_rm();
         self
     }
 
-    /// Remove intermediate containers after successful build (default)
+    /// Removes intermediate containers after successful build (default).
     #[must_use]
     pub fn rm(self) -> Self {
         // rm is the default behavior, this is a no-op
         self
     }
 
-    /// Do not remove intermediate containers after build
+    /// Does not remove intermediate containers after build.
     #[must_use]
     pub fn no_rm(mut self) -> Self {
         self.inner = self.inner.no_rm();
         self
     }
 
-    /// Always attempt to pull newer version of base image
+    /// Always attempts to pull newer version of base image.
     #[must_use]
     pub fn pull(mut self) -> Self {
         self.inner = self.inner.pull();
@@ -141,33 +143,28 @@ impl BuilderBuildCommand {
 impl DockerCommand for BuilderBuildCommand {
     type Output = BuildOutput;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn command_name() -> &'static str {
+        "builder build"
+    }
+
+    fn executor(&self) -> &CommandExecutor {
         &self.inner.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.inner.executor
     }
 
     fn build_command_args(&self) -> Vec<String> {
-        // Get the args from the inner build command
-        let mut inner_args = self.inner.build_command_args();
-
-        // Replace "build" with "builder build"
-        if !inner_args.is_empty() && inner_args[0] == "build" {
-            inner_args[0] = "builder".to_string();
-            inner_args.insert(1, "build".to_string());
-        }
-
-        inner_args
+        self.inner.build_command_args()
     }
 
     async fn execute(&self) -> Result<Self::Output> {
-        // The builder build command has the same output as regular build
+        // the builder build command has the same output as regular build
         let args = self.build_command_args();
         let output = self.inner.executor.execute_command("docker", args).await?;
 
-        // Extract image ID from output
+        // extract image ID from output
         let image_id = extract_image_id(&output.stdout);
 
         Ok(BuildOutput {
@@ -179,9 +176,9 @@ impl DockerCommand for BuilderBuildCommand {
     }
 }
 
-/// Extract image ID from build output
+/// Extracts image ID from build output.
 fn extract_image_id(stdout: &str) -> Option<String> {
-    // Look for "Successfully built <id>" or "writing image sha256:<id>"
+    // look for "Successfully built <id>" or "writing image sha256:<id>"
     for line in stdout.lines().rev() {
         if line.contains("Successfully built") {
             return line.split_whitespace().last().map(String::from);

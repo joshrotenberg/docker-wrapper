@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Get real-time events from the Docker daemon.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::EventsCommand;
@@ -48,7 +48,7 @@ pub struct EventsCommand {
 impl EventsCommand {
     /// Create a new events command
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::EventsCommand;
@@ -68,7 +68,7 @@ impl EventsCommand {
 
     /// Add a filter for events
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::EventsCommand;
@@ -86,7 +86,7 @@ impl EventsCommand {
 
     /// Set output format
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::EventsCommand;
@@ -102,7 +102,7 @@ impl EventsCommand {
 
     /// Show events created since this timestamp
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::EventsCommand;
@@ -130,7 +130,7 @@ impl EventsCommand {
     /// - The Docker daemon is not running
     /// - Invalid filter or timestamp format
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::EventsCommand;
@@ -231,11 +231,11 @@ impl DockerCommand for EventsCommand {
             .await
     }
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 }

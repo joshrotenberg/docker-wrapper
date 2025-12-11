@@ -322,7 +322,7 @@ impl ContainerId {
     /// This queries Docker for the actual mapped ports of the running container.
     /// Useful when using dynamic port allocation (e.g., `-p 6379` without specifying host port).
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::{DockerCommand, RunCommand};
@@ -359,7 +359,7 @@ impl ContainerId {
 
     /// Get a specific port mapping for this container
     ///
-    /// # Example
+    /// # Exampless
     ///
     /// ```no_run
     /// use docker_wrapper::{DockerCommand, RunCommand};
@@ -1333,11 +1333,11 @@ impl RunCommand {
 impl DockerCommand for RunCommand {
     type Output = ContainerId;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 

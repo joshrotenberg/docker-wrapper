@@ -8,7 +8,7 @@ use async_trait::async_trait;
 ///
 /// Remove one or more Docker contexts.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::{ContextRmCommand, DockerCommand};
@@ -62,11 +62,11 @@ impl ContextRmCommand {
 impl DockerCommand for ContextRmCommand {
     type Output = CommandOutput;
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 

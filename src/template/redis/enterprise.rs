@@ -140,7 +140,7 @@ impl RedisEnterpriseTemplate {
 
     /// Use a custom Redis Enterprise image and tag
     ///
-    /// # Example
+    /// # Examples
     /// ```
     /// # use docker_wrapper::RedisEnterpriseTemplate;
     /// let template = RedisEnterpriseTemplate::new("my-redis")

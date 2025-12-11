@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 ///
 /// Show the history of an image, including layer information.
 ///
-/// # Example
+/// # Exampless
 ///
 /// ```no_run
 /// use docker_wrapper::HistoryCommand;
@@ -47,7 +47,7 @@ pub struct HistoryCommand {
 impl HistoryCommand {
     /// Create a new history command
     ///
-    /// # Example
+    /// # Examplesss
     ///
     /// ```
     /// use docker_wrapper::HistoryCommand;
@@ -68,7 +68,7 @@ impl HistoryCommand {
 
     /// Show human readable sizes
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::HistoryCommand;
@@ -84,7 +84,7 @@ impl HistoryCommand {
 
     /// Don't truncate output
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::HistoryCommand;
@@ -100,7 +100,7 @@ impl HistoryCommand {
 
     /// Show quiet output (only image IDs)
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::HistoryCommand;
@@ -116,7 +116,7 @@ impl HistoryCommand {
 
     /// Format output using a Go template
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```
     /// use docker_wrapper::HistoryCommand;
@@ -137,7 +137,7 @@ impl HistoryCommand {
     /// - The Docker daemon is not running
     /// - The image doesn't exist
     ///
-    /// # Example
+    /// # Examples
     ///
     /// ```no_run
     /// use docker_wrapper::HistoryCommand;
@@ -270,11 +270,11 @@ impl DockerCommand for HistoryCommand {
             .await
     }
 
-    fn get_executor(&self) -> &CommandExecutor {
+    fn executor(&self) -> &CommandExecutor {
         &self.executor
     }
 
-    fn get_executor_mut(&mut self) -> &mut CommandExecutor {
+    fn executor_mut(&mut self) -> &mut CommandExecutor {
         &mut self.executor
     }
 }
