@@ -64,6 +64,7 @@ async-trait = "0.1"
 
 # Optional dependencies for templates
 reqwest = { version = "0.12", features = ["json", "rustls-tls"], optional = true }
+which = "8.0"
 
 [dev-dependencies]
 tokio-test = "0.4"
@@ -104,3 +105,13 @@ required-features = ["template-redis-cluster"]
 name = "redis_enterprise_template"
 path = "examples/redis_enterprise_template.rs"
 required-features = ["template-redis-enterprise"]
+
+[[example]]
+name = "docker_compose"
+path = "examples/docker_compose.rs"
+required-features = ["compose"]
+
+[[example]]
+name = "template_showcase"
+path = "examples/template_showcase.rs"
+required-features = ["templates"]

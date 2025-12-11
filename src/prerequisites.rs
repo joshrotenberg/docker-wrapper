@@ -166,24 +166,10 @@ impl DockerPrerequisites {
 
     /// Find Docker binary in PATH
     async fn find_docker_binary(&self) -> Result<String> {
-        let output = Command::new("which")
-            .arg("docker")
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .await
-            .map_err(|e| Error::custom(format!("Failed to run 'which docker': {e}")))?;
+        use which::which;
 
-        if !output.status.success() {
-            return Err(Error::DockerNotFound);
-        }
-
-        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if path.is_empty() {
-            return Err(Error::DockerNotFound);
-        }
-
-        Ok(path)
+        let path = which("docker").map_err(|_| Error::DockerNotFound)?;
+        Ok(path.to_string_lossy().to_string())
     }
 
     /// Get Docker client version
