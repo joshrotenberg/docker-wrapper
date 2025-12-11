@@ -300,6 +300,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.4](https://github.com/joshrotenberg/docker-wrapper/compare/v0.8.3...v0.8.4) - 2025-12-11
+
+### Fixed
+
+- use self.execute_command to avoid docker docker bug ([#180](https://github.com/joshrotenberg/docker-wrapper/pull/180))
+- use container hostnames for Redis cluster initialization ([#173](https://github.com/joshrotenberg/docker-wrapper/pull/173))
+
+### Other
+
+- update README version numbers, license, and remove outdated planning doc ([#182](https://github.com/joshrotenberg/docker-wrapper/pull/182))
+- add command execution verification tests ([#181](https://github.com/joshrotenberg/docker-wrapper/pull/181))
+- *(deps)* bump actions/upload-artifact from 4 to 5 ([#174](https://github.com/joshrotenberg/docker-wrapper/pull/174))
+- *(deps)* bump actions/checkout from 4 to 6 ([#178](https://github.com/joshrotenberg/docker-wrapper/pull/178))
+
 ## [0.8.3](https://github.com/joshrotenberg/docker-wrapper/compare/v0.8.2...v0.8.3) - 2025-10-15
 
 ### Added
