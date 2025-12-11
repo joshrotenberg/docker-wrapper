@@ -191,7 +191,7 @@ impl DockerCommand for BuilderPruneCommand {
 
     async fn execute(&self) -> Result<Self::Output> {
         let args = self.build_command_args();
-        let output = self.executor.execute_command("docker", args).await?;
+        let output = self.execute_command(args).await?;
 
         let (deleted_cache_ids, space_reclaimed, space_reclaimed_str) =
             Self::parse_output(&output.stdout);

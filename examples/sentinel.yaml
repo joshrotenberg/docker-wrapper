@@ -1,0 +1,9 @@
+api-version: v1
+deployments:
+  - name: my-sentinel
+    type: sentinel
+    sentinels: 3
+    redis-port-base: 6379
+    sentinel-port-base: 26379
+    persist: true
+    memory: "512m"

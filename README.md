@@ -3,7 +3,7 @@
 [![Crates.io](https://img.shields.io/crates/v/docker-wrapper.svg)](https://crates.io/crates/docker-wrapper)
 [![Documentation](https://docs.rs/docker-wrapper/badge.svg)](https://docs.rs/docker-wrapper)
 [![CI](https://github.com/joshrotenberg/docker-wrapper/workflows/CI/badge.svg)](https://github.com/joshrotenberg/docker-wrapper/actions)
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-MIT%20OR%20Apache--2.0-blue.svg)](LICENSE-MIT)
 
 A comprehensive, type-safe Docker CLI wrapper for Rust applications.
 
@@ -27,7 +27,7 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-docker-wrapper = "0.5"
+docker-wrapper = "0.8"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -37,7 +37,7 @@ Enable Docker Compose support:
 
 ```toml
 [dependencies]
-docker-wrapper = { version = "0.5", features = ["compose"] }
+docker-wrapper = { version = "0.8", features = ["compose"] }
 ```
 
 ## Quick Start
@@ -215,4 +215,9 @@ Contributions are welcome! Please see our [Contributing Guide](CONTRIBUTING.md) 
 
 ## License
 
-Licensed under the MIT license ([LICENSE](LICENSE) or http://opensource.org/licenses/MIT).
+Licensed under either of:
+
+- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+
+at your option.

@@ -371,7 +371,7 @@ impl ImagesCommand {
     ///
     /// This method constructs the complete argument list for the docker images command.
     fn build_command_args(&self) -> Vec<String> {
-        let mut args = Vec::new();
+        let mut args = vec!["images".to_string()];
 
         // Add all flag
         if self.all {
@@ -820,7 +820,7 @@ impl DockerCommand for ImagesCommand {
 
     async fn execute(&self) -> Result<Self::Output> {
         let args = self.build_command_args();
-        let output = self.executor.execute_command("docker", args).await?;
+        let output = self.execute_command(args).await?;
 
         let images = self.parse_output(&output);
 
@@ -837,7 +837,7 @@ mod tests {
         let images_cmd = ImagesCommand::new();
         let args = images_cmd.build_command_args();
 
-        assert!(args.is_empty()); // No arguments for basic images command
+        assert_eq!(args, vec!["images"]); // Basic images command with just the command name
         assert!(!images_cmd.is_all());
         assert!(!images_cmd.is_digests());
         assert!(!images_cmd.is_quiet());

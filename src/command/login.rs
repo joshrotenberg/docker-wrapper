@@ -234,7 +234,7 @@ impl DockerCommand for LoginCommand {
 
     async fn execute(&self) -> Result<Self::Output> {
         let args = self.build_command_args();
-        let output = self.executor.execute_command("docker", args).await?;
+        let output = self.execute_command(args).await?;
 
         Ok(LoginOutput { output })
     }
