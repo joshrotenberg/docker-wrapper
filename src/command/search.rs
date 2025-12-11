@@ -488,7 +488,7 @@ impl DockerCommand for SearchCommand {
 
     async fn execute(&self) -> Result<Self::Output> {
         let args = self.build_command_args();
-        let output = self.executor.execute_command("docker", args).await?;
+        let output = self.execute_command(args).await?;
 
         let repositories = self.parse_output(&output)?;
 

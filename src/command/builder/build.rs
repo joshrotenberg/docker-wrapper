@@ -165,7 +165,7 @@ impl DockerCommand for BuilderBuildCommand {
     async fn execute(&self) -> Result<Self::Output> {
         // The builder build command has the same output as regular build
         let args = self.build_command_args();
-        let output = self.inner.executor.execute_command("docker", args).await?;
+        let output = self.execute_command(args).await?;
 
         // Extract image ID from output
         let image_id = extract_image_id(&output.stdout);
