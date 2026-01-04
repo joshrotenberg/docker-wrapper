@@ -5,6 +5,7 @@ use crate::error::Result;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::time::sleep;
+use tracing::{debug, info, instrument, trace, warn};
 
 /// Configuration for dry-run mode and debugging
 #[derive(Debug, Clone)]
@@ -271,6 +272,15 @@ impl DebugExecutor {
     /// # Errors
     ///
     /// Returns an error if the command fails after all retry attempts
+    #[instrument(
+        name = "debug.execute",
+        skip(self, args),
+        fields(
+            command = %command_name,
+            dry_run = self.debug_config.dry_run,
+            has_retry = self.retry_policy.is_some(),
+        )
+    )]
     pub async fn execute_command(
         &self,
         command_name: &str,
@@ -280,6 +290,8 @@ impl DebugExecutor {
 
         // Log the command
         self.debug_config.log_command(&command_str);
+
+        trace!(command = %command_str, "executing debug command");
 
         // Verbose output
         if self.debug_config.verbose {
@@ -293,6 +305,7 @@ impl DebugExecutor {
                 self.debug_config.dry_run_prefix, command_str
             );
             eprintln!("{message}");
+            info!(command = %command_str, "dry-run mode, command not executed");
 
             return Ok(CommandOutput {
                 stdout: message,
@@ -311,6 +324,14 @@ impl DebugExecutor {
     }
 
     /// Execute command with retry logic
+    #[instrument(
+        name = "debug.retry",
+        skip(self, args, policy),
+        fields(
+            command = %command_name,
+            max_attempts = policy.max_attempts,
+        )
+    )]
     async fn execute_with_retry(
         &self,
         command_name: &str,
@@ -320,8 +341,15 @@ impl DebugExecutor {
         let mut attempt = 0;
         let mut last_error = None;
 
+        debug!(
+            max_attempts = policy.max_attempts,
+            "starting command execution with retry"
+        );
+
         while attempt < policy.max_attempts {
             attempt += 1;
+
+            trace!(attempt = attempt, "executing attempt");
 
             if self.debug_config.verbose && attempt > 1 {
                 eprintln!(
@@ -335,17 +363,32 @@ impl DebugExecutor {
                 .execute_command(command_name, args.clone())
                 .await
             {
-                Ok(output) => return Ok(output),
+                Ok(output) => {
+                    if attempt > 1 {
+                        info!(attempt = attempt, "command succeeded after retry");
+                    }
+                    return Ok(output);
+                }
                 Err(e) => {
                     let error_str = e.to_string();
 
                     // Check if retryable
                     if !RetryPolicy::is_retryable(&error_str) {
+                        debug!(
+                            error = %error_str,
+                            "error is not retryable, failing immediately"
+                        );
                         return Err(e);
                     }
 
                     // Last attempt?
                     if attempt >= policy.max_attempts {
+                        warn!(
+                            attempt = attempt,
+                            max_attempts = policy.max_attempts,
+                            error = %error_str,
+                            "all retry attempts exhausted"
+                        );
                         return Err(e);
                     }
 
@@ -356,6 +399,17 @@ impl DebugExecutor {
 
                     // Calculate and apply delay
                     let delay = policy.calculate_delay(attempt);
+
+                    #[allow(clippy::cast_possible_truncation)]
+                    let delay_ms = delay.as_millis() as u64;
+                    warn!(
+                        attempt = attempt,
+                        max_attempts = policy.max_attempts,
+                        error = %error_str,
+                        delay_ms = delay_ms,
+                        "command failed, will retry after delay"
+                    );
+
                     if self.debug_config.verbose {
                         eprintln!("[VERBOSE] Waiting {delay:?} before retry");
                     }
