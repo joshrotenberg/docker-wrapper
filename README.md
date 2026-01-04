@@ -11,7 +11,7 @@ A type-safe Docker CLI wrapper for Rust.
 
 ```toml
 [dependencies]
-docker-wrapper = "0.8"
+docker-wrapper = "0.9"
 tokio = { version = "1", features = ["full"] }
 ```
 
@@ -48,10 +48,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 ```toml
 # Docker Compose support
-docker-wrapper = { version = "0.8", features = ["compose"] }
+docker-wrapper = { version = "0.9", features = ["compose"] }
 
 # Container templates (Redis, PostgreSQL, etc.)
-docker-wrapper = { version = "0.8", features = ["templates"] }
+docker-wrapper = { version = "0.9", features = ["templates"] }
 ```
 
 ### Compose Example

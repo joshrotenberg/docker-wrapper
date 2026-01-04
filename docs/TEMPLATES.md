@@ -19,10 +19,10 @@ Add template features to your `Cargo.toml`:
 ```toml
 [dependencies]
 # All templates
-docker-wrapper = { version = "0.8", features = ["templates"] }
+docker-wrapper = { version = "0.9", features = ["templates"] }
 
 # Or individual templates
-docker-wrapper = { version = "0.8", features = ["template-redis", "template-postgres"] }
+docker-wrapper = { version = "0.9", features = ["template-redis", "template-postgres"] }
 ```
 
 Basic usage:
