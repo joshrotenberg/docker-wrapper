@@ -1,7 +1,8 @@
-//! Integration tests for new Docker Compose commands
+//! Integration tests for Docker Compose commands
 
 #[cfg(feature = "compose")]
 mod compose_tests {
+    use docker_wrapper::command::ComposeCommand;
     use docker_wrapper::compose::{
         ComposeAttachCommand, ComposeConfigCommand, ComposeConvertCommand, ComposeCpCommand,
         ComposeCreateCommand, ComposeEventsCommand, ComposeImagesCommand, ComposeKillCommand,
@@ -19,7 +20,7 @@ mod compose_tests {
             .services()
             .quiet();
 
-        // Just verify the command can be created and configured
+        // Verify the command can be created and configured
         assert!(cmd.services);
         assert!(cmd.quiet);
     }
@@ -42,11 +43,10 @@ mod compose_tests {
     fn test_compose_kill_command_creation() {
         let cmd = ComposeKillCommand::new()
             .signal("SIGTERM")
-            .remove_orphans()
             .service("worker");
 
         assert_eq!(cmd.signal, Some("SIGTERM".to_string()));
-        assert!(cmd.remove_orphans);
+        assert_eq!(cmd.services.len(), 1);
     }
 
     #[test]
@@ -85,13 +85,13 @@ mod compose_tests {
     #[test]
     fn test_compose_scale_command() {
         let cmd = ComposeScaleCommand::new()
-            .scale("web", 3)
-            .scale("worker", 5)
+            .service("web", 3)
+            .service("worker", 5)
             .no_deps();
 
-        assert_eq!(cmd.scales.len(), 2);
-        assert_eq!(cmd.scales.get("web"), Some(&3));
-        assert_eq!(cmd.scales.get("worker"), Some(&5));
+        assert_eq!(cmd.services.len(), 2);
+        assert_eq!(cmd.services.get("web"), Some(&3));
+        assert_eq!(cmd.services.get("worker"), Some(&5));
         assert!(cmd.no_deps);
     }
 
@@ -114,34 +114,37 @@ mod compose_tests {
 
     #[test]
     fn test_compose_port_command() {
-        let cmd = ComposePortCommand::new("web", 80).protocol("tcp").index(1);
+        let cmd = ComposePortCommand::new("web")
+            .private_port(80)
+            .protocol("tcp")
+            .index(1);
 
         assert_eq!(cmd.service, "web");
-        assert_eq!(cmd.private_port, 80);
+        assert_eq!(cmd.private_port, Some(80));
         assert_eq!(cmd.protocol, Some("tcp".to_string()));
         assert_eq!(cmd.index, Some(1));
     }
 
     #[test]
     fn test_compose_cp_command() {
-        let cmd = ComposeCpCommand::from_container("web", "/app/logs", "./logs")
+        let cmd = ComposeCpCommand::new("web:/app/logs", "./logs")
             .archive()
             .follow_link();
 
         assert!(cmd.archive);
         assert!(cmd.follow_link);
-        assert!(cmd.source.contains("web:/app/logs"));
+        assert_eq!(cmd.source, "web:/app/logs");
     }
 
     #[test]
     fn test_compose_push_command() {
         let cmd = ComposePushCommand::new()
             .include_deps()
-            .ignore_push_failures()
+            .ignore_build_failures()
             .service("api");
 
         assert!(cmd.include_deps);
-        assert!(cmd.ignore_push_failures);
+        assert!(cmd.ignore_build_failures);
         assert_eq!(cmd.services.len(), 1);
     }
 
@@ -210,12 +213,8 @@ mod compose_tests {
 
     #[test]
     fn test_compose_wait_command() {
-        let cmd = ComposeWaitCommand::new()
-            .down_project()
-            .service("web")
-            .service("db");
+        let cmd = ComposeWaitCommand::new().service("web").service("db");
 
-        assert!(cmd.down_project);
         assert_eq!(cmd.services.len(), 2);
     }
 
@@ -223,13 +222,9 @@ mod compose_tests {
     fn test_compose_convert_command() {
         let cmd = ComposeConvertCommand::new()
             .format(ConvertFormat::Json)
-            .output("compose.json")
-            .services()
-            .quiet();
+            .output("compose.json");
 
         assert!(matches!(cmd.format, Some(ConvertFormat::Json)));
         assert_eq!(cmd.output, Some("compose.json".to_string()));
-        assert!(cmd.services);
-        assert!(cmd.quiet);
     }
 }

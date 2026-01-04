@@ -157,6 +157,8 @@
 //! ```rust,no_run
 //! # #[cfg(feature = "compose")]
 //! use docker_wrapper::compose::{ComposeCommand, ComposeUpCommand, ComposeDownCommand};
+//! # #[cfg(feature = "compose")]
+//! use docker_wrapper::DockerCommand;
 //!
 //! # #[cfg(feature = "compose")]
 //! # #[tokio::main]
@@ -474,7 +476,12 @@ pub use command::{
     attach::{AttachCommand, AttachResult},
     bake::BakeCommand,
     build::{BuildCommand, BuildOutput},
-    builder::{BuilderBuildCommand, BuilderPruneCommand, BuilderPruneResult},
+    builder::{
+        BuilderBuildCommand, BuilderInfo, BuilderPruneCommand, BuilderPruneResult,
+        BuildxCreateCommand, BuildxCreateResult, BuildxInspectCommand, BuildxInspectResult,
+        BuildxLsCommand, BuildxLsResult, BuildxRmCommand, BuildxRmResult, BuildxStopCommand,
+        BuildxStopResult, BuildxUseCommand, BuildxUseResult,
+    },
     commit::{CommitCommand, CommitResult},
     container_prune::{ContainerPruneCommand, ContainerPruneResult},
     context::{
@@ -487,6 +494,7 @@ pub use command::{
     events::{DockerEvent, EventActor, EventsCommand, EventsResult},
     exec::{ExecCommand, ExecOutput},
     export::{ExportCommand, ExportResult},
+    generic::GenericCommand,
     history::{HistoryCommand, HistoryResult, ImageLayer},
     image_prune::{DeletedImage, ImagePruneCommand, ImagePruneResult},
     images::{ImageInfo, ImagesCommand, ImagesOutput},
@@ -520,12 +528,6 @@ pub use command::{
     start::{StartCommand, StartResult},
     stats::{ContainerStats, StatsCommand, StatsResult},
     stop::{StopCommand, StopResult},
-    swarm::{
-        SwarmCaCommand, SwarmCaResult, SwarmInitCommand, SwarmInitResult, SwarmJoinCommand,
-        SwarmJoinResult, SwarmJoinTokenCommand, SwarmJoinTokenResult, SwarmLeaveCommand,
-        SwarmLeaveResult, SwarmNodeRole, SwarmUnlockCommand, SwarmUnlockKeyCommand,
-        SwarmUnlockKeyResult, SwarmUnlockResult, SwarmUpdateCommand, SwarmUpdateResult,
-    },
     system::{
         BuildCacheInfo, BuildCacheUsage, ContainerInfo as SystemContainerInfo, ContainerUsage,
         DiskUsage, ImageInfo as SystemImageInfo, ImageUsage, PruneResult, SystemDfCommand,
@@ -548,6 +550,24 @@ pub use command::{
 pub use debug::{BackoffStrategy, DebugConfig, DebugExecutor, DryRunPreview, RetryPolicy};
 pub use error::{Error, Result};
 pub use platform::{Platform, PlatformInfo, Runtime};
+
+// Swarm commands (feature-gated)
+#[cfg(feature = "swarm")]
+pub use command::swarm::{
+    SwarmCaCommand, SwarmCaResult, SwarmInitCommand, SwarmInitResult, SwarmJoinCommand,
+    SwarmJoinResult, SwarmJoinTokenCommand, SwarmJoinTokenResult, SwarmLeaveCommand,
+    SwarmLeaveResult, SwarmNodeRole, SwarmUnlockCommand, SwarmUnlockKeyCommand,
+    SwarmUnlockKeyResult, SwarmUnlockResult, SwarmUpdateCommand, SwarmUpdateResult,
+};
+
+// Manifest commands (feature-gated)
+#[cfg(feature = "manifest")]
+pub use command::manifest::{
+    ManifestAnnotateCommand, ManifestAnnotateResult, ManifestCreateCommand, ManifestCreateResult,
+    ManifestInfo, ManifestInspectCommand, ManifestPlatform, ManifestPushCommand,
+    ManifestPushResult, ManifestRmCommand, ManifestRmResult,
+};
+
 pub use prerequisites::{
     ensure_docker, ensure_docker_with_timeout, DockerInfo, DockerPrerequisites,
     DEFAULT_PREREQ_TIMEOUT,
