@@ -6,9 +6,14 @@
 use crate::error::{Error, Result};
 use serde::{Deserialize, Serialize};
 use std::process::Stdio;
+use std::time::Duration;
 use tokio::process::Command;
+use tokio::time::timeout;
 use tracing::{debug, info, warn};
 use which::which;
+
+/// Default timeout for prerequisite checks (30 seconds)
+pub const DEFAULT_PREREQ_TIMEOUT: Duration = Duration::from_secs(30);
 
 /// Docker version information
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -97,6 +102,8 @@ pub struct DockerInfo {
 pub struct DockerPrerequisites {
     /// Minimum required Docker version
     pub minimum_version: DockerVersion,
+    /// Timeout for prerequisite checks
+    pub timeout: Option<Duration>,
 }
 
 impl Default for DockerPrerequisites {
@@ -108,6 +115,7 @@ impl Default for DockerPrerequisites {
                 minor: 10,
                 patch: 0,
             },
+            timeout: None,
         }
     }
 }
@@ -116,15 +124,47 @@ impl DockerPrerequisites {
     /// Create a new prerequisites checker with custom minimum version
     #[must_use]
     pub fn new(minimum_version: DockerVersion) -> Self {
-        Self { minimum_version }
+        Self {
+            minimum_version,
+            timeout: None,
+        }
+    }
+
+    /// Set a timeout for prerequisite checks
+    ///
+    /// If any check takes longer than the specified duration, it will be
+    /// terminated and an `Error::Timeout` will be returned.
+    #[must_use]
+    pub fn with_timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = Some(timeout);
+        self
+    }
+
+    /// Set a timeout in seconds for prerequisite checks
+    #[must_use]
+    pub fn with_timeout_secs(mut self, seconds: u64) -> Self {
+        self.timeout = Some(Duration::from_secs(seconds));
+        self
     }
 
     /// Check all Docker prerequisites
     ///
     /// # Errors
     /// Returns various `Error` variants if Docker is not found,
-    /// daemon is not running, or version requirements are not met
+    /// daemon is not running, version requirements are not met, or the check times out
     pub async fn check(&self) -> Result<DockerInfo> {
+        if let Some(timeout_duration) = self.timeout {
+            match timeout(timeout_duration, self.check_internal()).await {
+                Ok(result) => result,
+                Err(_) => Err(Error::timeout(timeout_duration.as_secs())),
+            }
+        } else {
+            self.check_internal().await
+        }
+    }
+
+    /// Internal check implementation without timeout wrapper
+    async fn check_internal(&self) -> Result<DockerInfo> {
         info!("Checking Docker prerequisites...");
 
         // Find Docker binary
@@ -251,6 +291,16 @@ pub async fn ensure_docker() -> Result<DockerInfo> {
     checker.check().await
 }
 
+/// Convenience function to check Docker prerequisites with a timeout
+///
+/// # Errors
+/// Returns various `Error` variants if Docker is not available,
+/// does not meet minimum requirements, or the check times out
+pub async fn ensure_docker_with_timeout(timeout: Duration) -> Result<DockerInfo> {
+    let checker = DockerPrerequisites::default().with_timeout(timeout);
+    checker.check().await
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -317,6 +367,19 @@ mod tests {
         let custom_version = DockerVersion::parse("25.0.0").unwrap();
         let prereqs = DockerPrerequisites::new(custom_version.clone());
         assert_eq!(prereqs.minimum_version, custom_version);
+    }
+
+    #[test]
+    fn test_prerequisites_timeout() {
+        let prereqs = DockerPrerequisites::default();
+        assert!(prereqs.timeout.is_none());
+
+        let prereqs_with_timeout =
+            DockerPrerequisites::default().with_timeout(Duration::from_secs(10));
+        assert_eq!(prereqs_with_timeout.timeout, Some(Duration::from_secs(10)));
+
+        let prereqs_with_secs = DockerPrerequisites::default().with_timeout_secs(30);
+        assert_eq!(prereqs_with_secs.timeout, Some(Duration::from_secs(30)));
     }
 
     #[tokio::test]

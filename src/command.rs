@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::process::Stdio;
+use std::time::Duration;
 use tokio::process::Command as TokioCommand;
 
 // Re-export all command modules
@@ -146,6 +147,21 @@ pub trait DockerCommand {
     /// Add a key-value option (e.g., --name value, --env key=value)
     fn option(&mut self, key: &str, value: &str) -> &mut Self {
         self.get_executor_mut().add_option(key, value);
+        self
+    }
+
+    /// Set a timeout for command execution
+    ///
+    /// If the command takes longer than the specified duration, it will be
+    /// terminated and an `Error::Timeout` will be returned.
+    fn with_timeout(&mut self, timeout: std::time::Duration) -> &mut Self {
+        self.get_executor_mut().timeout = Some(timeout);
+        self
+    }
+
+    /// Set a timeout in seconds for command execution
+    fn with_timeout_secs(&mut self, seconds: u64) -> &mut Self {
+        self.get_executor_mut().timeout = Some(std::time::Duration::from_secs(seconds));
         self
     }
 }
@@ -421,6 +437,9 @@ pub trait ComposeCommand: DockerCommand {
     }
 }
 
+/// Default timeout for command execution (30 seconds)
+pub const DEFAULT_COMMAND_TIMEOUT: Duration = Duration::from_secs(30);
+
 /// Common functionality for executing Docker commands
 #[derive(Debug, Clone)]
 pub struct CommandExecutor {
@@ -428,6 +447,8 @@ pub struct CommandExecutor {
     pub raw_args: Vec<String>,
     /// Platform information for runtime abstraction
     pub platform_info: Option<PlatformInfo>,
+    /// Optional timeout for command execution
+    pub timeout: Option<Duration>,
 }
 
 impl CommandExecutor {
@@ -437,6 +458,7 @@ impl CommandExecutor {
         Self {
             raw_args: Vec::new(),
             platform_info: None,
+            timeout: None,
         }
     }
 
@@ -450,6 +472,7 @@ impl CommandExecutor {
         Ok(Self {
             raw_args: Vec::new(),
             platform_info: Some(platform_info),
+            timeout: None,
         })
     }
 
@@ -457,6 +480,23 @@ impl CommandExecutor {
     #[must_use]
     pub fn platform(mut self, platform_info: PlatformInfo) -> Self {
         self.platform_info = Some(platform_info);
+        self
+    }
+
+    /// Set a timeout for command execution
+    ///
+    /// If the command takes longer than the specified duration, it will be
+    /// terminated and an `Error::Timeout` will be returned.
+    #[must_use]
+    pub fn timeout(mut self, timeout: Duration) -> Self {
+        self.timeout = Some(timeout);
+        self
+    }
+
+    /// Set a timeout in seconds for command execution
+    #[must_use]
+    pub fn timeout_secs(mut self, seconds: u64) -> Self {
+        self.timeout = Some(Duration::from_secs(seconds));
         self
     }
 
@@ -472,7 +512,8 @@ impl CommandExecutor {
     /// Execute a Docker command with the given arguments
     ///
     /// # Errors
-    /// Returns an error if the Docker command fails to execute or returns a non-zero exit code
+    /// Returns an error if the Docker command fails to execute, returns a non-zero exit code,
+    /// or times out (if a timeout is configured)
     pub async fn execute_command(
         &self,
         command_name: &str,
@@ -486,7 +527,23 @@ impl CommandExecutor {
         all_args.insert(0, command_name.to_string());
 
         let runtime_command = self.get_runtime_command();
-        let mut command = TokioCommand::new(&runtime_command);
+
+        // Execute with or without timeout
+        if let Some(timeout_duration) = self.timeout {
+            self.execute_with_timeout(&runtime_command, &all_args, timeout_duration)
+                .await
+        } else {
+            self.execute_internal(&runtime_command, &all_args).await
+        }
+    }
+
+    /// Internal method to execute a command without timeout
+    async fn execute_internal(
+        &self,
+        runtime_command: &str,
+        all_args: &[String],
+    ) -> Result<CommandOutput> {
+        let mut command = TokioCommand::new(runtime_command);
 
         // Set environment variables from platform info
         if let Some(ref platform_info) = self.platform_info {
@@ -496,14 +553,15 @@ impl CommandExecutor {
         }
 
         let output = command
-            .args(&all_args)
+            .args(all_args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .output()
             .await
             .map_err(|e| {
                 Error::custom(format!(
-                    "Failed to execute {runtime_command} {command_name}: {e}"
+                    "Failed to execute {runtime_command} {}: {e}",
+                    all_args.first().unwrap_or(&String::new())
                 ))
             })?;
 
@@ -527,6 +585,26 @@ impl CommandExecutor {
             exit_code,
             success,
         })
+    }
+
+    /// Execute a command with a timeout
+    async fn execute_with_timeout(
+        &self,
+        runtime_command: &str,
+        all_args: &[String],
+        timeout_duration: Duration,
+    ) -> Result<CommandOutput> {
+        use tokio::time::timeout;
+
+        match timeout(
+            timeout_duration,
+            self.execute_internal(runtime_command, all_args),
+        )
+        .await
+        {
+            Ok(result) => result,
+            Err(_) => Err(Error::timeout(timeout_duration.as_secs())),
+        }
     }
 
     /// Add a raw argument
@@ -808,6 +886,18 @@ mod tests {
                 "test-container"
             ]
         );
+    }
+
+    #[test]
+    fn test_command_executor_timeout() {
+        let executor = CommandExecutor::new();
+        assert!(executor.timeout.is_none());
+
+        let executor_with_timeout = CommandExecutor::new().timeout(Duration::from_secs(10));
+        assert_eq!(executor_with_timeout.timeout, Some(Duration::from_secs(10)));
+
+        let executor_with_secs = CommandExecutor::new().timeout_secs(30);
+        assert_eq!(executor_with_secs.timeout, Some(Duration::from_secs(30)));
     }
 
     #[test]
