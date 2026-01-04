@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use std::process::Stdio;
 use tokio::process::Command;
 use tracing::{debug, info, warn};
+use which::which;
 
 /// Docker version information
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -127,7 +128,7 @@ impl DockerPrerequisites {
         info!("Checking Docker prerequisites...");
 
         // Find Docker binary
-        let binary_path = self.find_docker_binary().await?;
+        let binary_path = Self::find_docker_binary()?;
         debug!("Found Docker binary at: {}", binary_path);
 
         // Get Docker version
@@ -165,25 +166,12 @@ impl DockerPrerequisites {
     }
 
     /// Find Docker binary in PATH
-    async fn find_docker_binary(&self) -> Result<String> {
-        let output = Command::new("which")
-            .arg("docker")
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .output()
-            .await
-            .map_err(|e| Error::custom(format!("Failed to run 'which docker': {e}")))?;
-
-        if !output.status.success() {
-            return Err(Error::DockerNotFound);
-        }
-
-        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if path.is_empty() {
-            return Err(Error::DockerNotFound);
-        }
-
-        Ok(path)
+    ///
+    /// Uses the `which` crate for cross-platform binary lookup,
+    /// working on both Unix and Windows systems.
+    fn find_docker_binary() -> Result<String> {
+        let path = which("docker").map_err(|_| Error::DockerNotFound)?;
+        Ok(path.to_string_lossy().to_string())
     }
 
     /// Get Docker client version
