@@ -278,6 +278,27 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! # Why docker-wrapper?
+//!
+//! This crate wraps the Docker CLI rather than calling the Docker API directly
+//! (like [bollard](https://crates.io/crates/bollard)).
+//!
+//! **docker-wrapper advantages:**
+//! - Just needs `docker` in PATH (no socket access required)
+//! - Native `docker compose` support
+//! - Works with Docker, Podman, Colima, and other Docker-compatible CLIs
+//! - Familiar mental model if you know Docker CLI
+//!
+//! **bollard advantages:**
+//! - Direct API calls (no process spawn overhead)
+//! - Lower latency for high-frequency operations
+//! - No external binary dependency
+//!
+//! **Choose docker-wrapper** for CLI tools, dev tooling, Compose workflows, or
+//! when working with Docker alternatives.
+//!
+//! **Choose bollard** for high-performance services with many Docker operations.
 
 #![warn(missing_docs)]
 #![warn(clippy::all)]

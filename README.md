@@ -79,6 +79,23 @@ let id = redis.start().await?;
 redis.stop().await?;
 ```
 
+## Why docker-wrapper?
+
+This crate wraps the Docker CLI rather than calling the Docker API directly (like [bollard](https://crates.io/crates/bollard)).
+
+| | docker-wrapper | bollard |
+|---|---|---|
+| **Approach** | Shells out to `docker` CLI | Calls Docker REST API directly |
+| **Setup** | Just needs `docker` in PATH | Needs API socket access |
+| **Compose** | Native `docker compose` support | Not supported |
+| **Compatibility** | Works with Docker, Podman, Colima, etc. | Docker API only |
+| **Performance** | Process spawn overhead | Direct API calls |
+| **Use case** | CLI tools, scripts, dev tooling | High-performance services |
+
+**Choose docker-wrapper when:** You're building CLI tools, need Compose support, want to work with Docker alternatives, or are migrating shell scripts to Rust.
+
+**Choose bollard when:** You need maximum performance, direct API access, or are building a long-running service with many Docker operations.
+
 ## Documentation
 
 - **[API Reference](https://docs.rs/docker-wrapper)** - Complete documentation with examples
