@@ -38,6 +38,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bump actions/upload-artifact from 5 to 6  ([b602ee3](https://github.com/joshrotenberg/docker-wrapper/commit/b602ee3d56d6f526a2824a9bbadf893132baa9e8))
 - Bump actions/cache from 4 to 5  ([b184cc3](https://github.com/joshrotenberg/docker-wrapper/commit/b184cc387ba72ef239290a499212be2dad3e6e30))
 
+## [0.9.1] - 2026-01-04
+
+### Features
+
+- Add comprehensive tracing instrumentation ([#197](https://github.com/joshrotenberg/docker-wrapper/pull/197))
+
+### CI
+
+- Add examples compilation check to CI workflows ([#198](https://github.com/joshrotenberg/docker-wrapper/pull/198))
+
 ## [0.8.4] - 2025-12-11
 
 ### Bug Fixes
