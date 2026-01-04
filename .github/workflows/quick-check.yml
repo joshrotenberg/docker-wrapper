@@ -12,7 +12,7 @@ jobs:
   quick-tests:
     name: Quick Tests
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -37,6 +37,9 @@ jobs:
       - name: Fast check
         run: cargo check --all-features
 
+      - name: Check examples compile
+        run: cargo check --examples --all-features
+
       - name: Run unit tests only
         run: cargo test --lib --all-features
 
@@ -44,7 +47,7 @@ jobs:
     name: Fast Build Check
     runs-on: ubuntu-latest
     needs: quick-tests
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v6

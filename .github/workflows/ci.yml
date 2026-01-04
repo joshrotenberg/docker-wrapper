@@ -64,6 +64,9 @@ jobs:
       - name: Build
         run: cargo build --all-features
 
+      - name: Build examples
+        run: cargo build --examples --all-features
+
       - name: Run tests
         run: cargo test --lib --all-features && cargo test --doc --all-features
 
@@ -109,8 +112,8 @@ jobs:
         env:
           DOCKER_HOST: unix:///var/run/docker.sock
 
-      - name: Test examples
-        run: cargo check --examples --all-features
+      - name: Build examples
+        run: cargo build --examples --all-features
 
   security:
     name: Security Audit
