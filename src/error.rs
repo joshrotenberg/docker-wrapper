@@ -1,7 +1,20 @@
-//! Error types for the docker-wrapper crate.
+//! Error types for docker-wrapper.
 //!
-//! This module provides comprehensive error handling for all Docker operations,
-//! with clear error messages and helpful context.
+//! All commands return `Result<T, Error>`. Match on specific error variants
+//! for detailed handling:
+//!
+//! ```rust,no_run
+//! use docker_wrapper::{DockerCommand, RunCommand, Error};
+//!
+//! # async fn example() {
+//! match RunCommand::new("nginx").execute().await {
+//!     Ok(id) => println!("Started: {}", id.short()),
+//!     Err(Error::DockerNotFound) => eprintln!("Docker is not installed"),
+//!     Err(Error::DaemonNotRunning) => eprintln!("Start the Docker daemon"),
+//!     Err(Error::CommandFailed { stderr, .. }) => eprintln!("Failed: {}", stderr),
+//!     Err(e) => eprintln!("Error: {}", e),
+//! }
+//! # }
 
 use thiserror::Error;
 
