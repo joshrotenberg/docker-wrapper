@@ -21,8 +21,9 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = []
+default = ["compose", "swarm"]
 compose = []
+swarm = []
 
 # Template features
 templates = [

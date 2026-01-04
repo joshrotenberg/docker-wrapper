@@ -20,6 +20,7 @@ pub mod bake;
 pub mod build;
 pub mod builder;
 pub mod commit;
+#[cfg(feature = "compose")]
 pub mod compose;
 pub mod container_prune;
 pub mod context;
@@ -57,6 +58,7 @@ pub mod search;
 pub mod start;
 pub mod stats;
 pub mod stop;
+#[cfg(feature = "swarm")]
 pub mod swarm;
 pub mod system;
 pub mod tag;

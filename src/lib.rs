@@ -520,12 +520,6 @@ pub use command::{
     start::{StartCommand, StartResult},
     stats::{ContainerStats, StatsCommand, StatsResult},
     stop::{StopCommand, StopResult},
-    swarm::{
-        SwarmCaCommand, SwarmCaResult, SwarmInitCommand, SwarmInitResult, SwarmJoinCommand,
-        SwarmJoinResult, SwarmJoinTokenCommand, SwarmJoinTokenResult, SwarmLeaveCommand,
-        SwarmLeaveResult, SwarmNodeRole, SwarmUnlockCommand, SwarmUnlockKeyCommand,
-        SwarmUnlockKeyResult, SwarmUnlockResult, SwarmUpdateCommand, SwarmUpdateResult,
-    },
     system::{
         BuildCacheInfo, BuildCacheUsage, ContainerInfo as SystemContainerInfo, ContainerUsage,
         DiskUsage, ImageInfo as SystemImageInfo, ImageUsage, PruneResult, SystemDfCommand,
@@ -548,6 +542,15 @@ pub use command::{
 pub use debug::{BackoffStrategy, DebugConfig, DebugExecutor, DryRunPreview, RetryPolicy};
 pub use error::{Error, Result};
 pub use platform::{Platform, PlatformInfo, Runtime};
+
+// Swarm commands (feature-gated)
+#[cfg(feature = "swarm")]
+pub use command::swarm::{
+    SwarmCaCommand, SwarmCaResult, SwarmInitCommand, SwarmInitResult, SwarmJoinCommand,
+    SwarmJoinResult, SwarmJoinTokenCommand, SwarmJoinTokenResult, SwarmLeaveCommand,
+    SwarmLeaveResult, SwarmNodeRole, SwarmUnlockCommand, SwarmUnlockKeyCommand,
+    SwarmUnlockKeyResult, SwarmUnlockResult, SwarmUpdateCommand, SwarmUpdateResult,
+};
 pub use prerequisites::{
     ensure_docker, ensure_docker_with_timeout, DockerInfo, DockerPrerequisites,
     DEFAULT_PREREQ_TIMEOUT,
