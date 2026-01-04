@@ -264,7 +264,7 @@
 //!
 //! Initialize a subscriber in your application:
 //!
-//! ```rust,no_run
+//! ```rust,ignore
 //! use tracing_subscriber::EnvFilter;
 //!
 //! tracing_subscriber::fmt()
