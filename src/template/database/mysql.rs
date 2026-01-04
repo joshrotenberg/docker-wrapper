@@ -314,7 +314,8 @@ impl Template for MysqlTemplate {
         use tokio::time::{sleep, timeout};
 
         // Custom MySQL readiness check - increased timeout for charset/collation configs
-        let wait_timeout = Duration::from_secs(60);
+        // MySQL 8.0 can take 90+ seconds to initialize on slower CI systems
+        let wait_timeout = Duration::from_secs(120);
         let check_interval = Duration::from_millis(1000);
 
         timeout(wait_timeout, async {
