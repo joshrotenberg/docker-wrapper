@@ -27,20 +27,30 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("- Resource limits");
     println!("- Connection management\n");
 
+    // Generate unique suffix for all resources to avoid conflicts on re-runs
+    let unique_id = uuid::Uuid::new_v4();
+
     // Create a custom network for our application
-    println!("📡 Creating application network...");
-    let network_name = format!("showcase-network-{}", uuid::Uuid::new_v4());
+    println!("Creating application network...");
+    let network_name = format!("showcase-network-{}", unique_id);
     NetworkCreateCommand::new(&network_name)
         .driver("bridge")
         .execute()
         .await?;
-    println!("   ✅ Network '{}' created", network_name);
+    println!("   Network '{}' created", network_name);
 
     // Create named volumes for persistence
-    println!("\n💾 Creating persistent volumes...");
-    let postgres_volume = format!("showcase-postgres-{}", uuid::Uuid::new_v4());
-    let mongo_volume = format!("showcase-mongo-{}", uuid::Uuid::new_v4());
-    let redis_volume = format!("showcase-redis-{}", uuid::Uuid::new_v4());
+    println!("\nCreating persistent volumes...");
+    let postgres_volume = format!("showcase-postgres-{}", unique_id);
+    let mongo_volume = format!("showcase-mongo-{}", unique_id);
+    let redis_volume = format!("showcase-redis-{}", unique_id);
+
+    // Container names also need unique suffixes to avoid conflicts
+    let redis_name = format!("showcase-redis-{}", unique_id);
+    let postgres_name = format!("showcase-postgres-{}", unique_id);
+    let mysql_name = format!("showcase-mysql-{}", unique_id);
+    let mongodb_name = format!("showcase-mongodb-{}", unique_id);
+    let nginx_name = format!("showcase-nginx-{}", unique_id);
 
     VolumeCreateCommand::new()
         .name(&postgres_volume)
@@ -54,11 +64,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .name(&redis_volume)
         .execute()
         .await?;
-    println!("   ✅ Volumes created");
+    println!("   Volumes created");
 
     // Deploy Redis as cache layer
-    println!("\n🔴 Deploying Redis cache...");
-    let redis = RedisTemplate::new("showcase-redis")
+    println!("\nDeploying Redis cache...");
+    let redis = RedisTemplate::new(&redis_name)
         .port(16379)
         .password("redis_secure_pass")
         .with_persistence(&redis_volume)
@@ -66,17 +76,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .network(&network_name);
 
     let redis_id = redis.start_and_wait().await?;
-    println!("   ✅ Redis ready (Container: {})", &redis_id[..12]);
+    println!("   Redis ready (Container: {})", &redis_id[..12]);
 
     // Test Redis connection
     let ping_result = redis
         .exec(vec!["redis-cli", "-a", "redis_secure_pass", "ping"])
         .await?;
-    println!("   🏓 Redis PING: {}", ping_result.stdout.trim());
+    println!("   Redis PING: {}", ping_result.stdout.trim());
 
     // Deploy PostgreSQL as primary database
-    println!("\n🐘 Deploying PostgreSQL database...");
-    let postgres = PostgresTemplate::new("showcase-postgres")
+    println!("\nDeploying PostgreSQL database...");
+    let postgres = PostgresTemplate::new(&postgres_name)
         .port(15432)
         .database("showcase_db")
         .user("app_user")
@@ -87,7 +97,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .postgres_args("--max_connections=100");
 
     let postgres_id = postgres.start_and_wait().await?;
-    println!("   ✅ PostgreSQL ready (Container: {})", &postgres_id[..12]);
+    println!("   PostgreSQL ready (Container: {})", &postgres_id[..12]);
 
     // Get PostgreSQL connection details
     let pg_conn = PostgresConnectionString::from_template(&postgres);
@@ -121,7 +131,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             "-d",
             "showcase_db",
             "-c",
-            "INSERT INTO users (username, email) VALUES 
+            "INSERT INTO users (username, email) VALUES
                 ('alice', 'alice@example.com'),
                 ('bob', 'bob@example.com')
             ON CONFLICT DO NOTHING;",
@@ -131,7 +141,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Deploy MySQL as secondary database
     println!("\n🐬 Deploying MySQL database...");
-    let mysql = MysqlTemplate::new("showcase-mysql")
+    let mysql = MysqlTemplate::new(&mysql_name)
         .port(13306)
         .database("analytics_db")
         .user("analytics_user")
@@ -151,7 +161,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Deploy MongoDB for document storage
     println!("\n🍃 Deploying MongoDB...");
-    let mongodb = MongodbTemplate::new("showcase-mongodb")
+    let mongodb = MongodbTemplate::new(&mongodb_name)
         .port(27018)
         .root_username("mongo_admin")
         .root_password("mongo_secure_pass")
@@ -178,10 +188,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     <style>
         body { font-family: Arial, sans-serif; margin: 40px; }
         h1 { color: #333; }
-        .service { 
-            background: #f0f0f0; 
-            padding: 15px; 
-            margin: 10px 0; 
+        .service {
+            background: #f0f0f0;
+            padding: 15px;
+            margin: 10px 0;
             border-radius: 5px;
         }
         .status { color: green; font-weight: bold; }
@@ -217,7 +227,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     file.write_all(html_content.as_bytes())?;
     file.sync_all()?;
 
-    let nginx = NginxTemplate::new("showcase-nginx")
+    let nginx = NginxTemplate::new(&nginx_name)
         .port(8080)
         .content(html_file.to_str().unwrap())
         .memory_limit("128m")
@@ -276,13 +286,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("\n🔗 Testing inter-container communication...");
 
     // Redis can be accessed from other containers using container name
-    let redis_internal_test = postgres
-        .exec(vec![
-            "sh",
-            "-c",
-            "apt-get update -qq && apt-get install -qq -y redis-tools > /dev/null 2>&1 && redis-cli -h showcase-redis -a redis_secure_pass ping",
-        ])
-        .await;
+    let redis_ping_cmd = format!(
+        "apt-get update -qq && apt-get install -qq -y redis-tools > /dev/null 2>&1 && redis-cli -h {} -a redis_secure_pass ping",
+        redis_name
+    );
+    let redis_internal_test = postgres.exec(vec!["sh", "-c", &redis_ping_cmd]).await;
 
     if let Ok(result) = redis_internal_test {
         if result.stdout.contains("PONG") {

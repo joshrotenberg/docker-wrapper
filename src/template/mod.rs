@@ -289,43 +289,45 @@ pub trait Template: Send + Sync {
         use std::time::Duration;
         use tokio::time::{sleep, timeout};
 
-        // Default timeout of 30 seconds
-        let wait_timeout = Duration::from_secs(30);
+        // Default timeout of 60 seconds (increased for slower systems/Windows)
+        let wait_timeout = Duration::from_secs(60);
         let check_interval = Duration::from_millis(500);
 
         timeout(wait_timeout, async {
             loop {
-                // First check if container is running
-                if !self.is_running().await? {
-                    return Err(TemplateError::NotRunning(self.config().name.clone()));
+                // Check if container is running - keep retrying if not yet started
+                // Don't fail immediately as the container may still be starting up
+                if !self.is_running().await.unwrap_or(false) {
+                    sleep(check_interval).await;
+                    continue;
                 }
 
                 // If there's a health check configured, wait for it
                 if self.config().health_check.is_some() {
                     use crate::InspectCommand;
 
-                    let inspect = InspectCommand::new(&self.config().name).execute().await?;
-
-                    // Check health status in the inspect output
-                    if let Ok(containers) =
-                        serde_json::from_str::<serde_json::Value>(&inspect.stdout)
-                    {
-                        if let Some(first) = containers.as_array().and_then(|arr| arr.first()) {
-                            if let Some(state) = first.get("State") {
-                                if let Some(health) = state.get("Health") {
-                                    if let Some(status) =
-                                        health.get("Status").and_then(|s| s.as_str())
+                    if let Ok(inspect) = InspectCommand::new(&self.config().name).execute().await {
+                        // Check health status in the inspect output
+                        if let Ok(containers) =
+                            serde_json::from_str::<serde_json::Value>(&inspect.stdout)
+                        {
+                            if let Some(first) = containers.as_array().and_then(|arr| arr.first()) {
+                                if let Some(state) = first.get("State") {
+                                    if let Some(health) = state.get("Health") {
+                                        if let Some(status) =
+                                            health.get("Status").and_then(|s| s.as_str())
+                                        {
+                                            if status == "healthy" {
+                                                return Ok(());
+                                            }
+                                        }
+                                    } else if let Some(running) =
+                                        state.get("Running").and_then(|r| r.as_bool())
                                     {
-                                        if status == "healthy" {
+                                        // No health check configured, just check if running
+                                        if running {
                                             return Ok(());
                                         }
-                                    }
-                                } else if let Some(running) =
-                                    state.get("Running").and_then(|r| r.as_bool())
-                                {
-                                    // No health check configured, just check if running
-                                    if running {
-                                        return Ok(());
                                     }
                                 }
                             }
