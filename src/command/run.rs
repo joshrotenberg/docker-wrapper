@@ -308,13 +308,18 @@ impl ContainerId {
     }
 
     /// Get the short form of the container ID (first 12 characters)
+    ///
+    /// Returns the first 12 characters of the container ID, or the full ID
+    /// if it's shorter than 12 characters. This method is Unicode-safe.
     #[must_use]
     pub fn short(&self) -> &str {
-        if self.0.len() >= 12 {
-            &self.0[..12]
-        } else {
-            &self.0
-        }
+        // Find the byte index of the 12th character (or end of string)
+        let end_idx = self
+            .0
+            .char_indices()
+            .nth(12)
+            .map_or(self.0.len(), |(idx, _)| idx);
+        &self.0[..end_idx]
     }
 
     /// Get port mappings for this container
