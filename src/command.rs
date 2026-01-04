@@ -53,6 +53,7 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Duration;
 use tokio::process::Command as TokioCommand;
+use tracing::{debug, error, instrument, trace, warn};
 
 // Re-export all command modules
 pub mod attach;
@@ -544,6 +545,15 @@ impl CommandExecutor {
     /// # Errors
     /// Returns an error if the Docker command fails to execute, returns a non-zero exit code,
     /// or times out (if a timeout is configured)
+    #[instrument(
+        name = "docker.command",
+        skip(self, args),
+        fields(
+            command = %command_name,
+            runtime = %self.get_runtime_command(),
+            timeout_secs = self.timeout.map(|t| t.as_secs()),
+        )
+    )]
     pub async fn execute_command(
         &self,
         command_name: &str,
@@ -558,16 +568,45 @@ impl CommandExecutor {
 
         let runtime_command = self.get_runtime_command();
 
+        trace!(args = ?all_args, "executing docker command");
+
         // Execute with or without timeout
-        if let Some(timeout_duration) = self.timeout {
+        let result = if let Some(timeout_duration) = self.timeout {
             self.execute_with_timeout(&runtime_command, &all_args, timeout_duration)
                 .await
         } else {
             self.execute_internal(&runtime_command, &all_args).await
+        };
+
+        match &result {
+            Ok(output) => {
+                debug!(
+                    exit_code = output.exit_code,
+                    stdout_len = output.stdout.len(),
+                    stderr_len = output.stderr.len(),
+                    "command completed successfully"
+                );
+                trace!(stdout = %output.stdout, "command stdout");
+                if !output.stderr.is_empty() {
+                    trace!(stderr = %output.stderr, "command stderr");
+                }
+            }
+            Err(e) => {
+                error!(error = %e, "command failed");
+            }
         }
+
+        result
     }
 
     /// Internal method to execute a command without timeout
+    #[instrument(
+        name = "docker.process",
+        skip(self, all_args),
+        fields(
+            full_command = %format!("{} {}", runtime_command, all_args.join(" ")),
+        )
+    )]
     async fn execute_internal(
         &self,
         runtime_command: &str,
@@ -577,10 +616,19 @@ impl CommandExecutor {
 
         // Set environment variables from platform info
         if let Some(ref platform_info) = self.platform_info {
+            let env_count = platform_info.environment_vars().len();
+            if env_count > 0 {
+                trace!(
+                    env_vars = env_count,
+                    "setting platform environment variables"
+                );
+            }
             for (key, value) in platform_info.environment_vars() {
                 command.env(key, value);
             }
         }
+
+        trace!("spawning process");
 
         let output = command
             .args(all_args)
@@ -589,6 +637,7 @@ impl CommandExecutor {
             .output()
             .await
             .map_err(|e| {
+                error!(error = %e, "failed to spawn process");
                 Error::custom(format!(
                     "Failed to execute {runtime_command} {}: {e}",
                     all_args.first().unwrap_or(&String::new())
@@ -599,6 +648,14 @@ impl CommandExecutor {
         let stderr = String::from_utf8_lossy(&output.stderr).to_string();
         let success = output.status.success();
         let exit_code = output.status.code().unwrap_or(-1);
+
+        trace!(
+            exit_code = exit_code,
+            success = success,
+            stdout_bytes = output.stdout.len(),
+            stderr_bytes = output.stderr.len(),
+            "process completed"
+        );
 
         if !success {
             return Err(Error::command_failed(
@@ -618,6 +675,11 @@ impl CommandExecutor {
     }
 
     /// Execute a command with a timeout
+    #[instrument(
+        name = "docker.timeout",
+        skip(self, all_args),
+        fields(timeout_secs = timeout_duration.as_secs())
+    )]
     async fn execute_with_timeout(
         &self,
         runtime_command: &str,
@@ -626,14 +688,21 @@ impl CommandExecutor {
     ) -> Result<CommandOutput> {
         use tokio::time::timeout;
 
-        match timeout(
+        debug!("executing with timeout");
+
+        if let Ok(result) = timeout(
             timeout_duration,
             self.execute_internal(runtime_command, all_args),
         )
         .await
         {
-            Ok(result) => result,
-            Err(_) => Err(Error::timeout(timeout_duration.as_secs())),
+            result
+        } else {
+            warn!(
+                timeout_secs = timeout_duration.as_secs(),
+                "command timed out"
+            );
+            Err(Error::timeout(timeout_duration.as_secs()))
         }
     }
 

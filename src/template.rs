@@ -13,6 +13,7 @@
 use crate::{DockerCommand, RunCommand};
 use async_trait::async_trait;
 use std::collections::HashMap;
+use tracing::{debug, error, info, trace, warn};
 
 // Redis templates
 #[cfg(any(feature = "template-redis", feature = "template-redis-cluster"))]
@@ -202,14 +203,49 @@ pub trait Template: Send + Sync {
 
     /// Start the container with this template
     async fn start(&self) -> Result<String> {
-        let output = self.build_command().execute().await?;
+        let config = self.config();
+        info!(
+            template = %config.name,
+            image = %config.image,
+            tag = %config.tag,
+            "starting container from template"
+        );
+
+        let output = self.build_command().execute().await.map_err(|e| {
+            error!(
+                template = %config.name,
+                error = %e,
+                "failed to start container"
+            );
+            e
+        })?;
+
+        info!(
+            template = %config.name,
+            container_id = %output.0,
+            "container started successfully"
+        );
+
         Ok(output.0)
     }
 
     /// Start the container and wait for it to be ready
     async fn start_and_wait(&self) -> Result<String> {
+        let config = self.config();
+        info!(
+            template = %config.name,
+            "starting container and waiting for ready"
+        );
+
         let container_id = self.start().await?;
         self.wait_for_ready().await?;
+
+        info!(
+            template = %config.name,
+            container_id = %container_id,
+            "container started and ready"
+        );
+
         Ok(container_id)
     }
 
@@ -217,10 +253,15 @@ pub trait Template: Send + Sync {
     async fn stop(&self) -> Result<()> {
         use crate::StopCommand;
 
-        StopCommand::new(self.config().name.as_str())
-            .execute()
-            .await?;
+        let name = self.config().name.as_str();
+        info!(template = %name, "stopping container");
 
+        StopCommand::new(name).execute().await.map_err(|e| {
+            error!(template = %name, error = %e, "failed to stop container");
+            e
+        })?;
+
+        debug!(template = %name, "container stopped");
         Ok(())
     }
 
@@ -228,12 +269,20 @@ pub trait Template: Send + Sync {
     async fn remove(&self) -> Result<()> {
         use crate::RmCommand;
 
-        RmCommand::new(self.config().name.as_str())
+        let name = self.config().name.as_str();
+        info!(template = %name, "removing container");
+
+        RmCommand::new(name)
             .force()
             .volumes()
             .execute()
-            .await?;
+            .await
+            .map_err(|e| {
+                error!(template = %name, error = %e, "failed to remove container");
+                e
+            })?;
 
+        debug!(template = %name, "container removed");
         Ok(())
     }
 
@@ -241,14 +290,19 @@ pub trait Template: Send + Sync {
     async fn is_running(&self) -> Result<bool> {
         use crate::PsCommand;
 
+        let name = &self.config().name;
+
         let output = PsCommand::new()
-            .filter(format!("name={}", &self.config().name))
+            .filter(format!("name={name}"))
             .quiet()
             .execute()
             .await?;
 
         // In quiet mode, check if stdout contains any container IDs
-        Ok(!output.stdout.trim().is_empty())
+        let running = !output.stdout.trim().is_empty();
+        trace!(template = %name, running = running, "checked container running status");
+
+        Ok(running)
     }
 
     /// Get container logs
@@ -285,28 +339,50 @@ pub trait Template: Send + Sync {
     /// container to be running and healthy (if health checks are configured).
     ///
     /// Templates can override this to provide custom readiness checks.
+    #[allow(clippy::too_many_lines)]
     async fn wait_for_ready(&self) -> Result<()> {
         use std::time::Duration;
-        use tokio::time::{sleep, timeout};
+        use tokio::time::{sleep, timeout, Instant};
+
+        let name = &self.config().name;
+        let has_health_check = self.config().health_check.is_some();
 
         // Default timeout of 60 seconds (increased for slower systems/Windows)
         let wait_timeout = Duration::from_secs(60);
         let check_interval = Duration::from_millis(500);
 
-        timeout(wait_timeout, async {
+        info!(
+            template = %name,
+            timeout_secs = wait_timeout.as_secs(),
+            has_health_check = has_health_check,
+            "waiting for container to be ready"
+        );
+
+        let start_time = Instant::now();
+        let mut check_count = 0u32;
+
+        let result = timeout(wait_timeout, async {
             loop {
+                check_count += 1;
+
                 // Check if container is running - keep retrying if not yet started
                 // Don't fail immediately as the container may still be starting up
-                if !self.is_running().await.unwrap_or(false) {
+                let running = self.is_running().await.unwrap_or(false);
+                if !running {
+                    trace!(
+                        template = %name,
+                        check = check_count,
+                        "container not yet running, waiting"
+                    );
                     sleep(check_interval).await;
                     continue;
                 }
 
                 // If there's a health check configured, wait for it
-                if self.config().health_check.is_some() {
+                if has_health_check {
                     use crate::InspectCommand;
 
-                    if let Ok(inspect) = InspectCommand::new(&self.config().name).execute().await {
+                    if let Ok(inspect) = InspectCommand::new(name).execute().await {
                         // Check health status in the inspect output
                         if let Ok(containers) =
                             serde_json::from_str::<serde_json::Value>(&inspect.stdout)
@@ -317,8 +393,28 @@ pub trait Template: Send + Sync {
                                         if let Some(status) =
                                             health.get("Status").and_then(|s| s.as_str())
                                         {
+                                            trace!(
+                                                template = %name,
+                                                check = check_count,
+                                                health_status = %status,
+                                                "health check status"
+                                            );
+
                                             if status == "healthy" {
+                                                #[allow(clippy::cast_possible_truncation)]
+                                                let elapsed_ms = start_time.elapsed().as_millis() as u64;
+                                                debug!(
+                                                    template = %name,
+                                                    checks = check_count,
+                                                    elapsed_ms = elapsed_ms,
+                                                    "container healthy"
+                                                );
                                                 return Ok(());
+                                            } else if status == "unhealthy" {
+                                                warn!(
+                                                    template = %name,
+                                                    "container reported unhealthy, continuing to wait"
+                                                );
                                             }
                                         }
                                     } else if let Some(running) =
@@ -326,6 +422,14 @@ pub trait Template: Send + Sync {
                                     {
                                         // No health check configured, just check if running
                                         if running {
+                                            #[allow(clippy::cast_possible_truncation)]
+                                            let elapsed_ms = start_time.elapsed().as_millis() as u64;
+                                            debug!(
+                                                template = %name,
+                                                checks = check_count,
+                                                elapsed_ms = elapsed_ms,
+                                                "container running (no health check)"
+                                            );
                                             return Ok(());
                                         }
                                     }
@@ -335,19 +439,35 @@ pub trait Template: Send + Sync {
                     }
                 } else {
                     // No health check, just ensure it's running
+                    #[allow(clippy::cast_possible_truncation)]
+                    let elapsed_ms = start_time.elapsed().as_millis() as u64;
+                    debug!(
+                        template = %name,
+                        checks = check_count,
+                        elapsed_ms = elapsed_ms,
+                        "container running (no health check configured)"
+                    );
                     return Ok(());
                 }
 
                 sleep(check_interval).await;
             }
         })
-        .await
-        .map_err(|_| {
-            TemplateError::InvalidConfig(format!(
-                "Container {} failed to become ready within timeout",
-                self.config().name
-            ))
-        })?
+        .await;
+
+        if let Ok(inner) = result {
+            inner
+        } else {
+            error!(
+                template = %name,
+                timeout_secs = wait_timeout.as_secs(),
+                checks = check_count,
+                "container failed to become ready within timeout"
+            );
+            Err(TemplateError::InvalidConfig(format!(
+                "Container {name} failed to become ready within timeout"
+            )))
+        }
     }
 }
 

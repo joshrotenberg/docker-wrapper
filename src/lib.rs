@@ -179,7 +179,7 @@
 //! ## `compose` - Docker Compose Support
 //!
 //! ```toml
-//! docker-wrapper = { version = "0.8", features = ["compose"] }
+//! docker-wrapper = { version = "0.9", features = ["compose"] }
 //! ```
 //!
 //! ```rust,no_run
@@ -207,7 +207,7 @@
 //! ## `templates` - Pre-configured Containers
 //!
 //! ```toml
-//! docker-wrapper = { version = "0.8", features = ["templates"] }
+//! docker-wrapper = { version = "0.9", features = ["templates"] }
 //! ```
 //!
 //! Templates provide ready-to-use configurations for common services:
@@ -238,13 +238,103 @@
 //! ## `swarm` - Docker Swarm Commands
 //!
 //! ```toml
-//! docker-wrapper = { version = "0.8", features = ["swarm"] }
+//! docker-wrapper = { version = "0.9", features = ["swarm"] }
 //! ```
 //!
 //! ## `manifest` - Multi-arch Manifest Commands
 //!
 //! ```toml
-//! docker-wrapper = { version = "0.8", features = ["manifest"] }
+//! docker-wrapper = { version = "0.9", features = ["manifest"] }
+//! ```
+//!
+//! # Tracing and Debugging
+//!
+//! docker-wrapper integrates with the [`tracing`](https://docs.rs/tracing) ecosystem
+//! to provide comprehensive observability into Docker command execution.
+//!
+//! ## Enabling Tracing
+//!
+//! Add tracing dependencies to your project:
+//!
+//! ```toml
+//! [dependencies]
+//! tracing = "0.1"
+//! tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+//! ```
+//!
+//! Initialize a subscriber in your application:
+//!
+//! ```rust,ignore
+//! use tracing_subscriber::EnvFilter;
+//!
+//! tracing_subscriber::fmt()
+//!     .with_env_filter(EnvFilter::from_default_env())
+//!     .init();
+//!
+//! // Your application code...
+//! ```
+//!
+//! ## Log Levels
+//!
+//! Control verbosity with the `RUST_LOG` environment variable:
+//!
+//! ```bash
+//! # Show all docker-wrapper traces
+//! RUST_LOG=docker_wrapper=trace cargo run
+//!
+//! # Show only command execution info
+//! RUST_LOG=docker_wrapper::command=debug cargo run
+//!
+//! # Show template lifecycle events
+//! RUST_LOG=docker_wrapper::template=debug cargo run
+//!
+//! # Show retry/debug executor activity
+//! RUST_LOG=docker_wrapper::debug=trace cargo run
+//! ```
+//!
+//! ## What Gets Traced
+//!
+//! The library instruments key operations at various levels:
+//!
+//! - **`trace`**: Command arguments, stdout/stderr output, retry delays
+//! - **`debug`**: Command start/completion, health check attempts, retry attempts
+//! - **`info`**: Container lifecycle events (start, stop, ready)
+//! - **`warn`**: Health check failures, retry exhaustion warnings
+//! - **`error`**: Command failures, timeout errors
+//!
+//! ## Instrumented Operations
+//!
+//! ### Command Execution
+//! All Docker commands are traced with:
+//! - Command name and runtime (docker/podman)
+//! - Timeout configuration
+//! - Exit status and duration
+//! - Stdout/stderr output (at trace level)
+//!
+//! ### Template Lifecycle
+//! Template operations include:
+//! - Container start with image and configuration
+//! - Health check polling with attempt counts
+//! - Ready state transitions
+//! - Stop and remove operations
+//!
+//! ### Retry Logic
+//! The debug executor traces:
+//! - Retry policy configuration
+//! - Individual retry attempts with delays
+//! - Backoff calculations
+//! - Final success or exhaustion
+//!
+//! ## Example Output
+//!
+//! With `RUST_LOG=docker_wrapper=debug`:
+//!
+//! ```text
+//! DEBUG docker.command{command="run" runtime="docker"}: starting command
+//! DEBUG docker.command{command="run"}: command completed exit_code=0
+//! INFO  template.start{name="my-redis" image="redis:7-alpine"}: container started
+//! DEBUG template.wait{name="my-redis"}: health check attempt=1 elapsed_ms=50
+//! INFO  template.wait{name="my-redis"}: container ready after 1 attempts
 //! ```
 //!
 //! # Streaming Output
