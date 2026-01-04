@@ -474,7 +474,12 @@ pub use command::{
     attach::{AttachCommand, AttachResult},
     bake::BakeCommand,
     build::{BuildCommand, BuildOutput},
-    builder::{BuilderBuildCommand, BuilderPruneCommand, BuilderPruneResult},
+    builder::{
+        BuilderBuildCommand, BuilderInfo, BuilderPruneCommand, BuilderPruneResult,
+        BuildxCreateCommand, BuildxCreateResult, BuildxInspectCommand, BuildxInspectResult,
+        BuildxLsCommand, BuildxLsResult, BuildxRmCommand, BuildxRmResult, BuildxStopCommand,
+        BuildxStopResult, BuildxUseCommand, BuildxUseResult,
+    },
     commit::{CommitCommand, CommitResult},
     container_prune::{ContainerPruneCommand, ContainerPruneResult},
     context::{
