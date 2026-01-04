@@ -551,6 +551,15 @@ pub use command::swarm::{
     SwarmLeaveResult, SwarmNodeRole, SwarmUnlockCommand, SwarmUnlockKeyCommand,
     SwarmUnlockKeyResult, SwarmUnlockResult, SwarmUpdateCommand, SwarmUpdateResult,
 };
+
+// Manifest commands (feature-gated)
+#[cfg(feature = "manifest")]
+pub use command::manifest::{
+    ManifestAnnotateCommand, ManifestAnnotateResult, ManifestCreateCommand, ManifestCreateResult,
+    ManifestInfo, ManifestInspectCommand, ManifestPlatform, ManifestPushCommand,
+    ManifestPushResult, ManifestRmCommand, ManifestRmResult,
+};
+
 pub use prerequisites::{
     ensure_docker, ensure_docker_with_timeout, DockerInfo, DockerPrerequisites,
     DEFAULT_PREREQ_TIMEOUT,

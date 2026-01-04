@@ -42,6 +42,8 @@ pub mod load;
 pub mod login;
 pub mod logout;
 pub mod logs;
+#[cfg(feature = "manifest")]
+pub mod manifest;
 pub mod network;
 pub mod pause;
 pub mod port;
