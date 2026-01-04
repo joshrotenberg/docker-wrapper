@@ -319,11 +319,11 @@ impl Template for MysqlTemplate {
 
         timeout(wait_timeout, async {
             loop {
-                // First check if container is running
-                if !self.is_running().await? {
-                    return Err(crate::template::TemplateError::NotRunning(
-                        self.config().name.clone(),
-                    ));
+                // Check if container is running - keep retrying if not yet started
+                // Don't fail immediately as the container may still be starting up
+                if !self.is_running().await.unwrap_or(false) {
+                    sleep(check_interval).await;
+                    continue;
                 }
 
                 // Try to connect to MySQL using mysqladmin

@@ -215,16 +215,17 @@ impl Template for PostgresTemplate {
         use tokio::time::{sleep, timeout};
 
         // Custom PostgreSQL readiness check
-        let wait_timeout = Duration::from_secs(30);
+        // Use 60 second timeout for slower systems (especially Windows)
+        let wait_timeout = Duration::from_secs(60);
         let check_interval = Duration::from_millis(500);
 
         timeout(wait_timeout, async {
             loop {
-                // First check if container is running
-                if !self.is_running().await? {
-                    return Err(crate::template::TemplateError::NotRunning(
-                        self.config().name.clone(),
-                    ));
+                // Check if container is running - keep retrying if not yet started
+                // Don't fail immediately as the container may still be starting up
+                if !self.is_running().await.unwrap_or(false) {
+                    sleep(check_interval).await;
+                    continue;
                 }
 
                 // Try to connect to PostgreSQL using pg_isready
