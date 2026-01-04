@@ -537,12 +537,15 @@ pub use command::{
     },
     wait::{WaitCommand, WaitResult},
     CommandExecutor, CommandOutput, DockerCommand, EnvironmentBuilder, PortBuilder, PortMapping,
-    Protocol,
+    Protocol, DEFAULT_COMMAND_TIMEOUT,
 };
 pub use debug::{BackoffStrategy, DebugConfig, DebugExecutor, DryRunPreview, RetryPolicy};
 pub use error::{Error, Result};
 pub use platform::{Platform, PlatformInfo, Runtime};
-pub use prerequisites::{ensure_docker, DockerInfo, DockerPrerequisites};
+pub use prerequisites::{
+    ensure_docker, ensure_docker_with_timeout, DockerInfo, DockerPrerequisites,
+    DEFAULT_PREREQ_TIMEOUT,
+};
 
 #[cfg(any(
     feature = "templates",
