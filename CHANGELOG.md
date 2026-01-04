@@ -300,6 +300,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0](https://github.com/joshrotenberg/docker-wrapper/compare/v0.8.4...v0.9.0) - 2026-01-04
+
+### Added
+
+- add Docker Swarm command support ([#190](https://github.com/joshrotenberg/docker-wrapper/pull/190))
+- add configurable timeouts for command execution ([#189](https://github.com/joshrotenberg/docker-wrapper/pull/189))
+
+### Fixed
+
+- handle IMAGE header in docker images output ([#194](https://github.com/joshrotenberg/docker-wrapper/pull/194))
+- improve template reliability on slower systems ([#188](https://github.com/joshrotenberg/docker-wrapper/pull/188))
+- use which crate for cross-platform Docker binary lookup ([#186](https://github.com/joshrotenberg/docker-wrapper/pull/186))
+
+### Other
+
+- streamline README and improve rustdoc ([#193](https://github.com/joshrotenberg/docker-wrapper/pull/193))
+- add property-based testing with proptest ([#192](https://github.com/joshrotenberg/docker-wrapper/pull/192))
+- reorganize module structure for consistency ([#191](https://github.com/joshrotenberg/docker-wrapper/pull/191))
+- *(deps)* bump actions/cache from 4 to 5 ([#183](https://github.com/joshrotenberg/docker-wrapper/pull/183))
+- *(deps)* bump actions/upload-artifact from 5 to 6 ([#184](https://github.com/joshrotenberg/docker-wrapper/pull/184))
+
 ## [0.8.4](https://github.com/joshrotenberg/docker-wrapper/compare/v0.8.3...v0.8.4) - 2025-12-11
 
 ### Fixed
