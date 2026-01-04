@@ -507,8 +507,8 @@ impl ImagesCommand {
             return images;
         }
 
-        // Skip header line if present
-        let data_lines = if lines[0].starts_with("REPOSITORY") {
+        // Skip header line if present (handle both old "REPOSITORY" and new "IMAGE" formats)
+        let data_lines = if lines[0].starts_with("REPOSITORY") || lines[0].starts_with("IMAGE") {
             &lines[1..]
         } else {
             &lines[..]
