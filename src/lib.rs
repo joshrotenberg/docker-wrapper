@@ -1,401 +1,283 @@
 //! # docker-wrapper
 //!
-//! A comprehensive, type-safe Docker CLI wrapper for Rust applications.
+//! A type-safe Docker CLI wrapper for Rust.
 //!
-//! `docker-wrapper` provides a clean, idiomatic Rust interface to Docker's command-line interface,
-//! supporting all major Docker commands with strong typing, async/await support, and a consistent
-//! builder pattern API.
+//! This crate provides an idiomatic Rust interface to the Docker command-line tool.
+//! All commands use a builder pattern and async execution via Tokio.
 //!
-//! ## Features
-//!
-//! - **Complete Docker CLI coverage**: Implements all 35 essential Docker commands
-//! - **Type-safe builder pattern**: Compile-time validation of command construction
-//! - **Async/await support**: Built on Tokio for efficient async operations
-//! - **Streaming support**: Real-time output streaming for long-running commands
-//! - **Docker Compose support**: Optional feature for multi-container orchestration
-//! - **Container templates**: Pre-configured templates for Redis, `PostgreSQL`, `MongoDB`, etc.
-//! - **Zero dependencies on Docker SDK**: Works directly with the Docker CLI
-//! - **Comprehensive error handling**: Detailed error messages and types
-//! - **Well-tested**: Extensive unit and integration test coverage
-//!
-//! ## Quick Start
-//!
-//! Add `docker-wrapper` to your `Cargo.toml`:
-//!
-//! ```toml
-//! [dependencies]
-//! docker-wrapper = "0.2"
-//! tokio = { version = "1", features = ["full"] }
-//! ```
-//!
-//! For Docker Compose support, enable the `compose` feature:
-//!
-//! ```toml
-//! [dependencies]
-//! docker-wrapper = { version = "0.2", features = ["compose"] }
-//! ```
-//!
-//! ## Basic Usage
-//!
-//! ### Running a Container
+//! # Quick Start
 //!
 //! ```rust,no_run
-//! use docker_wrapper::{DockerCommand, RunCommand};
+//! use docker_wrapper::{DockerCommand, RunCommand, StopCommand, RmCommand};
 //!
-//! # #[tokio::main]
-//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! // Run a simple container
-//! let output = RunCommand::new("nginx:latest")
-//!     .name("my-web-server")
-//!     .port(8080, 80)
+//! #[tokio::main]
+//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Run a container
+//!     let container = RunCommand::new("nginx:alpine")
+//!         .name("my-nginx")
+//!         .port(8080, 80)
+//!         .detach()
+//!         .execute()
+//!         .await?;
+//!
+//!     println!("Started: {}", container.short());
+//!
+//!     // Stop and remove
+//!     StopCommand::new("my-nginx").execute().await?;
+//!     RmCommand::new("my-nginx").execute().await?;
+//!
+//!     Ok(())
+//! }
+//! ```
+//!
+//! # Core Concepts
+//!
+//! ## The `DockerCommand` Trait
+//!
+//! All commands implement [`DockerCommand`], which provides the [`execute()`](DockerCommand::execute)
+//! method. You must import this trait to call `.execute()`:
+//!
+//! ```rust
+//! use docker_wrapper::DockerCommand; // Required for .execute()
+//! ```
+//!
+//! ## Builder Pattern
+//!
+//! Commands are configured using method chaining:
+//!
+//! ```rust,no_run
+//! # use docker_wrapper::{DockerCommand, RunCommand};
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! RunCommand::new("alpine")
+//!     .name("my-container")
+//!     .env("DATABASE_URL", "postgres://localhost/db")
+//!     .volume("/data", "/app/data")
+//!     .port(3000, 3000)
+//!     .memory("512m")
+//!     .cpus("0.5")
 //!     .detach()
+//!     .rm()  // Auto-remove when stopped
 //!     .execute()
 //!     .await?;
-//!
-//! println!("Container started: {}", output.0);
 //! # Ok(())
 //! # }
 //! ```
 //!
-//! ### Building an Image
+//! ## Error Handling
+//!
+//! All commands return `Result<T, docker_wrapper::Error>`:
 //!
 //! ```rust,no_run
-//! use docker_wrapper::{DockerCommand, BuildCommand};
-//!
-//! # #[tokio::main]
-//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! let output = BuildCommand::new(".")
-//!     .tag("my-app:latest")
-//!     .file("Dockerfile")
-//!     .build_arg("VERSION", "1.0.0")
-//!     .execute()
-//!     .await?;
-//!
-//! if let Some(image_id) = &output.image_id {
-//!     println!("Built image: {}", image_id);
+//! # use docker_wrapper::{DockerCommand, RunCommand, Error};
+//! # async fn example() {
+//! match RunCommand::new("nginx").detach().execute().await {
+//!     Ok(id) => println!("Started: {}", id.short()),
+//!     Err(Error::CommandFailed { stderr, .. }) => {
+//!         eprintln!("Docker error: {}", stderr);
+//!     }
+//!     Err(e) => eprintln!("Error: {}", e),
 //! }
-//! # Ok(())
 //! # }
 //! ```
 //!
-//! ### Listing Containers
+//! # Command Categories
+//!
+//! ## Container Lifecycle
 //!
 //! ```rust,no_run
-//! use docker_wrapper::{DockerCommand, PsCommand};
-//!
-//! # #[tokio::main]
-//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! let output = PsCommand::new()
-//!     .all()
-//!     .format_json()
-//!     .execute()
-//!     .await?;
-//!
-//! for container in output.containers {
-//!     println!("{}: {}", container.names, container.status);
-//! }
-//! # Ok(())
-//! # }
+//! use docker_wrapper::{
+//!     DockerCommand,
+//!     RunCommand,      // docker run
+//!     CreateCommand,   // docker create
+//!     StartCommand,    // docker start
+//!     StopCommand,     // docker stop
+//!     RestartCommand,  // docker restart
+//!     KillCommand,     // docker kill
+//!     RmCommand,       // docker rm
+//!     PauseCommand,    // docker pause
+//!     UnpauseCommand,  // docker unpause
+//! };
 //! ```
 //!
-//! ## Streaming Output
-//!
-//! For long-running commands, use the streaming API to process output in real-time:
+//! ## Container Inspection
 //!
 //! ```rust,no_run
-//! use docker_wrapper::{BuildCommand, StreamHandler, StreamableCommand};
-//!
-//! # #[tokio::main]
-//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! // Stream build output to console
-//! let result = BuildCommand::new(".")
-//!     .tag("my-app:latest")
-//!     .stream(StreamHandler::print())
-//!     .await?;
-//!
-//! if result.is_success() {
-//!     println!("Build completed successfully!");
-//! }
-//! # Ok(())
-//! # }
+//! use docker_wrapper::{
+//!     DockerCommand,
+//!     PsCommand,       // docker ps
+//!     LogsCommand,     // docker logs
+//!     InspectCommand,  // docker inspect
+//!     TopCommand,      // docker top
+//!     StatsCommand,    // docker stats
+//!     PortCommand,     // docker port
+//!     DiffCommand,     // docker diff
+//! };
 //! ```
 //!
-//! ## Container Templates
-//!
-//! Use pre-configured templates for common services:
+//! ## Container Operations
 //!
 //! ```rust,no_run
-//! # #[cfg(feature = "template-redis")]
-//! use docker_wrapper::{RedisTemplate, Template};
-//!
-//! # #[cfg(feature = "template-redis")]
-//! # #[tokio::main]
-//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! // Start Redis with persistence and custom configuration
-//! let redis = RedisTemplate::new("my-redis")
-//!     .port(6379)
-//!     .password("secret")
-//!     .memory_limit("256m")
-//!     .with_persistence("redis-data")
-//!     .custom_image("redis", "7-alpine");
-//!
-//! let container_id = redis.start().await?;
-//! println!("Redis started: {}", container_id);
-//!
-//! // Clean up
-//! redis.stop().await?;
-//! # Ok(())
-//! # }
-//! # #[cfg(not(feature = "template-redis"))]
-//! # fn main() {}
+//! use docker_wrapper::{
+//!     DockerCommand,
+//!     ExecCommand,     // docker exec
+//!     AttachCommand,   // docker attach
+//!     CpCommand,       // docker cp
+//!     WaitCommand,     // docker wait
+//!     RenameCommand,   // docker rename
+//!     UpdateCommand,   // docker update
+//!     CommitCommand,   // docker commit
+//!     ExportCommand,   // docker export
+//! };
 //! ```
 //!
-//! ## Docker Compose Support
+//! ## Images
 //!
-//! When the `compose` feature is enabled, you can manage multi-container applications:
+//! ```rust,no_run
+//! use docker_wrapper::{
+//!     DockerCommand,
+//!     ImagesCommand,   // docker images
+//!     PullCommand,     // docker pull
+//!     PushCommand,     // docker push
+//!     BuildCommand,    // docker build
+//!     TagCommand,      // docker tag
+//!     RmiCommand,      // docker rmi
+//!     SaveCommand,     // docker save
+//!     LoadCommand,     // docker load
+//!     ImportCommand,   // docker import
+//!     HistoryCommand,  // docker history
+//!     SearchCommand,   // docker search
+//! };
+//! ```
+//!
+//! ## Networks and Volumes
+//!
+//! ```rust,no_run
+//! use docker_wrapper::{
+//!     DockerCommand,
+//!     NetworkCreateCommand, NetworkLsCommand, NetworkRmCommand,
+//!     VolumeCreateCommand, VolumeLsCommand, VolumeRmCommand,
+//! };
+//! ```
+//!
+//! ## System
+//!
+//! ```rust,no_run
+//! use docker_wrapper::{
+//!     DockerCommand,
+//!     VersionCommand,  // docker version
+//!     InfoCommand,     // docker info
+//!     EventsCommand,   // docker events
+//!     LoginCommand,    // docker login
+//!     LogoutCommand,   // docker logout
+//!     SystemDfCommand, // docker system df
+//!     SystemPruneCommand, // docker system prune
+//! };
+//! ```
+//!
+//! # Feature Flags
+//!
+//! ## `compose` - Docker Compose Support
+//!
+//! ```toml
+//! docker-wrapper = { version = "0.8", features = ["compose"] }
+//! ```
 //!
 //! ```rust,no_run
 //! # #[cfg(feature = "compose")]
-//! use docker_wrapper::compose::{ComposeCommand, ComposeUpCommand, ComposeDownCommand};
-//! # #[cfg(feature = "compose")]
-//! use docker_wrapper::DockerCommand;
+//! use docker_wrapper::{DockerCommand, compose::{ComposeUpCommand, ComposeDownCommand, ComposeCommand}};
 //!
 //! # #[cfg(feature = "compose")]
-//! # #[tokio::main]
-//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! // Start services defined in docker-compose.yml
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Start services
 //! ComposeUpCommand::new()
 //!     .file("docker-compose.yml")
 //!     .detach()
 //!     .execute()
 //!     .await?;
 //!
-//! // Stop and remove services
+//! // Stop and clean up
 //! ComposeDownCommand::new()
 //!     .volumes()
 //!     .execute()
 //!     .await?;
 //! # Ok(())
 //! # }
-//! # #[cfg(not(feature = "compose"))]
-//! # fn main() {}
 //! ```
 //!
-//! ## Architecture
+//! ## `templates` - Pre-configured Containers
 //!
-//! The crate is organized around several key design patterns:
+//! ```toml
+//! docker-wrapper = { version = "0.8", features = ["templates"] }
+//! ```
 //!
-//! ### Command Trait Pattern
-//!
-//! All Docker commands implement the `DockerCommand` trait, providing a consistent interface:
-//!
-//! - `new()` - Create a new command instance
-//! - `execute()` - Run the command and return typed output
-//! - Builder methods for setting options
-//!
-//! ### Builder Pattern
-//!
-//! Commands use the builder pattern for configuration, allowing fluent and intuitive API usage:
+//! Templates provide ready-to-use configurations for common services:
 //!
 //! ```rust,no_run
-//! # use docker_wrapper::{DockerCommand, RunCommand};
-//! # #[tokio::main]
-//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! RunCommand::new("alpine")
-//!     .name("my-container")
-//!     .env("KEY", "value")
-//!     .volume("/host/path", "/container/path")
-//!     .workdir("/app")
-//!     .cmd(vec!["echo".to_string(), "hello".to_string()])
-//!     .execute()
-//!     .await?;
+//! # #[cfg(feature = "template-redis")]
+//! use docker_wrapper::{RedisTemplate, Template};
+//!
+//! # #[cfg(feature = "template-redis")]
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let redis = RedisTemplate::new("my-redis")
+//!     .port(6379)
+//!     .password("secret")
+//!     .with_persistence("redis-data");
+//!
+//! let id = redis.start().await?;
+//! // ... use Redis ...
+//! redis.stop().await?;
 //! # Ok(())
 //! # }
 //! ```
 //!
-//! ### Error Handling
+//! Available templates:
+//! - [`RedisTemplate`], [`RedisSentinelTemplate`], [`RedisClusterTemplate`]
+//! - [`PostgresTemplate`], [`MysqlTemplate`], [`MongodbTemplate`]
+//! - [`NginxTemplate`]
 //!
-//! All operations return `Result<T, docker_wrapper::Error>`, providing detailed error information:
+//! ## `swarm` - Docker Swarm Commands
+//!
+//! ```toml
+//! docker-wrapper = { version = "0.8", features = ["swarm"] }
+//! ```
+//!
+//! ## `manifest` - Multi-arch Manifest Commands
+//!
+//! ```toml
+//! docker-wrapper = { version = "0.8", features = ["manifest"] }
+//! ```
+//!
+//! # Streaming Output
+//!
+//! For long-running commands, stream output in real-time:
 //!
 //! ```rust,no_run
-//! # use docker_wrapper::{DockerCommand, RunCommand};
-//! # #[tokio::main]
-//! # async fn main() {
-//! match RunCommand::new("invalid:image").execute().await {
-//!     Ok(output) => println!("Container ID: {}", output.0),
-//!     Err(e) => eprintln!("Failed to run container: {}", e),
+//! use docker_wrapper::{BuildCommand, StreamHandler, StreamableCommand};
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let result = BuildCommand::new(".")
+//!     .tag("my-app:latest")
+//!     .stream(StreamHandler::print())
+//!     .await?;
+//!
+//! if result.is_success() {
+//!     println!("Build complete!");
 //! }
+//! # Ok(())
 //! # }
 //! ```
 //!
-//! ## Command Coverage
-//!
-//! ### Container Commands
-//! - `run` - Run a new container
-//! - `exec` - Execute commands in running containers
-//! - `ps` - List containers
-//! - `create` - Create a new container without starting it
-//! - `start` - Start stopped containers
-//! - `stop` - Stop running containers
-//! - `restart` - Restart containers
-//! - `kill` - Kill running containers
-//! - `rm` - Remove containers
-//! - `pause` - Pause running containers
-//! - `unpause` - Unpause paused containers
-//! - `attach` - Attach to running containers
-//! - `wait` - Wait for containers to stop
-//! - `logs` - Fetch container logs
-//! - `top` - Display running processes in containers
-//! - `stats` - Display resource usage statistics
-//! - `port` - List port mappings
-//! - `rename` - Rename containers
-//! - `update` - Update container configuration
-//! - `cp` - Copy files between containers and host
-//! - `diff` - Inspect filesystem changes
-//! - `export` - Export container filesystem
-//! - `commit` - Create image from container
-//!
-//! ### Image Commands
-//! - `images` - List images
-//! - `pull` - Pull images from registry
-//! - `push` - Push images to registry
-//! - `build` - Build images from Dockerfile
-//! - `load` - Load images from tar archive
-//! - `save` - Save images to tar archive
-//! - `rmi` - Remove images
-//! - `tag` - Tag images
-//! - `import` - Import images from tarball
-//! - `history` - Show image history
-//! - `inspect` - Display detailed information
-//! - `search` - Search Docker Hub for images
-//!
-//! ### System Commands
-//! - `info` - Display system information
-//! - `version` - Show Docker version
-//! - `events` - Monitor Docker events
-//! - `login` - Log in to registry
-//! - `logout` - Log out from registry
-//!
-//! ## Prerequisites Check
-//!
-//! Ensure Docker is installed and accessible:
+//! # Checking Docker Availability
 //!
 //! ```rust,no_run
 //! use docker_wrapper::ensure_docker;
 //!
-//! # #[tokio::main]
-//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! // Check Docker availability and version
-//! let docker_info = ensure_docker().await?;
-//! println!("Docker version: {}.{}.{}",
-//!     docker_info.version.major,
-//!     docker_info.version.minor,
-//!     docker_info.version.patch);
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let info = ensure_docker().await?;
+//! println!("Docker {}.{}.{}", info.version.major, info.version.minor, info.version.patch);
 //! # Ok(())
 //! # }
 //! ```
-//!
-//! ## Best Practices
-//!
-//! ### Resource Cleanup
-//!
-//! Always clean up containers and resources:
-//!
-//! ```rust,no_run
-//! # use docker_wrapper::{DockerCommand, RunCommand, RmCommand};
-//! # #[tokio::main]
-//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! // Use auto-remove for temporary containers
-//! RunCommand::new("alpine")
-//!     .remove()  // Automatically remove when stopped
-//!     .execute()
-//!     .await?;
-//!
-//! // Or manually remove containers
-//! RmCommand::new("my-container")
-//!     .force()
-//!     .execute()
-//!     .await?;
-//! # Ok(())
-//! # }
-//! ```
-//!
-//! ### Error Handling
-//!
-//! Handle errors appropriately for production use:
-//!
-//! ```rust,no_run
-//! # use docker_wrapper::{DockerCommand, RunCommand, Error};
-//! # #[tokio::main]
-//! # async fn main() {
-//! async fn run_container() -> Result<String, Error> {
-//!     let output = RunCommand::new("nginx")
-//!         .detach()
-//!         .execute()
-//!         .await?;
-//!     Ok(output.0)
-//! }
-//!
-//! match run_container().await {
-//!     Ok(id) => println!("Started container: {}", id),
-//!     Err(Error::CommandFailed { stderr, .. }) => {
-//!         eprintln!("Docker command failed: {}", stderr);
-//!     }
-//!     Err(e) => eprintln!("Unexpected error: {}", e),
-//! }
-//! # }
-//! ```
-//!
-//! ## Examples
-//!
-//! The `examples/` directory contains comprehensive examples:
-//!
-//! - `basic_usage.rs` - Common Docker operations
-//! - `container_lifecycle.rs` - Container management patterns
-//! - `docker_compose.rs` - Docker Compose usage
-//! - `streaming.rs` - Real-time output streaming
-//! - `error_handling.rs` - Error handling patterns
-//!
-//! Run examples with:
-//!
-//! ```bash
-//! cargo run --example basic_usage
-//! cargo run --example streaming
-//! cargo run --features compose --example docker_compose
-//! ```
-//!
-//! ## Migration from Docker CLI
-//!
-//! Migrating from shell scripts to `docker-wrapper` is straightforward:
-//!
-//! **Shell:**
-//! ```bash
-//! docker run -d --name web -p 8080:80 nginx:latest
-//! ```
-//!
-//! **Rust:**
-//! ```rust,no_run
-//! # use docker_wrapper::{DockerCommand, RunCommand};
-//! # #[tokio::main]
-//! # async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! RunCommand::new("nginx:latest")
-//!     .detach()
-//!     .name("web")
-//!     .port(8080, 80)
-//!     .execute()
-//!     .await?;
-//! # Ok(())
-//! # }
-//! ```
-//!
-//! ## Contributing
-//!
-//! Contributions are welcome! Please see the [GitHub repository](https://github.com/joshrotenberg/docker-wrapper)
-//! for contribution guidelines and development setup.
-//!
-//! ## License
-//!
-//! This project is licensed under the MIT License - see the LICENSE file for details.
 
 #![warn(missing_docs)]
 #![warn(clippy::all)]

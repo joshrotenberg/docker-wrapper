@@ -1,8 +1,48 @@
-//! Command trait architecture for extensible Docker command implementations.
+//! Docker command implementations.
 //!
-//! This module provides a base trait that all Docker commands implement,
-//! allowing for both structured high-level APIs and escape hatches for
-//! any unimplemented options via raw arguments.
+//! This module contains all Docker CLI command wrappers. Each command is implemented
+//! as a struct with a builder pattern API.
+//!
+//! # The `DockerCommand` Trait
+//!
+//! All commands implement [`DockerCommand`], which provides:
+//! - [`execute()`](DockerCommand::execute) - Run the command and get typed output
+//! - [`arg()`](DockerCommand::arg) / [`args()`](DockerCommand::args) - Add raw CLI arguments
+//! - [`with_timeout()`](DockerCommand::with_timeout) - Set execution timeout
+//!
+//! # Example
+//!
+//! ```rust,no_run
+//! use docker_wrapper::{DockerCommand, RunCommand};
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let container = RunCommand::new("nginx:alpine")
+//!     .name("web")
+//!     .port(8080, 80)
+//!     .detach()
+//!     .execute()
+//!     .await?;
+//!
+//! println!("Started container: {}", container.short());
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! # Extensibility
+//!
+//! For options not yet implemented, use the escape hatch methods:
+//!
+//! ```rust,no_run
+//! use docker_wrapper::{DockerCommand, RunCommand};
+//!
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let mut cmd = RunCommand::new("nginx");
+//! cmd.arg("--some-new-flag")
+//!    .args(["--option", "value"]);
+//! cmd.execute().await?;
+//! # Ok(())
+//! # }
+//! ```
 
 use crate::error::{Error, Result};
 use crate::platform::PlatformInfo;
