@@ -30,6 +30,7 @@ pub mod diff;
 pub mod events;
 pub mod exec;
 pub mod export;
+pub mod generic;
 pub mod history;
 pub mod image_prune;
 pub mod images;

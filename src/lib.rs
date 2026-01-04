@@ -492,6 +492,7 @@ pub use command::{
     events::{DockerEvent, EventActor, EventsCommand, EventsResult},
     exec::{ExecCommand, ExecOutput},
     export::{ExportCommand, ExportResult},
+    generic::GenericCommand,
     history::{HistoryCommand, HistoryResult, ImageLayer},
     image_prune::{DeletedImage, ImagePruneCommand, ImagePruneResult},
     images::{ImageInfo, ImagesCommand, ImagesOutput},
