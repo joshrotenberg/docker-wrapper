@@ -73,6 +73,7 @@ pub mod search;
 pub mod start;
 pub mod stats;
 pub mod stop;
+pub mod swarm;
 pub mod system;
 pub mod tag;
 pub mod top;
