@@ -157,6 +157,8 @@
 //! ```rust,no_run
 //! # #[cfg(feature = "compose")]
 //! use docker_wrapper::compose::{ComposeCommand, ComposeUpCommand, ComposeDownCommand};
+//! # #[cfg(feature = "compose")]
+//! use docker_wrapper::DockerCommand;
 //!
 //! # #[cfg(feature = "compose")]
 //! # #[tokio::main]

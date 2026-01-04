@@ -9,7 +9,7 @@
 //! # Example
 //!
 //! ```rust,no_run
-//! use docker_wrapper::compose::{ComposeUpCommand, ComposeDownCommand};
+//! use docker_wrapper::compose::{ComposeUpCommand, ComposeDownCommand, ComposeCommand};
 //! use docker_wrapper::DockerCommand;
 //!
 //! # #[tokio::main]
