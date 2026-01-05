@@ -110,3 +110,9 @@ required-features = ["template-redis-cluster"]
 name = "redis_enterprise_template"
 path = "examples/redis_enterprise_template.rs"
 required-features = ["template-redis-enterprise"]
+
+[[example]]
+name = "test_sentinel"
+path = "examples/test_sentinel.rs"
+required-features = ["template-redis"]
+
