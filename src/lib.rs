@@ -179,7 +179,7 @@
 //! ## `compose` - Docker Compose Support
 //!
 //! ```toml
-//! docker-wrapper = { version = "0.9", features = ["compose"] }
+//! docker-wrapper = { version = "0.10", features = ["compose"] }
 //! ```
 //!
 //! ```rust,no_run
@@ -207,7 +207,7 @@
 //! ## `templates` - Pre-configured Containers
 //!
 //! ```toml
-//! docker-wrapper = { version = "0.9", features = ["templates"] }
+//! docker-wrapper = { version = "0.10", features = ["templates"] }
 //! ```
 //!
 //! Templates provide ready-to-use configurations for common services:
@@ -238,13 +238,13 @@
 //! ## `swarm` - Docker Swarm Commands
 //!
 //! ```toml
-//! docker-wrapper = { version = "0.9", features = ["swarm"] }
+//! docker-wrapper = { version = "0.10", features = ["swarm"] }
 //! ```
 //!
 //! ## `manifest` - Multi-arch Manifest Commands
 //!
 //! ```toml
-//! docker-wrapper = { version = "0.9", features = ["manifest"] }
+//! docker-wrapper = { version = "0.10", features = ["manifest"] }
 //! ```
 //!
 //! # Tracing and Debugging
