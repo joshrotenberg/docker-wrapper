@@ -70,7 +70,7 @@ tracing = "0.1"
 async-trait = "0.1"
 
 # Optional dependencies for templates
-reqwest = { version = "0.12", features = ["json", "rustls-tls"], optional = true }
+reqwest = { version = "0.13", features = ["json", "rustls-tls"], optional = true }
 
 # Cross-platform binary lookup
 which = "8.0"
