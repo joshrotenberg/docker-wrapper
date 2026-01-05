@@ -34,14 +34,16 @@ async fn test_with_auto_cleanup() {
     // Wait for container to be ready
     tokio::time::sleep(Duration::from_secs(1)).await;
 
-    // Execute test commands
-    let result = ExecCommand::new(&container_name)
-        .cmd(vec!["redis-cli", "PING"])
+        // Execute test commands
+        let result = ExecCommand::new(
+            &container_name,
+            vec!["redis-cli".to_string(), "PING".to_string()],
+        )
         .execute()
         .await
         .expect("Failed to execute command");
 
-    assert_eq!(result.stdout.trim(), "PONG");
+        assert_eq!(result.stdout.trim(), "PONG");
 
     // Stop container (will be automatically removed due to --rm flag)
     StopCommand::new(&container_name)
@@ -112,8 +114,8 @@ async fn test_with_error_handling() {
             eprintln!("Failed to start container: {}", e);
 
             // Try to get logs for debugging
-            if let Ok(logs) = LogsCommand::new(&container_name).tail(50).execute().await {
-                eprintln!("Container logs:\n{}", logs);
+                if let Ok(logs) = LogsCommand::new(&container_name).tail("50").execute().await {
+                    eprintln!("Container logs:\n{}", logs.stdout);
             }
 
             panic!("Test failed due to container startup error");
@@ -194,9 +196,9 @@ async fn test_with_log_inspection() {
     RunCommand::new("alpine")
         .name(&container_name)
         .cmd(vec![
-            "sh",
-            "-c",
-            "echo 'Starting app...'; sleep 1; echo 'App ready!'",
+            "sh".to_string(),
+            "-c".to_string(),
+            "echo 'Starting app...'; sleep 1; echo 'App ready!'".to_string(),
         ])
         .detach()
         .execute()
@@ -206,16 +208,16 @@ async fn test_with_log_inspection() {
     // Wait for container to produce logs
     tokio::time::sleep(Duration::from_secs(2)).await;
 
-    // Fetch and inspect logs
-    let logs = LogsCommand::new(&container_name)
-        .execute()
-        .await
-        .expect("Failed to fetch logs");
+        // Fetch and inspect logs
+        let logs = LogsCommand::new(&container_name)
+            .execute()
+            .await
+            .expect("Failed to fetch logs");
 
-    println!("Container logs:\n{}", logs);
+        println!("Container logs:\n{}", logs.stdout);
 
-    assert!(logs.contains("Starting app..."));
-    assert!(logs.contains("App ready!"));
+        assert!(logs.stdout.contains("Starting app..."));
+        assert!(logs.stdout.contains("App ready!"));
 
     // Cleanup
     let _ = RmCommand::new(&container_name).force().execute().await;
@@ -250,7 +252,7 @@ mod tests {
         // Start a simple container
         let output = RunCommand::new("alpine")
             .name(&container_name)
-            .cmd(vec!["echo", "Hello from test!"])
+            .cmd(vec!["echo".to_string(), "Hello from test!".to_string()])
             .execute()
             .await
             .expect("Failed to run container");
