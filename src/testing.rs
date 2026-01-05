@@ -26,7 +26,9 @@
 
 use crate::command::DockerCommand;
 use crate::template::{Template, TemplateError};
-use crate::{LogsCommand, PortCommand, RmCommand, StopCommand};
+use crate::{
+    LogsCommand, NetworkCreateCommand, NetworkRmCommand, PortCommand, RmCommand, StopCommand,
+};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -46,6 +48,12 @@ pub struct GuardOptions {
     pub reuse_if_running: bool,
     /// Automatically wait for container to be ready after start (default: false)
     pub wait_for_ready: bool,
+    /// Network to attach the container to (default: None)
+    pub network: Option<String>,
+    /// Create the network if it doesn't exist (default: true when network is set)
+    pub create_network: bool,
+    /// Remove the network on drop (default: false)
+    pub remove_network_on_drop: bool,
 }
 
 impl Default for GuardOptions {
@@ -57,6 +65,9 @@ impl Default for GuardOptions {
             capture_logs: false,
             reuse_if_running: false,
             wait_for_ready: false,
+            network: None,
+            create_network: true,
+            remove_network_on_drop: false,
         }
     }
 }
@@ -147,6 +158,53 @@ impl<T: Template> ContainerGuardBuilder<T> {
         self
     }
 
+    /// Attach the container to a Docker network.
+    ///
+    /// By default, the network will be created if it doesn't exist. Use
+    /// `create_network(false)` to disable automatic network creation.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use docker_wrapper::testing::ContainerGuard;
+    /// # use docker_wrapper::RedisTemplate;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let guard = ContainerGuard::new(RedisTemplate::new("redis"))
+    ///     .with_network("test-network")
+    ///     .start()
+    ///     .await?;
+    /// // Container is attached to "test-network"
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn with_network(mut self, network: impl Into<String>) -> Self {
+        self.options.network = Some(network.into());
+        self
+    }
+
+    /// Set whether to create the network if it doesn't exist (default: true).
+    ///
+    /// Only applies when a network is specified via `with_network()`.
+    #[must_use]
+    pub fn create_network(mut self, create: bool) -> Self {
+        self.options.create_network = create;
+        self
+    }
+
+    /// Set whether to remove the network on drop (default: false).
+    ///
+    /// This is useful for cleaning up test-specific networks. Only applies
+    /// when a network is specified via `with_network()`.
+    ///
+    /// Note: The network removal will fail silently if other containers are
+    /// still using it.
+    #[must_use]
+    pub fn remove_network_on_drop(mut self, remove: bool) -> Self {
+        self.options.remove_network_on_drop = remove;
+        self
+    }
+
     /// Start the container and return a guard that manages its lifecycle.
     ///
     /// If `reuse_if_running` is enabled and a container is already running,
@@ -155,11 +213,33 @@ impl<T: Template> ContainerGuardBuilder<T> {
     /// If `wait_for_ready` is enabled, this method will block until the
     /// container passes its readiness check.
     ///
+    /// If a network is specified via `with_network()`, the container will be
+    /// attached to that network. The network will be created if it doesn't
+    /// exist (unless `create_network(false)` was called).
+    ///
     /// # Errors
     ///
     /// Returns an error if the container fails to start or the readiness check times out.
-    pub async fn start(self) -> Result<ContainerGuard<T>, TemplateError> {
+    pub async fn start(mut self) -> Result<ContainerGuard<T>, TemplateError> {
         let wait_for_ready = self.options.wait_for_ready;
+        let mut network_created = false;
+
+        // Create network if specified and create_network is enabled
+        if let Some(ref network) = self.options.network {
+            if self.options.create_network {
+                // Try to create the network (ignore errors if it already exists)
+                let result = NetworkCreateCommand::new(network)
+                    .driver("bridge")
+                    .execute()
+                    .await;
+
+                // Track if we successfully created it (for cleanup purposes)
+                network_created = result.is_ok();
+            }
+
+            // Set the network on the template
+            self.template.config_mut().network = Some(network.clone());
+        }
 
         // Check if we should reuse an existing container
         if self.options.reuse_if_running {
@@ -169,6 +249,7 @@ impl<T: Template> ContainerGuardBuilder<T> {
                     container_id: None, // We don't have the ID for reused containers
                     options: self.options,
                     was_reused: true,
+                    network_created,
                     cleaned_up: Arc::new(AtomicBool::new(false)),
                 };
 
@@ -189,6 +270,7 @@ impl<T: Template> ContainerGuardBuilder<T> {
             container_id: Some(container_id),
             options: self.options,
             was_reused: false,
+            network_created,
             cleaned_up: Arc::new(AtomicBool::new(false)),
         };
 
@@ -229,6 +311,7 @@ pub struct ContainerGuard<T: Template> {
     container_id: Option<String>,
     options: GuardOptions,
     was_reused: bool,
+    network_created: bool,
     cleaned_up: Arc<AtomicBool>,
 }
 
@@ -260,6 +343,12 @@ impl<T: Template> ContainerGuard<T> {
     #[must_use]
     pub fn was_reused(&self) -> bool {
         self.was_reused
+    }
+
+    /// Get the network name, if one was configured.
+    #[must_use]
+    pub fn network(&self) -> Option<&str> {
+        self.options.network.as_deref()
     }
 
     /// Check if the container is currently running.
@@ -437,9 +526,11 @@ impl<T: Template> Drop for ContainerGuard<T> {
         // Perform cleanup - need to spawn a runtime since Drop isn't async
         let should_stop = self.options.stop_on_drop;
         let should_remove = self.options.remove_on_drop;
+        let should_remove_network = self.options.remove_network_on_drop && self.network_created;
         let container_name = self.template.config().name.clone();
+        let network_name = self.options.network.clone();
 
-        if !should_stop && !should_remove {
+        if !should_stop && !should_remove && !should_remove_network {
             return;
         }
 
@@ -448,6 +539,7 @@ impl<T: Template> Drop for ContainerGuard<T> {
         if tokio::runtime::Handle::try_current().is_ok() {
             // We're in an async context - use spawn_blocking to avoid blocking the runtime
             let container_name_clone = container_name.clone();
+            let network_name_clone = network_name.clone();
             let _ = std::thread::spawn(move || {
                 let rt = tokio::runtime::Builder::new_current_thread()
                     .enable_all()
@@ -459,6 +551,12 @@ impl<T: Template> Drop for ContainerGuard<T> {
                     }
                     if should_remove {
                         let _ = RmCommand::new(&container_name_clone).force().run().await;
+                    }
+                    // Remove network after container (network must be empty)
+                    if should_remove_network {
+                        if let Some(ref network) = network_name_clone {
+                            let _ = NetworkRmCommand::new(network).execute().await;
+                        }
                     }
                 });
             })
@@ -475,6 +573,12 @@ impl<T: Template> Drop for ContainerGuard<T> {
                     }
                     if should_remove {
                         let _ = RmCommand::new(&container_name).force().run().await;
+                    }
+                    // Remove network after container (network must be empty)
+                    if should_remove_network {
+                        if let Some(ref network) = network_name {
+                            let _ = NetworkRmCommand::new(network).execute().await;
+                        }
                     }
                 });
             }
@@ -495,6 +599,9 @@ mod tests {
         assert!(!opts.capture_logs);
         assert!(!opts.reuse_if_running);
         assert!(!opts.wait_for_ready);
+        assert!(opts.network.is_none());
+        assert!(opts.create_network);
+        assert!(!opts.remove_network_on_drop);
     }
 
     #[test]

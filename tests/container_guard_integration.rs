@@ -217,3 +217,69 @@ async fn test_container_guard_auto_wait_for_ready() {
 
     // Container cleanup happens on drop
 }
+
+#[tokio::test]
+async fn test_container_guard_with_network() {
+    let name = unique_name("guard-network");
+    let network_name = unique_name("test-network");
+
+    let guard = ContainerGuard::new(RedisTemplate::new(&name).port(next_port()))
+        .with_network(&network_name)
+        .remove_network_on_drop(true)
+        .start()
+        .await
+        .expect("Failed to start container");
+
+    // Container should be running
+    assert!(
+        guard.is_running().await.expect("Failed to check running"),
+        "Container should be running"
+    );
+
+    // Network should be set
+    assert_eq!(guard.network(), Some(network_name.as_str()));
+
+    // Verify the container is on the network by checking the template config
+    assert_eq!(
+        guard.template().config().network,
+        Some(network_name.clone())
+    );
+
+    // Container and network cleanup happens on drop
+}
+
+#[tokio::test]
+async fn test_container_guard_network_no_auto_create() {
+    use docker_wrapper::{DockerCommand, NetworkCreateCommand, NetworkRmCommand};
+
+    let name = unique_name("guard-network-manual");
+    let network_name = unique_name("manual-network");
+
+    // Create the network manually first
+    NetworkCreateCommand::new(&network_name)
+        .driver("bridge")
+        .execute()
+        .await
+        .expect("Failed to create network");
+
+    let guard = ContainerGuard::new(RedisTemplate::new(&name).port(next_port()))
+        .with_network(&network_name)
+        .create_network(false) // Don't auto-create
+        .start()
+        .await
+        .expect("Failed to start container");
+
+    assert!(
+        guard.is_running().await.expect("Failed to check running"),
+        "Container should be running"
+    );
+
+    // Drop the guard (container will be removed but network won't since we didn't create it)
+    drop(guard);
+
+    // Give Docker a moment to clean up
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    // Clean up network manually
+    let _ = NetworkRmCommand::new(&network_name).execute().await;
+}
