@@ -144,29 +144,71 @@ impl PostgresFixture {
     ) -> Result<Self, Box<dyn std::error::Error>> {
         let container_name = unique_name("postgres");
 
-        RunCommand::new("postgres:15-alpine")
+        // Use dynamic host port mapping to avoid collisions on common ports (e.g., 5432)
+        let cid = RunCommand::new("postgres:15-alpine")
             .name(&container_name)
             .env("POSTGRES_DB", database)
             .env("POSTGRES_USER", username)
             .env("POSTGRES_PASSWORD", password)
-            .port(port, 5432)
+            .port_dyn(5432)
             .detach()
             .remove()
             .execute()
             .await?;
 
-        // Wait for PostgreSQL to be ready
-        wait_for_port("localhost", port, Duration::from_secs(10)).await?;
+        // Determine mapped host port so we can probe from the host
+        let mapped_ports = cid.port_mappings().await?;
+        let host_port = mapped_ports.first().map(|m| m.host_port).unwrap_or(port);
+
+        // Wait for PostgreSQL to be ready on the host-mapped port
+        wait_for_port("localhost", host_port, Duration::from_secs(10)).await?;
 
         // Additional wait for PostgreSQL initialization
         tokio::time::sleep(Duration::from_secs(2)).await;
+
+        // Probe PostgreSQL with psql until it accepts connections
+        let mut ready = false;
+        for _ in 0..30 {
+            let probe = ExecCommand::new(
+                &container_name,
+                vec![
+                    "psql".to_string(),
+                    "-U".to_string(),
+                    username.to_string(),
+                    "-d".to_string(),
+                    database.to_string(),
+                    "-c".to_string(),
+                    "SELECT 1".to_string(),
+                ],
+            )
+            .env("PGPASSWORD", password)
+            .execute()
+            .await;
+
+            if let Ok(out) = probe {
+                if out.exit_code == 0 {
+                    ready = true;
+                    break;
+                }
+            }
+
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        }
+
+        if !ready {
+            return Err(format!(
+                "PostgreSQL in container {} did not become ready in time",
+                container_name
+            )
+            .into());
+        }
 
         Ok(Self {
             container_name,
             database: database.to_string(),
             username: username.to_string(),
             password: password.to_string(),
-            port,
+            port: host_port,
         })
     }
 
