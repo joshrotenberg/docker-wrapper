@@ -170,3 +170,50 @@ async fn test_container_guard_manual_cleanup() {
         "Container should be stopped after cleanup"
     );
 }
+
+#[tokio::test]
+async fn test_container_guard_wait_for_ready_method() {
+    let name = unique_name("guard-wait-ready");
+    let guard = ContainerGuard::new(RedisTemplate::new(&name).port(next_port()))
+        .start()
+        .await
+        .expect("Failed to start container");
+
+    // Explicitly call wait_for_ready
+    guard
+        .wait_for_ready()
+        .await
+        .expect("Failed to wait for ready");
+
+    // Container should definitely be running and ready now
+    assert!(
+        guard.is_running().await.expect("Failed to check running"),
+        "Container should be running"
+    );
+
+    // Container cleanup happens on drop
+}
+
+#[tokio::test]
+async fn test_container_guard_auto_wait_for_ready() {
+    let name = unique_name("guard-auto-wait");
+    let guard = ContainerGuard::new(RedisTemplate::new(&name).port(next_port()))
+        .wait_for_ready(true) // Enable auto-wait
+        .start()
+        .await
+        .expect("Failed to start container");
+
+    // Container should be immediately ready - no separate wait_for_ready call needed
+    assert!(
+        guard.is_running().await.expect("Failed to check running"),
+        "Container should be running"
+    );
+
+    // Calling wait_for_ready again should succeed immediately since already ready
+    guard
+        .wait_for_ready()
+        .await
+        .expect("wait_for_ready should succeed on already-ready container");
+
+    // Container cleanup happens on drop
+}
