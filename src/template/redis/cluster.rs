@@ -432,7 +432,7 @@ impl RedisClusterTemplate {
     /// # Examples
     ///
     /// ```no_run
-    /// # use docker_wrapper::RedisClusterTemplate;
+    /// # use docker_wrapper::{RedisClusterTemplate, Template};
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
     /// let template = RedisClusterTemplate::new("my-cluster");
@@ -462,7 +462,7 @@ impl RedisClusterTemplate {
     /// # Examples
     ///
     /// ```no_run
-    /// # use docker_wrapper::RedisClusterTemplate;
+    /// # use docker_wrapper::{RedisClusterTemplate, Template};
     /// # use std::time::Duration;
     /// # #[tokio::main]
     /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
