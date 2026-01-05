@@ -68,6 +68,7 @@ jobs:
         run: cargo build --examples --all-features
 
       - name: Check individual template features compile
+        shell: bash
         run: |
           for feature in template-redis template-redis-cluster template-redis-enterprise template-postgres template-mysql template-mongodb template-nginx; do
             echo "Checking feature: $feature"
