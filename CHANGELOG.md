@@ -6,6 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [0.10.0](https://github.com/joshrotenberg/docker-wrapper/compare/v0.9.1...v0.10.0) - 2026-01-05
+
+### Added
+
+- enhance RedisClusterTemplate for CI and hybrid environments ([#211](https://github.com/joshrotenberg/docker-wrapper/pull/211))
+
+### Fixed
+
+- use SIGKILL and StopCommand in lifecycle example ([#212](https://github.com/joshrotenberg/docker-wrapper/pull/212))
+- use serial_test for env var tests and improve MySQL readiness check ([#213](https://github.com/joshrotenberg/docker-wrapper/pull/213))
+- complete template feature flag coverage and add CI verification ([#206](https://github.com/joshrotenberg/docker-wrapper/pull/206))
+- template-redis-enterprise feature gate and example API updates ([#204](https://github.com/joshrotenberg/docker-wrapper/pull/204))
+
 ### Bug Fixes
 
 - Use which crate for cross-platform Docker binary lookup  ([d17edce](https://github.com/joshrotenberg/docker-wrapper/commit/d17edceb456668dc8855c13fd0e7a17551040d83))
