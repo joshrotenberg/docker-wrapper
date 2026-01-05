@@ -29,6 +29,8 @@ manifest = []
 # Template features
 templates = [
     "template-redis",
+    "template-redis-cluster",
+    "template-redis-enterprise",
     "template-postgres",
     "template-mysql",
     "template-mongodb",

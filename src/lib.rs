@@ -572,6 +572,7 @@ pub use prerequisites::{
     feature = "templates",
     feature = "template-redis",
     feature = "template-redis-cluster",
+    feature = "template-redis-enterprise",
     feature = "template-postgres",
     feature = "template-mysql",
     feature = "template-mongodb",
