@@ -50,6 +50,9 @@ template-nginx = ["reqwest"]
 template-redis-sentinel = ["template-redis"]
 template-redis-stack = ["template-redis"]
 
+# Testing utilities (requires at least one template feature)
+testing = ["template-redis"]
+
 [dependencies]
 tokio = { version = "1.46", features = [
     "process",

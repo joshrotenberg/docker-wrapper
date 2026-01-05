@@ -402,6 +402,7 @@ pub mod error;
 pub mod platform;
 pub mod prerequisites;
 pub mod stream;
+
 #[cfg(any(
     feature = "templates",
     feature = "template-redis",
@@ -464,6 +465,8 @@ pub mod stream;
     feature = "template-nginx"
 ))]
 pub mod template;
+#[cfg(feature = "testing")]
+pub mod testing;
 
 pub use stream::{OutputLine, StreamHandler, StreamResult, StreamableCommand};
 
