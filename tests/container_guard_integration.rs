@@ -1,8 +1,8 @@
-//! Integration tests for ContainerGuard
+//! Integration tests for ContainerGuard and ContainerGuardSet
 
 #![cfg(feature = "testing")]
 
-use docker_wrapper::testing::ContainerGuard;
+use docker_wrapper::testing::{ContainerGuard, ContainerGuardSet};
 use docker_wrapper::{RedisTemplate, Template};
 use std::sync::atomic::{AtomicU16, Ordering};
 use std::time::Duration;
@@ -282,4 +282,130 @@ async fn test_container_guard_network_no_auto_create() {
 
     // Clean up network manually
     let _ = NetworkRmCommand::new(&network_name).execute().await;
+}
+
+// ============================================================================
+// ContainerGuardSet tests
+// ============================================================================
+
+#[tokio::test]
+async fn test_container_guard_set_basic() {
+    let name1 = unique_name("guardset-1");
+    let name2 = unique_name("guardset-2");
+
+    let guards = ContainerGuardSet::new()
+        .add(RedisTemplate::new(&name1).port(next_port()))
+        .add(RedisTemplate::new(&name2).port(next_port()))
+        .start_all()
+        .await
+        .expect("Failed to start containers");
+
+    // Both containers should be in the set
+    assert_eq!(guards.len(), 2);
+    assert!(!guards.is_empty());
+    assert!(guards.contains(&name1));
+    assert!(guards.contains(&name2));
+
+    // Names should be accessible
+    let names: Vec<&str> = guards.names().collect();
+    assert!(names.contains(&name1.as_str()));
+    assert!(names.contains(&name2.as_str()));
+
+    // Container cleanup happens on drop
+}
+
+#[tokio::test]
+async fn test_container_guard_set_with_shared_network() {
+    let name1 = unique_name("guardset-net-1");
+    let name2 = unique_name("guardset-net-2");
+    let network_name = unique_name("guardset-network");
+
+    let guards = ContainerGuardSet::new()
+        .with_network(&network_name)
+        .add(RedisTemplate::new(&name1).port(next_port()))
+        .add(RedisTemplate::new(&name2).port(next_port()))
+        .start_all()
+        .await
+        .expect("Failed to start containers");
+
+    // Both containers should be in the set
+    assert_eq!(guards.len(), 2);
+
+    // Network should be accessible
+    assert_eq!(guards.network(), Some(network_name.as_str()));
+
+    // Containers and network cleanup happens on drop
+}
+
+#[tokio::test]
+async fn test_container_guard_set_empty() {
+    let guards = ContainerGuardSet::new()
+        .start_all()
+        .await
+        .expect("Empty set should start successfully");
+
+    assert!(guards.is_empty());
+    assert_eq!(guards.len(), 0);
+    assert!(!guards.contains("nonexistent"));
+}
+
+#[tokio::test]
+async fn test_container_guard_set_single_container() {
+    let name = unique_name("guardset-single");
+
+    let guards = ContainerGuardSet::new()
+        .add(RedisTemplate::new(&name).port(next_port()))
+        .start_all()
+        .await
+        .expect("Failed to start container");
+
+    assert_eq!(guards.len(), 1);
+    assert!(guards.contains(&name));
+
+    // Container cleanup happens on drop
+}
+
+#[tokio::test]
+async fn test_container_guard_set_network_no_auto_remove() {
+    use docker_wrapper::{DockerCommand, NetworkRmCommand};
+
+    let name = unique_name("guardset-net-keep");
+    let network_name = unique_name("guardset-keep-network");
+
+    {
+        let guards = ContainerGuardSet::new()
+            .with_network(&network_name)
+            .remove_network_on_drop(false) // Don't remove network
+            .add(RedisTemplate::new(&name).port(next_port()))
+            .start_all()
+            .await
+            .expect("Failed to start container");
+
+        assert_eq!(guards.len(), 1);
+        // Guards drop here, but network should remain
+    }
+
+    // Give Docker a moment to clean up containers
+    tokio::time::sleep(Duration::from_millis(500)).await;
+
+    // Network should still exist - cleanup manually
+    // If network doesn't exist, this will fail but we ignore the error
+    let _ = NetworkRmCommand::new(&network_name).execute().await;
+}
+
+#[tokio::test]
+async fn test_container_guard_set_wait_for_ready_disabled() {
+    let name = unique_name("guardset-no-wait");
+
+    let guards = ContainerGuardSet::new()
+        .wait_for_ready(false) // Don't wait for ready
+        .add(RedisTemplate::new(&name).port(next_port()))
+        .start_all()
+        .await
+        .expect("Failed to start container");
+
+    assert_eq!(guards.len(), 1);
+    assert!(guards.contains(&name));
+
+    // Container cleanup happens on drop
 }

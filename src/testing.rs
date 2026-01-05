@@ -29,6 +29,7 @@ use crate::template::{Template, TemplateError};
 use crate::{
     LogsCommand, NetworkCreateCommand, NetworkRmCommand, PortCommand, RmCommand, StopCommand,
 };
+use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -581,6 +582,403 @@ impl<T: Template> Drop for ContainerGuard<T> {
                         }
                     }
                 });
+            }
+        }
+    }
+}
+
+/// A type-erased container guard entry for use in `ContainerGuardSet`.
+///
+/// This allows storing guards with different template types in the same collection.
+#[allow(dead_code)]
+struct GuardEntry {
+    /// Container name for lookup
+    name: String,
+    /// Cleanup function to stop and remove the container
+    cleanup_fn: Box<dyn FnOnce() + Send>,
+}
+
+/// Options for `ContainerGuardSet`.
+#[derive(Debug, Clone, Default)]
+#[allow(clippy::struct_excessive_bools)]
+pub struct GuardSetOptions {
+    /// Shared network for all containers
+    pub network: Option<String>,
+    /// Create the network if it doesn't exist (default: true)
+    pub create_network: bool,
+    /// Remove the network on drop (default: true when network is set)
+    pub remove_network_on_drop: bool,
+    /// Keep containers running if test panics (default: false)
+    pub keep_on_panic: bool,
+    /// Wait for each container to be ready after starting (default: true)
+    pub wait_for_ready: bool,
+}
+
+impl GuardSetOptions {
+    fn new() -> Self {
+        Self {
+            network: None,
+            create_network: true,
+            remove_network_on_drop: true,
+            keep_on_panic: false,
+            wait_for_ready: true,
+        }
+    }
+}
+
+/// A pending template entry waiting to be started.
+struct PendingEntry<T: Template + 'static> {
+    template: T,
+}
+
+/// Type-erased pending entry trait.
+trait PendingEntryTrait: Send {
+    /// Get the container name
+    fn name(&self) -> String;
+    /// Start the container and return a cleanup function
+    fn start(
+        self: Box<Self>,
+        network: Option<String>,
+        wait_for_ready: bool,
+        keep_on_panic: bool,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<GuardEntry, TemplateError>> + Send>,
+    >;
+}
+
+impl<T: Template + 'static> PendingEntryTrait for PendingEntry<T> {
+    fn name(&self) -> String {
+        self.template.config().name.clone()
+    }
+
+    fn start(
+        self: Box<Self>,
+        network: Option<String>,
+        wait_for_ready: bool,
+        keep_on_panic: bool,
+    ) -> std::pin::Pin<
+        Box<dyn std::future::Future<Output = Result<GuardEntry, TemplateError>> + Send>,
+    > {
+        Box::pin(async move {
+            let mut template = self.template;
+            let name = template.config().name.clone();
+
+            // Set network if provided
+            if let Some(ref net) = network {
+                template.config_mut().network = Some(net.clone());
+            }
+
+            // Start the container
+            template.start_and_wait().await?;
+
+            // Wait for ready if configured
+            if wait_for_ready {
+                template.wait_for_ready().await?;
+            }
+
+            // Create cleanup function
+            let cleanup_name = name.clone();
+            let cleanup_fn: Box<dyn FnOnce() + Send> = Box::new(move || {
+                // Check if panicking and should keep
+                if std::thread::panicking() && keep_on_panic {
+                    eprintln!(
+                        "[ContainerGuardSet] Test panicked, keeping container '{cleanup_name}' for debugging"
+                    );
+                    return;
+                }
+
+                // Perform cleanup in a new runtime
+                let _ = std::thread::spawn(move || {
+                    if let Ok(rt) = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                    {
+                        rt.block_on(async {
+                            let _ = StopCommand::new(&cleanup_name).execute().await;
+                            let _ = RmCommand::new(&cleanup_name).force().run().await;
+                        });
+                    }
+                })
+                .join();
+            });
+
+            Ok(GuardEntry { name, cleanup_fn })
+        })
+    }
+}
+
+/// Builder for creating a [`ContainerGuardSet`].
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use docker_wrapper::testing::ContainerGuardSet;
+/// use docker_wrapper::RedisTemplate;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let guards = ContainerGuardSet::new()
+///     .with_network("test-network")
+///     .add(RedisTemplate::new("redis-1"))
+///     .add(RedisTemplate::new("redis-2"))
+///     .start_all()
+///     .await?;
+///
+/// // Access by name
+/// assert!(guards.contains("redis-1"));
+/// # Ok(())
+/// # }
+/// ```
+pub struct ContainerGuardSetBuilder {
+    entries: Vec<Box<dyn PendingEntryTrait>>,
+    options: GuardSetOptions,
+}
+
+impl ContainerGuardSetBuilder {
+    /// Create a new builder.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            entries: Vec::new(),
+            options: GuardSetOptions::new(),
+        }
+    }
+
+    /// Add a template to the set.
+    ///
+    /// The container name from the template's config is used as the key for lookup.
+    #[allow(clippy::should_implement_trait)]
+    #[must_use]
+    pub fn add<T: Template + 'static>(mut self, template: T) -> Self {
+        self.entries.push(Box::new(PendingEntry { template }));
+        self
+    }
+
+    /// Set a shared network for all containers.
+    ///
+    /// The network will be created if it doesn't exist (unless `create_network(false)` is called).
+    #[must_use]
+    pub fn with_network(mut self, network: impl Into<String>) -> Self {
+        self.options.network = Some(network.into());
+        self
+    }
+
+    /// Set whether to create the network if it doesn't exist (default: true).
+    #[must_use]
+    pub fn create_network(mut self, create: bool) -> Self {
+        self.options.create_network = create;
+        self
+    }
+
+    /// Set whether to remove the network on drop (default: true when network is set).
+    #[must_use]
+    pub fn remove_network_on_drop(mut self, remove: bool) -> Self {
+        self.options.remove_network_on_drop = remove;
+        self
+    }
+
+    /// Set whether to keep containers running if the test panics (default: false).
+    #[must_use]
+    pub fn keep_on_panic(mut self, keep: bool) -> Self {
+        self.options.keep_on_panic = keep;
+        self
+    }
+
+    /// Set whether to wait for each container to be ready (default: true).
+    #[must_use]
+    pub fn wait_for_ready(mut self, wait: bool) -> Self {
+        self.options.wait_for_ready = wait;
+        self
+    }
+
+    /// Start all containers and return a guard set.
+    ///
+    /// Containers are started sequentially in the order they were added.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if any container fails to start. Containers that were
+    /// successfully started before the failure will be cleaned up.
+    pub async fn start_all(self) -> Result<ContainerGuardSet, TemplateError> {
+        let mut network_created = false;
+
+        // Create network if needed
+        if let Some(ref network) = self.options.network {
+            if self.options.create_network {
+                let result = NetworkCreateCommand::new(network)
+                    .driver("bridge")
+                    .execute()
+                    .await;
+                network_created = result.is_ok();
+            }
+        }
+
+        let mut guards: Vec<GuardEntry> = Vec::new();
+        let mut names: HashMap<String, usize> = HashMap::new();
+
+        // Start each container
+        for entry in self.entries {
+            let name = entry.name();
+            match entry
+                .start(
+                    self.options.network.clone(),
+                    self.options.wait_for_ready,
+                    self.options.keep_on_panic,
+                )
+                .await
+            {
+                Ok(guard) => {
+                    names.insert(name, guards.len());
+                    guards.push(guard);
+                }
+                Err(e) => {
+                    // Clean up already-started containers on failure
+                    for guard in guards {
+                        (guard.cleanup_fn)();
+                    }
+                    // Clean up network if we created it
+                    if network_created {
+                        if let Some(ref network) = self.options.network {
+                            let net = network.clone();
+                            let _ = std::thread::spawn(move || {
+                                if let Ok(rt) = tokio::runtime::Builder::new_current_thread()
+                                    .enable_all()
+                                    .build()
+                                {
+                                    rt.block_on(async {
+                                        let _ = NetworkRmCommand::new(&net).execute().await;
+                                    });
+                                }
+                            })
+                            .join();
+                        }
+                    }
+                    return Err(e);
+                }
+            }
+        }
+
+        Ok(ContainerGuardSet {
+            guards,
+            names,
+            options: self.options,
+            network_created,
+        })
+    }
+}
+
+impl Default for ContainerGuardSetBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Manages multiple containers as a group with coordinated lifecycle.
+///
+/// All containers are cleaned up when the set is dropped. This is useful for
+/// integration tests that require multiple services.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// use docker_wrapper::testing::ContainerGuardSet;
+/// use docker_wrapper::RedisTemplate;
+///
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let guards = ContainerGuardSet::new()
+///     .with_network("test-network")
+///     .add(RedisTemplate::new("redis"))
+///     .keep_on_panic(true)
+///     .start_all()
+///     .await?;
+///
+/// // Check if container exists
+/// assert!(guards.contains("redis"));
+///
+/// // Get container names
+/// for name in guards.names() {
+///     println!("Container: {}", name);
+/// }
+/// # Ok(())
+/// # }
+/// ```
+pub struct ContainerGuardSet {
+    guards: Vec<GuardEntry>,
+    names: HashMap<String, usize>,
+    options: GuardSetOptions,
+    network_created: bool,
+}
+
+impl ContainerGuardSet {
+    /// Create a new builder for a container guard set.
+    #[allow(clippy::new_ret_no_self)]
+    #[must_use]
+    pub fn new() -> ContainerGuardSetBuilder {
+        ContainerGuardSetBuilder::new()
+    }
+
+    /// Check if a container with the given name exists in the set.
+    #[must_use]
+    pub fn contains(&self, name: &str) -> bool {
+        self.names.contains_key(name)
+    }
+
+    /// Get an iterator over container names in the set.
+    pub fn names(&self) -> impl Iterator<Item = &str> {
+        self.names.keys().map(String::as_str)
+    }
+
+    /// Get the number of containers in the set.
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.guards.len()
+    }
+
+    /// Check if the set is empty.
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.guards.is_empty()
+    }
+
+    /// Get the shared network name, if one was configured.
+    #[must_use]
+    pub fn network(&self) -> Option<&str> {
+        self.options.network.as_deref()
+    }
+}
+
+impl Default for ContainerGuardSet {
+    fn default() -> Self {
+        Self {
+            guards: Vec::new(),
+            names: HashMap::new(),
+            options: GuardSetOptions::new(),
+            network_created: false,
+        }
+    }
+}
+
+impl Drop for ContainerGuardSet {
+    fn drop(&mut self) {
+        // Clean up all containers
+        for guard in self.guards.drain(..) {
+            (guard.cleanup_fn)();
+        }
+
+        // Clean up network if we created it
+        if self.network_created && self.options.remove_network_on_drop {
+            if let Some(ref network) = self.options.network {
+                let net = network.clone();
+                let _ = std::thread::spawn(move || {
+                    if let Ok(rt) = tokio::runtime::Builder::new_current_thread()
+                        .enable_all()
+                        .build()
+                    {
+                        rt.block_on(async {
+                            let _ = NetworkRmCommand::new(&net).execute().await;
+                        });
+                    }
+                })
+                .join();
             }
         }
     }
