@@ -76,6 +76,68 @@ impl RedisClusterTemplate {
         }
     }
 
+    /// Create a new Redis Cluster template with settings from environment variables.
+    ///
+    /// Falls back to defaults if environment variables are not set.
+    ///
+    /// # Environment Variables
+    ///
+    /// - `REDIS_CLUSTER_PORT_BASE`: Base port for Redis nodes (default: 7000)
+    /// - `REDIS_CLUSTER_NUM_MASTERS`: Number of master nodes (default: 3)
+    /// - `REDIS_CLUSTER_NUM_REPLICAS`: Number of replicas per master (default: 0)
+    /// - `REDIS_CLUSTER_PASSWORD`: Password for cluster authentication (optional)
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::RedisClusterTemplate;
+    ///
+    /// // Uses environment variables if set, otherwise uses defaults
+    /// let template = RedisClusterTemplate::from_env("my-cluster");
+    /// ```
+    pub fn from_env(name: impl Into<String>) -> Self {
+        let mut template = Self::new(name);
+
+        if let Ok(port_base) = std::env::var("REDIS_CLUSTER_PORT_BASE") {
+            if let Ok(port) = port_base.parse::<u16>() {
+                template.port_base = port;
+            }
+        }
+
+        if let Ok(num_masters) = std::env::var("REDIS_CLUSTER_NUM_MASTERS") {
+            if let Ok(masters) = num_masters.parse::<usize>() {
+                template.num_masters = masters.max(3);
+            }
+        }
+
+        if let Ok(num_replicas) = std::env::var("REDIS_CLUSTER_NUM_REPLICAS") {
+            if let Ok(replicas) = num_replicas.parse::<usize>() {
+                template.num_replicas = replicas;
+            }
+        }
+
+        if let Ok(password) = std::env::var("REDIS_CLUSTER_PASSWORD") {
+            template.password = Some(password);
+        }
+
+        template
+    }
+
+    /// Get the configured port base
+    pub fn get_port_base(&self) -> u16 {
+        self.port_base
+    }
+
+    /// Get the configured number of masters
+    pub fn get_num_masters(&self) -> usize {
+        self.num_masters
+    }
+
+    /// Get the configured number of replicas per master
+    pub fn get_num_replicas(&self) -> usize {
+        self.num_replicas
+    }
+
     /// Set the number of master nodes (minimum 3)
     pub fn num_masters(mut self, masters: usize) -> Self {
         self.num_masters = masters.max(3);
@@ -362,6 +424,159 @@ impl RedisClusterTemplate {
         // Parse the cluster info output
         ClusterInfo::from_output(&output.stdout)
     }
+
+    /// Check if the cluster is ready (all nodes up, slots assigned).
+    ///
+    /// Returns `true` if the cluster state is "ok", `false` otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use docker_wrapper::RedisClusterTemplate;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let template = RedisClusterTemplate::new("my-cluster");
+    /// template.start().await?;
+    ///
+    /// if template.is_ready().await {
+    ///     println!("Cluster is ready!");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn is_ready(&self) -> bool {
+        self.cluster_info()
+            .await
+            .map(|info| info.cluster_state == "ok")
+            .unwrap_or(false)
+    }
+
+    /// Wait for the cluster to become ready, with a timeout.
+    ///
+    /// Polls the cluster state every 500ms until it reports "ok" or the timeout is exceeded.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the timeout is exceeded before the cluster becomes ready.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use docker_wrapper::RedisClusterTemplate;
+    /// # use std::time::Duration;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let template = RedisClusterTemplate::new("my-cluster");
+    /// template.start().await?;
+    ///
+    /// // Wait up to 30 seconds for the cluster to be ready
+    /// template.wait_until_ready(Duration::from_secs(30)).await?;
+    /// println!("Cluster is ready!");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn wait_until_ready(
+        &self,
+        timeout: std::time::Duration,
+    ) -> Result<(), TemplateError> {
+        let start = std::time::Instant::now();
+
+        while start.elapsed() < timeout {
+            if self.is_ready().await {
+                return Ok(());
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+        }
+
+        Err(TemplateError::Timeout(format!(
+            "Cluster '{}' did not become ready within {:?}",
+            self.name, timeout
+        )))
+    }
+
+    /// Check if a Redis cluster is already running at the configured ports.
+    ///
+    /// This is useful in CI environments where an external cluster may be
+    /// provided (e.g., via `grokzen/redis-cluster` Docker image).
+    ///
+    /// Returns connection info if a cluster is detected, `None` otherwise.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use docker_wrapper::RedisClusterTemplate;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let template = RedisClusterTemplate::from_env("my-cluster");
+    ///
+    /// if let Some(conn) = template.detect_existing().await {
+    ///     println!("Found existing cluster: {}", conn.nodes_string());
+    /// } else {
+    ///     println!("No existing cluster found");
+    /// }
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn detect_existing(&self) -> Option<RedisClusterConnection> {
+        let host = self.announce_ip.as_deref().unwrap_or("localhost");
+
+        // Try to connect to the first node
+        let first_port = self.port_base;
+        let addr = format!("{}:{}", host, first_port);
+
+        // Try TCP connection with a short timeout
+        let connect_result = tokio::time::timeout(
+            std::time::Duration::from_secs(2),
+            tokio::net::TcpStream::connect(&addr),
+        )
+        .await;
+
+        match connect_result {
+            Ok(Ok(_stream)) => {
+                // Connection succeeded - cluster appears to be running
+                // Build connection info for all expected nodes
+                Some(RedisClusterConnection::from_template(self))
+            }
+            _ => None,
+        }
+    }
+
+    /// Start the cluster, or use an existing one if already running.
+    ///
+    /// This provides a "best of both worlds" approach for hybrid local/CI setups:
+    /// - In CI: Uses the externally-provided cluster without starting new containers
+    /// - Locally: Starts a new cluster via docker-wrapper
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use docker_wrapper::RedisClusterTemplate;
+    /// # use std::time::Duration;
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// // Works in both CI (uses existing) and local (starts new)
+    /// let template = RedisClusterTemplate::from_env("test-cluster");
+    /// let conn = template.start_or_detect(Duration::from_secs(60)).await?;
+    ///
+    /// println!("Cluster ready at: {}", conn.nodes_string());
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn start_or_detect(
+        &self,
+        timeout: std::time::Duration,
+    ) -> Result<RedisClusterConnection, TemplateError> {
+        // First, check if a cluster already exists
+        if let Some(conn) = self.detect_existing().await {
+            return Ok(conn);
+        }
+
+        // No existing cluster found - start a new one
+        self.start().await?;
+        self.wait_until_ready(timeout).await?;
+
+        Ok(RedisClusterConnection::from_template(self))
+    }
 }
 
 #[async_trait]
@@ -507,12 +722,55 @@ pub enum NodeRole {
 }
 
 /// Connection helper for Redis Cluster
+#[derive(Debug, Clone)]
 pub struct RedisClusterConnection {
     nodes: Vec<String>,
     password: Option<String>,
 }
 
 impl RedisClusterConnection {
+    /// Create a new cluster connection with the given node addresses.
+    ///
+    /// This is useful for connecting to external/pre-existing clusters
+    /// (e.g., in CI environments) without going through a template.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::RedisClusterConnection;
+    ///
+    /// let conn = RedisClusterConnection::new(vec![
+    ///     "localhost:7000".to_string(),
+    ///     "localhost:7001".to_string(),
+    ///     "localhost:7002".to_string(),
+    /// ]);
+    /// ```
+    pub fn new(nodes: Vec<String>) -> Self {
+        Self {
+            nodes,
+            password: None,
+        }
+    }
+
+    /// Create a new cluster connection with password authentication.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::RedisClusterConnection;
+    ///
+    /// let conn = RedisClusterConnection::with_password(
+    ///     vec!["localhost:7000".to_string()],
+    ///     "secret",
+    /// );
+    /// ```
+    pub fn with_password(nodes: Vec<String>, password: impl Into<String>) -> Self {
+        Self {
+            nodes,
+            password: Some(password.into()),
+        }
+    }
+
     /// Create from a RedisClusterTemplate
     pub fn from_template(template: &RedisClusterTemplate) -> Self {
         let host = template.announce_ip.as_deref().unwrap_or("localhost");
@@ -527,6 +785,11 @@ impl RedisClusterConnection {
             nodes,
             password: template.password.clone(),
         }
+    }
+
+    /// Get the list of cluster nodes
+    pub fn nodes(&self) -> &[String] {
+        &self.nodes
     }
 
     /// Get cluster nodes as comma-separated string
@@ -602,5 +865,83 @@ mod tests {
         assert!(template.use_redis_stack);
         assert!(template.with_redis_insight);
         assert_eq!(template.redis_insight_port, 8080);
+    }
+
+    #[test]
+    fn test_redis_cluster_connection_new() {
+        let nodes = vec![
+            "localhost:7000".to_string(),
+            "localhost:7001".to_string(),
+            "localhost:7002".to_string(),
+        ];
+        let conn = RedisClusterConnection::new(nodes.clone());
+
+        assert_eq!(conn.nodes(), &nodes);
+        assert_eq!(
+            conn.nodes_string(),
+            "localhost:7000,localhost:7001,localhost:7002"
+        );
+        assert_eq!(
+            conn.cluster_url(),
+            "redis-cluster://localhost:7000,localhost:7001,localhost:7002"
+        );
+    }
+
+    #[test]
+    fn test_redis_cluster_connection_with_password() {
+        let nodes = vec!["localhost:7000".to_string()];
+        let conn = RedisClusterConnection::with_password(nodes, "secret123");
+
+        assert_eq!(
+            conn.cluster_url(),
+            "redis-cluster://:secret123@localhost:7000"
+        );
+    }
+
+    #[test]
+    fn test_redis_cluster_from_env_defaults() {
+        // Clear any existing env vars to ensure defaults are used
+        std::env::remove_var("REDIS_CLUSTER_PORT_BASE");
+        std::env::remove_var("REDIS_CLUSTER_NUM_MASTERS");
+        std::env::remove_var("REDIS_CLUSTER_NUM_REPLICAS");
+        std::env::remove_var("REDIS_CLUSTER_PASSWORD");
+
+        let template = RedisClusterTemplate::from_env("test-cluster");
+
+        assert_eq!(template.get_port_base(), 7000);
+        assert_eq!(template.get_num_masters(), 3);
+        assert_eq!(template.get_num_replicas(), 0);
+    }
+
+    #[test]
+    fn test_redis_cluster_from_env_with_vars() {
+        std::env::set_var("REDIS_CLUSTER_PORT_BASE", "8000");
+        std::env::set_var("REDIS_CLUSTER_NUM_MASTERS", "6");
+        std::env::set_var("REDIS_CLUSTER_NUM_REPLICAS", "1");
+        std::env::set_var("REDIS_CLUSTER_PASSWORD", "testpass");
+
+        let template = RedisClusterTemplate::from_env("test-cluster");
+
+        assert_eq!(template.get_port_base(), 8000);
+        assert_eq!(template.get_num_masters(), 6);
+        assert_eq!(template.get_num_replicas(), 1);
+
+        // Clean up
+        std::env::remove_var("REDIS_CLUSTER_PORT_BASE");
+        std::env::remove_var("REDIS_CLUSTER_NUM_MASTERS");
+        std::env::remove_var("REDIS_CLUSTER_NUM_REPLICAS");
+        std::env::remove_var("REDIS_CLUSTER_PASSWORD");
+    }
+
+    #[test]
+    fn test_redis_cluster_getters() {
+        let template = RedisClusterTemplate::new("test-cluster")
+            .port_base(9000)
+            .num_masters(5)
+            .num_replicas(2);
+
+        assert_eq!(template.get_port_base(), 9000);
+        assert_eq!(template.get_num_masters(), 5);
+        assert_eq!(template.get_num_replicas(), 2);
     }
 }

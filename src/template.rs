@@ -56,6 +56,10 @@ pub enum TemplateError {
     /// Attempted to operate on a template that is not running
     #[error("Template not running: {0}")]
     NotRunning(String),
+
+    /// Operation timed out waiting for a condition
+    #[error("Timeout: {0}")]
+    Timeout(String),
 }
 
 /// Configuration for a Docker template
