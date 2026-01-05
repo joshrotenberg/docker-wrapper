@@ -319,15 +319,19 @@ impl Template for MysqlTemplate {
         let check_interval = Duration::from_millis(1000);
 
         timeout(wait_timeout, async {
+            let mut consecutive_successes = 0;
             loop {
                 // Check if container is running - keep retrying if not yet started
                 // Don't fail immediately as the container may still be starting up
                 if !self.is_running().await.unwrap_or(false) {
+                    consecutive_successes = 0;
                     sleep(check_interval).await;
                     continue;
                 }
 
-                // Try to connect to MySQL using mysqladmin
+                // Try to connect to MySQL using the mysql client with an actual query
+                // Use 127.0.0.1 instead of localhost to force TCP connection
+                // (localhost uses Unix socket which may not be ready even when TCP is)
                 let password = self
                     .config
                     .env
@@ -338,23 +342,31 @@ impl Template for MysqlTemplate {
 
                 let password_arg = format!("-p{}", password);
                 let check_cmd = vec![
-                    "mysqladmin",
+                    "mysql",
                     "-h",
-                    "localhost",
+                    "127.0.0.1",
                     "-u",
                     "root",
                     &password_arg,
-                    "ping",
+                    "-e",
+                    "SELECT 1",
                 ];
 
                 // Execute readiness check
                 if let Ok(result) = self.exec(check_cmd).await {
-                    // mysqladmin ping returns "mysqld is alive" on success
-                    if result.stdout.contains("mysqld is alive") {
-                        return Ok(());
+                    // If we got output containing '1', MySQL responded successfully
+                    if result.stdout.contains('1') {
+                        consecutive_successes += 1;
+                        // Require 2 consecutive successes to ensure stability
+                        if consecutive_successes >= 2 {
+                            return Ok(());
+                        }
+                        sleep(Duration::from_millis(500)).await;
+                        continue;
                     }
                 }
 
+                consecutive_successes = 0;
                 sleep(check_interval).await;
             }
         })

@@ -812,6 +812,7 @@ impl RedisClusterConnection {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use serial_test::serial;
 
     #[test]
     fn test_redis_cluster_template_basic() {
@@ -899,6 +900,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_redis_cluster_from_env_defaults() {
         // Clear any existing env vars to ensure defaults are used
         std::env::remove_var("REDIS_CLUSTER_PORT_BASE");
@@ -914,6 +916,7 @@ mod tests {
     }
 
     #[test]
+    #[serial]
     fn test_redis_cluster_from_env_with_vars() {
         std::env::set_var("REDIS_CLUSTER_PORT_BASE", "8000");
         std::env::set_var("REDIS_CLUSTER_NUM_MASTERS", "6");

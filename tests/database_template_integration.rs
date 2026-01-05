@@ -228,10 +228,12 @@ mod database_template_tests {
             assert!(conn.url().contains("testdb"));
             assert!(conn.url().contains("testuser"));
 
-            // Execute a simple query
+            // Execute a simple query (use 127.0.0.1 to force TCP, matching readiness check)
             let result = mysql
                 .exec(vec![
                     "mysql",
+                    "-h",
+                    "127.0.0.1",
                     "-u",
                     "root",
                     "-prootpass",
