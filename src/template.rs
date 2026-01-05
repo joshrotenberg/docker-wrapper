@@ -599,6 +599,9 @@ pub use redis::RedisTemplate;
 #[cfg(feature = "template-redis-cluster")]
 pub use redis::{ClusterInfo, NodeInfo, NodeRole, RedisClusterConnection, RedisClusterTemplate};
 
+#[cfg(feature = "template-redis-enterprise")]
+pub use redis::{RedisEnterpriseConnectionInfo, RedisEnterpriseTemplate};
+
 #[cfg(feature = "template-postgres")]
 pub use database::postgres::{PostgresConnectionString, PostgresTemplate};
 

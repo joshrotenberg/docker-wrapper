@@ -67,6 +67,13 @@ jobs:
       - name: Build examples
         run: cargo build --examples --all-features
 
+      - name: Check individual template features compile
+        run: |
+          for feature in template-redis template-redis-cluster template-redis-enterprise template-postgres template-mysql template-mongodb template-nginx; do
+            echo "Checking feature: $feature"
+            cargo check --features "$feature"
+          done
+
       - name: Run tests
         run: cargo test --lib --all-features && cargo test --doc --all-features
 
