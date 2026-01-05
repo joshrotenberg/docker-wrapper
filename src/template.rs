@@ -16,7 +16,11 @@ use std::collections::HashMap;
 use tracing::{debug, error, info, trace, warn};
 
 // Redis templates
-#[cfg(any(feature = "template-redis", feature = "template-redis-cluster"))]
+#[cfg(any(
+    feature = "template-redis",
+    feature = "template-redis-cluster",
+    feature = "template-redis-enterprise",
+))]
 pub mod redis;
 
 // Database templates

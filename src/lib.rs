@@ -409,7 +409,8 @@ pub mod stream;
     feature = "template-postgres",
     feature = "template-mysql",
     feature = "template-mongodb",
-    feature = "template-nginx"
+    feature = "template-nginx",
+    feature = "template-redis-enterprise"
 ))]
 /// Container templates module
 ///
@@ -459,7 +460,8 @@ pub mod stream;
     feature = "template-postgres",
     feature = "template-mysql",
     feature = "template-mongodb",
-    feature = "template-nginx"
+    feature = "template-nginx",
+    feature = "template-redis-enterprise",
 ))]
 pub mod template;
 
