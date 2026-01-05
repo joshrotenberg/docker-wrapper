@@ -44,6 +44,8 @@ pub struct GuardOptions {
     pub capture_logs: bool,
     /// Reuse existing container if already running (default: false)
     pub reuse_if_running: bool,
+    /// Automatically wait for container to be ready after start (default: false)
+    pub wait_for_ready: bool,
 }
 
 impl Default for GuardOptions {
@@ -54,6 +56,7 @@ impl Default for GuardOptions {
             keep_on_panic: false,
             capture_logs: false,
             reuse_if_running: false,
+            wait_for_ready: false,
         }
     }
 }
@@ -118,38 +121,83 @@ impl<T: Template> ContainerGuardBuilder<T> {
         self
     }
 
+    /// Set whether to automatically wait for the container to be ready after starting (default: false).
+    ///
+    /// When enabled, `start()` will not return until the container passes its
+    /// readiness check. This is useful for tests that need to immediately connect
+    /// to the service.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use docker_wrapper::testing::ContainerGuard;
+    /// # use docker_wrapper::RedisTemplate;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let guard = ContainerGuard::new(RedisTemplate::new("test"))
+    ///     .wait_for_ready(true)
+    ///     .start()
+    ///     .await?;
+    /// // Container is guaranteed ready at this point
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn wait_for_ready(mut self, wait: bool) -> Self {
+        self.options.wait_for_ready = wait;
+        self
+    }
+
     /// Start the container and return a guard that manages its lifecycle.
     ///
     /// If `reuse_if_running` is enabled and a container is already running,
     /// it will be reused instead of starting a new one.
     ///
+    /// If `wait_for_ready` is enabled, this method will block until the
+    /// container passes its readiness check.
+    ///
     /// # Errors
     ///
     /// Returns an error if the container fails to start or the readiness check times out.
     pub async fn start(self) -> Result<ContainerGuard<T>, TemplateError> {
+        let wait_for_ready = self.options.wait_for_ready;
+
         // Check if we should reuse an existing container
         if self.options.reuse_if_running {
             if let Ok(true) = self.template.is_running().await {
-                return Ok(ContainerGuard {
+                let guard = ContainerGuard {
                     template: self.template,
                     container_id: None, // We don't have the ID for reused containers
                     options: self.options,
                     was_reused: true,
                     cleaned_up: Arc::new(AtomicBool::new(false)),
-                });
+                };
+
+                // Wait for ready if configured (even for reused containers)
+                if wait_for_ready {
+                    guard.wait_for_ready().await?;
+                }
+
+                return Ok(guard);
             }
         }
 
         // Start the container
         let container_id = self.template.start_and_wait().await?;
 
-        Ok(ContainerGuard {
+        let guard = ContainerGuard {
             template: self.template,
             container_id: Some(container_id),
             options: self.options,
             was_reused: false,
             cleaned_up: Arc::new(AtomicBool::new(false)),
-        })
+        };
+
+        // Wait for ready if configured
+        if wait_for_ready {
+            guard.wait_for_ready().await?;
+        }
+
+        Ok(guard)
     }
 }
 
@@ -221,6 +269,35 @@ impl<T: Template> ContainerGuard<T> {
     /// Returns an error if the Docker command fails.
     pub async fn is_running(&self) -> Result<bool, TemplateError> {
         self.template.is_running().await
+    }
+
+    /// Wait for the container to be ready.
+    ///
+    /// This calls the underlying template's readiness check. The exact behavior
+    /// depends on the template implementation - for example, Redis templates
+    /// wait for a successful PING response.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the readiness check times out or the Docker command fails.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use docker_wrapper::testing::ContainerGuard;
+    /// # use docker_wrapper::RedisTemplate;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let guard = ContainerGuard::new(RedisTemplate::new("test"))
+    ///     .start()
+    ///     .await?;
+    ///
+    /// // Wait for Redis to be ready to accept connections
+    /// guard.wait_for_ready().await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn wait_for_ready(&self) -> Result<(), TemplateError> {
+        self.template.wait_for_ready().await
     }
 
     /// Get the host port mapped to a container port.
@@ -417,6 +494,7 @@ mod tests {
         assert!(!opts.keep_on_panic);
         assert!(!opts.capture_logs);
         assert!(!opts.reuse_if_running);
+        assert!(!opts.wait_for_ready);
     }
 
     #[test]
