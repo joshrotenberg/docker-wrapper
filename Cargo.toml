@@ -81,6 +81,7 @@ tempfile = "3.0"
 which = "8.0"
 serde_json = "1.0"
 proptest = "1.6"
+serial_test = "3.3.1"
 
 [[example]]
 name = "basic_usage"
