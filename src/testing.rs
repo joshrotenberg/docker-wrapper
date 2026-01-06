@@ -32,6 +32,7 @@ use crate::{
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::time::Duration;
 
 /// Options for controlling container lifecycle behavior.
 #[derive(Debug, Clone)]
@@ -55,6 +56,8 @@ pub struct GuardOptions {
     pub create_network: bool,
     /// Remove the network on drop (default: false)
     pub remove_network_on_drop: bool,
+    /// Timeout for stop operations during cleanup (default: None, uses Docker default)
+    pub stop_timeout: Option<Duration>,
 }
 
 impl Default for GuardOptions {
@@ -69,6 +72,7 @@ impl Default for GuardOptions {
             network: None,
             create_network: true,
             remove_network_on_drop: false,
+            stop_timeout: None,
         }
     }
 }
@@ -203,6 +207,38 @@ impl<T: Template> ContainerGuardBuilder<T> {
     #[must_use]
     pub fn remove_network_on_drop(mut self, remove: bool) -> Self {
         self.options.remove_network_on_drop = remove;
+        self
+    }
+
+    /// Set the timeout for stop operations during cleanup (default: Docker default).
+    ///
+    /// This controls how long Docker waits for the container to stop gracefully
+    /// before sending SIGKILL.
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use docker_wrapper::testing::ContainerGuard;
+    /// # use docker_wrapper::RedisTemplate;
+    /// # use std::time::Duration;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// // Fast cleanup with 1 second timeout
+    /// let guard = ContainerGuard::new(RedisTemplate::new("redis"))
+    ///     .stop_timeout(Duration::from_secs(1))
+    ///     .start()
+    ///     .await?;
+    ///
+    /// // Immediate SIGKILL with zero timeout
+    /// let guard = ContainerGuard::new(RedisTemplate::new("redis2"))
+    ///     .stop_timeout(Duration::ZERO)
+    ///     .start()
+    ///     .await?;
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn stop_timeout(mut self, timeout: Duration) -> Self {
+        self.options.stop_timeout = Some(timeout);
         self
     }
 
@@ -530,6 +566,7 @@ impl<T: Template> Drop for ContainerGuard<T> {
         let should_remove_network = self.options.remove_network_on_drop && self.network_created;
         let container_name = self.template.config().name.clone();
         let network_name = self.options.network.clone();
+        let stop_timeout = self.options.stop_timeout;
 
         if !should_stop && !should_remove && !should_remove_network {
             return;
@@ -548,7 +585,11 @@ impl<T: Template> Drop for ContainerGuard<T> {
                     .expect("Failed to create runtime for cleanup");
                 rt.block_on(async {
                     if should_stop {
-                        let _ = StopCommand::new(&container_name_clone).execute().await;
+                        let mut cmd = StopCommand::new(&container_name_clone);
+                        if let Some(timeout) = stop_timeout {
+                            cmd = cmd.timeout_duration(timeout);
+                        }
+                        let _ = cmd.execute().await;
                     }
                     if should_remove {
                         let _ = RmCommand::new(&container_name_clone).force().run().await;
@@ -570,7 +611,11 @@ impl<T: Template> Drop for ContainerGuard<T> {
             {
                 rt.block_on(async {
                     if should_stop {
-                        let _ = StopCommand::new(&container_name).execute().await;
+                        let mut cmd = StopCommand::new(&container_name);
+                        if let Some(timeout) = stop_timeout {
+                            cmd = cmd.timeout_duration(timeout);
+                        }
+                        let _ = cmd.execute().await;
                     }
                     if should_remove {
                         let _ = RmCommand::new(&container_name).force().run().await;
@@ -1000,6 +1045,7 @@ mod tests {
         assert!(opts.network.is_none());
         assert!(opts.create_network);
         assert!(!opts.remove_network_on_drop);
+        assert!(opts.stop_timeout.is_none());
     }
 
     #[test]
