@@ -1,27 +1,300 @@
-//! Testing utilities for container lifecycle management.
+//! # Testing Utilities
 //!
-//! This module provides [`ContainerGuard`], an RAII wrapper that automatically
-//! manages container lifecycle. When the guard goes out of scope, containers
-//! are stopped and removed automatically.
+//! RAII-style container lifecycle management for integration tests.
 //!
-//! # Example
+//! This module provides [`ContainerGuard`] and [`ContainerGuardSet`] for automatic
+//! container lifecycle management. Containers are automatically stopped and removed
+//! when guards go out of scope, ensuring clean test environments.
+//!
+//! ## Why Use This?
+//!
+//! - **Automatic cleanup**: No more forgotten containers cluttering your Docker
+//! - **Panic-safe**: Containers are cleaned up even if your test panics
+//! - **Debug-friendly**: Keep containers alive on failure for inspection
+//! - **Network support**: Automatic network creation for multi-container tests
+//! - **Ready checks**: Wait for services to be ready before running tests
+//!
+//! ## Quick Start
 //!
 //! ```rust,no_run
 //! use docker_wrapper::testing::ContainerGuard;
 //! use docker_wrapper::RedisTemplate;
 //!
 //! #[tokio::test]
-//! async fn test_redis() -> Result<(), Box<dyn std::error::Error>> {
+//! async fn test_with_redis() -> Result<(), Box<dyn std::error::Error>> {
+//!     // Container starts and waits for Redis to be ready
 //!     let guard = ContainerGuard::new(RedisTemplate::new("test-redis"))
+//!         .wait_for_ready(true)
 //!         .start()
 //!         .await?;
 //!
-//!     // Use the container...
-//!     let url = guard.template().connection_url();
+//!     // Get connection string directly from guard
+//!     let url = guard.connection_string();
+//!     // Use Redis at: redis://localhost:6379
 //!
 //!     Ok(())
 //!     // Container automatically stopped and removed here
 //! }
+//! ```
+//!
+//! ## Configuration Options
+//!
+//! ### Lifecycle Control
+//!
+//! ```rust,no_run
+//! # use docker_wrapper::testing::ContainerGuard;
+//! # use docker_wrapper::RedisTemplate;
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let guard = ContainerGuard::new(RedisTemplate::new("redis"))
+//!     .stop_on_drop(true)      // Stop container on drop (default: true)
+//!     .remove_on_drop(true)    // Remove container on drop (default: true)
+//!     .start()
+//!     .await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ### Debugging Failed Tests
+//!
+//! Keep containers running when tests fail for debugging:
+//!
+//! ```rust,no_run
+//! # use docker_wrapper::testing::ContainerGuard;
+//! # use docker_wrapper::RedisTemplate;
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let guard = ContainerGuard::new(RedisTemplate::new("redis"))
+//!     .keep_on_panic(true)     // Keep container if test panics
+//!     .capture_logs(true)      // Print container logs on panic
+//!     .start()
+//!     .await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ### Ready Checks
+//!
+//! Wait for the service to be ready before proceeding:
+//!
+//! ```rust,no_run
+//! # use docker_wrapper::testing::ContainerGuard;
+//! # use docker_wrapper::RedisTemplate;
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! // Automatic wait during start
+//! let guard = ContainerGuard::new(RedisTemplate::new("redis"))
+//!     .wait_for_ready(true)
+//!     .start()
+//!     .await?;
+//! // Redis is guaranteed ready here
+//!
+//! // Or wait manually later
+//! let guard2 = ContainerGuard::new(RedisTemplate::new("redis2"))
+//!     .start()
+//!     .await?;
+//! guard2.wait_for_ready().await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ### Container Reuse
+//!
+//! Speed up local development by reusing running containers:
+//!
+//! ```rust,no_run
+//! # use docker_wrapper::testing::ContainerGuard;
+//! # use docker_wrapper::RedisTemplate;
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let guard = ContainerGuard::new(RedisTemplate::new("redis"))
+//!     .reuse_if_running(true)  // Reuse existing container if found
+//!     .remove_on_drop(false)   // Keep it for next test run
+//!     .stop_on_drop(false)
+//!     .start()
+//!     .await?;
+//!
+//! if guard.was_reused() {
+//!     println!("Reused existing container");
+//! }
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ### Network Support
+//!
+//! Attach containers to custom networks:
+//!
+//! ```rust,no_run
+//! # use docker_wrapper::testing::ContainerGuard;
+//! # use docker_wrapper::RedisTemplate;
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let guard = ContainerGuard::new(RedisTemplate::new("redis"))
+//!     .with_network("my-test-network")  // Create and attach to network
+//!     .remove_network_on_drop(true)     // Clean up network after test
+//!     .start()
+//!     .await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ### Fast Cleanup
+//!
+//! Use a short stop timeout for faster test cleanup:
+//!
+//! ```rust,no_run
+//! # use docker_wrapper::testing::ContainerGuard;
+//! # use docker_wrapper::RedisTemplate;
+//! # use std::time::Duration;
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let guard = ContainerGuard::new(RedisTemplate::new("redis"))
+//!     .stop_timeout(Duration::from_secs(1))  // 1 second graceful shutdown
+//!     .start()
+//!     .await?;
+//!
+//! // Or immediate SIGKILL
+//! let guard2 = ContainerGuard::new(RedisTemplate::new("redis2"))
+//!     .stop_timeout(Duration::ZERO)
+//!     .start()
+//!     .await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Multi-Container Tests
+//!
+//! Use [`ContainerGuardSet`] for tests requiring multiple services:
+//!
+//! ```rust,no_run
+//! use docker_wrapper::testing::ContainerGuardSet;
+//! use docker_wrapper::RedisTemplate;
+//!
+//! #[tokio::test]
+//! async fn test_multi_container() -> Result<(), Box<dyn std::error::Error>> {
+//!     let guards = ContainerGuardSet::new()
+//!         .with_network("test-network")    // Shared network for all containers
+//!         .add(RedisTemplate::new("redis-primary").port(6379))
+//!         .add(RedisTemplate::new("redis-replica").port(6380))
+//!         .keep_on_panic(true)
+//!         .start_all()
+//!         .await?;
+//!
+//!     assert!(guards.contains("redis-primary"));
+//!     assert!(guards.contains("redis-replica"));
+//!     assert_eq!(guards.len(), 2);
+//!
+//!     // All containers cleaned up together
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ## Accessing Container Information
+//!
+//! ```rust,no_run
+//! # use docker_wrapper::testing::ContainerGuard;
+//! # use docker_wrapper::RedisTemplate;
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let guard = ContainerGuard::new(RedisTemplate::new("redis").port(6379))
+//!     .start()
+//!     .await?;
+//!
+//! // Connection string (for templates that support it)
+//! let conn = guard.connection_string();
+//!
+//! // Access underlying template
+//! let template = guard.template();
+//!
+//! // Get container ID
+//! if let Some(id) = guard.container_id() {
+//!     println!("Container ID: {}", id);
+//! }
+//!
+//! // Query host port for a container port
+//! let host_port = guard.host_port(6379).await?;
+//!
+//! // Get container logs
+//! let logs = guard.logs().await?;
+//!
+//! // Check if running
+//! let running = guard.is_running().await?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Common Patterns
+//!
+//! ### Test Fixtures
+//!
+//! Create reusable test fixtures:
+//!
+//! ```rust,no_run
+//! use docker_wrapper::testing::ContainerGuard;
+//! use docker_wrapper::RedisTemplate;
+//! use docker_wrapper::template::TemplateError;
+//!
+//! async fn redis_fixture(name: &str) -> Result<ContainerGuard<RedisTemplate>, TemplateError> {
+//!     ContainerGuard::new(RedisTemplate::new(name))
+//!         .wait_for_ready(true)
+//!         .keep_on_panic(true)
+//!         .capture_logs(true)
+//!         .start()
+//!         .await
+//! }
+//!
+//! #[tokio::test]
+//! async fn test_using_fixture() -> Result<(), Box<dyn std::error::Error>> {
+//!     let redis = redis_fixture("test-redis").await?;
+//!     // Use redis...
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ### Unique Container Names
+//!
+//! Use UUIDs to avoid name conflicts in parallel tests:
+//!
+//! ```rust,no_run
+//! # use docker_wrapper::testing::ContainerGuard;
+//! # use docker_wrapper::RedisTemplate;
+//! fn unique_name(prefix: &str) -> String {
+//!     format!("{}-{}", prefix, uuid::Uuid::new_v4())
+//! }
+//!
+//! #[tokio::test]
+//! async fn test_parallel_safe() -> Result<(), Box<dyn std::error::Error>> {
+//!     let name = unique_name("redis");
+//!     let guard = ContainerGuard::new(RedisTemplate::new(&name))
+//!         .start()
+//!         .await?;
+//!     Ok(())
+//! }
+//! ```
+//!
+//! ### Manual Cleanup
+//!
+//! Trigger cleanup explicitly when needed:
+//!
+//! ```rust,no_run
+//! # use docker_wrapper::testing::ContainerGuard;
+//! # use docker_wrapper::RedisTemplate;
+//! # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+//! let guard = ContainerGuard::new(RedisTemplate::new("redis"))
+//!     .start()
+//!     .await?;
+//!
+//! // Do some work...
+//!
+//! // Explicitly cleanup (idempotent - safe to call multiple times)
+//! guard.cleanup().await?;
+//!
+//! // Drop will not try to clean up again
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! ## Feature Flag
+//!
+//! This module requires the `testing` feature:
+//!
+//! ```toml
+//! [dev-dependencies]
+//! docker-wrapper = { version = "0.10", features = ["testing", "template-redis"] }
 //! ```
 
 use crate::command::DockerCommand;
