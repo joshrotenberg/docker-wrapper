@@ -305,6 +305,17 @@ async fn test_container_info() {
     println!("Connection string: {}", conn);
     assert!(conn.contains(&port.to_string()));
 
+    // Query host port for a container port
+    let host_port = guard
+        .host_port(6379)
+        .await
+        .expect("Failed to get host port");
+    println!(
+        "Redis container port 6379 mapped to host port: {}",
+        host_port
+    );
+    assert_eq!(host_port, port);
+
     // Get container logs
     let logs = guard.logs().await.expect("Failed to get logs");
     println!("Container logs:\n{}", logs);

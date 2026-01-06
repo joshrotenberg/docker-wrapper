@@ -102,8 +102,8 @@ impl PortCommand {
     pub async fn run(&self) -> Result<PortResult> {
         let output = self.execute().await?;
 
-        // Parse port mappings from output
-        let port_mappings = Self::parse_port_mappings(&output.stdout);
+        // Parse port mappings from output, passing the queried port for simple format parsing
+        let port_mappings = Self::parse_port_mappings(&output.stdout, self.port);
 
         Ok(PortResult {
             output,
@@ -112,8 +112,15 @@ impl PortCommand {
         })
     }
 
-    /// Parse port mappings from command output
-    fn parse_port_mappings(stdout: &str) -> Vec<PortMapping> {
+    /// Parse port mappings from command output.
+    ///
+    /// Handles two formats:
+    /// - Full format (all ports): `80/tcp -> 0.0.0.0:8080`
+    /// - Simple format (specific port query): `0.0.0.0:8080`
+    ///
+    /// When `queried_port` is provided and the simple format is detected,
+    /// the container port is inferred from the queried port.
+    fn parse_port_mappings(stdout: &str, queried_port: Option<u16>) -> Vec<PortMapping> {
         let mut mappings = Vec::new();
 
         for line in stdout.lines() {
@@ -122,7 +129,7 @@ impl PortCommand {
                 continue;
             }
 
-            // Format: "80/tcp -> 0.0.0.0:8080"
+            // Try full format first: "80/tcp -> 0.0.0.0:8080"
             if let Some((container_part, host_part)) = line.split_once(" -> ") {
                 if let Some((port_str, protocol)) = container_part.split_once('/') {
                     if let Ok(container_port) = port_str.parse::<u16>() {
@@ -136,6 +143,18 @@ impl PortCommand {
                                 });
                             }
                         }
+                    }
+                }
+            } else if let Some(container_port) = queried_port {
+                // Simple format (specific port query): "0.0.0.0:8080" or "[::]:8080"
+                if let Some((host_ip, host_port_str)) = line.rsplit_once(':') {
+                    if let Ok(host_port) = host_port_str.parse::<u16>() {
+                        mappings.push(PortMapping {
+                            container_port,
+                            host_ip: host_ip.to_string(),
+                            host_port,
+                            protocol: "tcp".to_string(), // Default to tcp when not specified
+                        });
                     }
                 }
             }
@@ -247,9 +266,9 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_port_mappings() {
+    fn test_parse_port_mappings_full_format() {
         let output = "80/tcp -> 0.0.0.0:8080\n443/tcp -> 127.0.0.1:8443";
-        let mappings = PortCommand::parse_port_mappings(output);
+        let mappings = PortCommand::parse_port_mappings(output, None);
 
         assert_eq!(mappings.len(), 2);
         assert_eq!(mappings[0].container_port, 80);
@@ -264,8 +283,51 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_port_mappings_empty() {
-        let mappings = PortCommand::parse_port_mappings("");
+    fn test_parse_port_mappings_simple_format() {
+        // Format returned when querying a specific port: docker port <container> 6379
+        let output = "0.0.0.0:40998\n[::]:40998";
+        let mappings = PortCommand::parse_port_mappings(output, Some(6379));
+
+        assert_eq!(mappings.len(), 2);
+
+        // IPv4 mapping
+        assert_eq!(mappings[0].container_port, 6379);
+        assert_eq!(mappings[0].host_ip, "0.0.0.0");
+        assert_eq!(mappings[0].host_port, 40998);
+        assert_eq!(mappings[0].protocol, "tcp");
+
+        // IPv6 mapping
+        assert_eq!(mappings[1].container_port, 6379);
+        assert_eq!(mappings[1].host_ip, "[::]");
+        assert_eq!(mappings[1].host_port, 40998);
+        assert_eq!(mappings[1].protocol, "tcp");
+    }
+
+    #[test]
+    fn test_parse_port_mappings_simple_format_without_queried_port() {
+        // Without queried_port, simple format lines are ignored
+        let output = "0.0.0.0:40998\n[::]:40998";
+        let mappings = PortCommand::parse_port_mappings(output, None);
+
         assert!(mappings.is_empty());
+    }
+
+    #[test]
+    fn test_parse_port_mappings_empty() {
+        let mappings = PortCommand::parse_port_mappings("", None);
+        assert!(mappings.is_empty());
+    }
+
+    #[test]
+    fn test_parse_port_mappings_mixed_format() {
+        // In practice this wouldn't happen, but test robustness
+        let output = "80/tcp -> 0.0.0.0:8080\n0.0.0.0:9000";
+        let mappings = PortCommand::parse_port_mappings(output, Some(443));
+
+        assert_eq!(mappings.len(), 2);
+        assert_eq!(mappings[0].container_port, 80);
+        assert_eq!(mappings[0].host_port, 8080);
+        assert_eq!(mappings[1].container_port, 443);
+        assert_eq!(mappings[1].host_port, 9000);
     }
 }
