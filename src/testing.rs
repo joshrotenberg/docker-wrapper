@@ -25,7 +25,7 @@
 //! ```
 
 use crate::command::DockerCommand;
-use crate::template::{Template, TemplateError};
+use crate::template::{HasConnectionString, Template, TemplateError};
 use crate::{
     LogsCommand, NetworkCreateCommand, NetworkRmCommand, PortCommand, RmCommand, StopCommand,
 };
@@ -513,6 +513,38 @@ impl<T: Template> ContainerGuard<T> {
             let _ = self.template.remove().await;
         }
         Ok(())
+    }
+}
+
+impl<T: Template + HasConnectionString> ContainerGuard<T> {
+    /// Get the connection string for the underlying service.
+    ///
+    /// This is a convenience method that delegates to the template's
+    /// `connection_string()` implementation. The format depends on the
+    /// service type (e.g., `redis://host:port` for Redis).
+    ///
+    /// This method is only available for templates that implement
+    /// [`HasConnectionString`].
+    ///
+    /// # Example
+    ///
+    /// ```rust,no_run
+    /// # use docker_wrapper::testing::ContainerGuard;
+    /// # use docker_wrapper::RedisTemplate;
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+    /// let guard = ContainerGuard::new(RedisTemplate::new("redis").port(6379))
+    ///     .start()
+    ///     .await?;
+    ///
+    /// // Direct access to connection string
+    /// let conn = guard.connection_string();
+    /// // Instead of: guard.template().connection_string()
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[must_use]
+    pub fn connection_string(&self) -> String {
+        self.template.connection_string()
     }
 }
 

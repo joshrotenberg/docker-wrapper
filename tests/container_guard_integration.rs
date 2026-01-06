@@ -2,6 +2,7 @@
 
 #![cfg(feature = "testing")]
 
+use docker_wrapper::template::HasConnectionString;
 use docker_wrapper::testing::{ContainerGuard, ContainerGuardSet};
 use docker_wrapper::{RedisTemplate, Template};
 use std::sync::atomic::{AtomicU16, Ordering};
@@ -446,4 +447,41 @@ async fn test_container_guard_stop_timeout_zero() {
     );
 
     // Container cleanup with immediate SIGKILL happens on drop
+}
+
+#[tokio::test]
+async fn test_container_guard_connection_string() {
+    let name = unique_name("guard-conn-string");
+    let port = next_port();
+
+    let guard = ContainerGuard::new(RedisTemplate::new(&name).port(port))
+        .start()
+        .await
+        .expect("Failed to start container");
+
+    // Test the connection_string() passthrough method
+    let conn = guard.connection_string();
+    assert_eq!(conn, format!("redis://localhost:{}", port));
+
+    // Verify it matches what we'd get from the template directly
+    assert_eq!(conn, guard.template().connection_string());
+
+    // Container cleanup happens on drop
+}
+
+#[tokio::test]
+async fn test_container_guard_connection_string_with_password() {
+    let name = unique_name("guard-conn-string-pass");
+    let port = next_port();
+
+    let guard = ContainerGuard::new(RedisTemplate::new(&name).port(port).password("testpass123"))
+        .start()
+        .await
+        .expect("Failed to start container");
+
+    // Test connection string includes password
+    let conn = guard.connection_string();
+    assert_eq!(conn, format!("redis://:testpass123@localhost:{}", port));
+
+    // Container cleanup happens on drop
 }
