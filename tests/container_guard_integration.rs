@@ -409,3 +409,41 @@ async fn test_container_guard_set_wait_for_ready_disabled() {
 
     // Container cleanup happens on drop
 }
+
+#[tokio::test]
+async fn test_container_guard_stop_timeout() {
+    let name = unique_name("guard-stop-timeout");
+
+    // Use a short stop timeout for fast cleanup
+    let guard = ContainerGuard::new(RedisTemplate::new(&name).port(next_port()))
+        .stop_timeout(Duration::from_secs(1))
+        .start()
+        .await
+        .expect("Failed to start container");
+
+    assert!(
+        guard.is_running().await.expect("Failed to check running"),
+        "Container should be running"
+    );
+
+    // Container cleanup with 1 second timeout happens on drop
+}
+
+#[tokio::test]
+async fn test_container_guard_stop_timeout_zero() {
+    let name = unique_name("guard-stop-timeout-zero");
+
+    // Zero timeout means immediate SIGKILL
+    let guard = ContainerGuard::new(RedisTemplate::new(&name).port(next_port()))
+        .stop_timeout(Duration::ZERO)
+        .start()
+        .await
+        .expect("Failed to start container");
+
+    assert!(
+        guard.is_running().await.expect("Failed to check running"),
+        "Container should be running"
+    );
+
+    // Container cleanup with immediate SIGKILL happens on drop
+}
