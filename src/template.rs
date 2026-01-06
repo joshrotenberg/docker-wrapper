@@ -595,6 +595,21 @@ impl Template for CustomTemplate {
     }
 }
 
+/// Trait for templates that can provide a connection string.
+///
+/// This trait is implemented by templates that represent services with
+/// connection endpoints (databases, caches, etc.).
+pub trait HasConnectionString {
+    /// Returns the connection string/URL for connecting to the service.
+    ///
+    /// The format depends on the service type:
+    /// - Redis: `redis://[password@]host:port`
+    /// - PostgreSQL: `postgresql://user:password@host:port/database`
+    /// - MySQL: `mysql://user:password@host:port/database`
+    /// - MongoDB: `mongodb://[user:password@]host:port[/database]`
+    fn connection_string(&self) -> String;
+}
+
 // Compatibility re-exports for backward compatibility
 // These allow users to still import directly from template::
 #[cfg(feature = "template-redis")]

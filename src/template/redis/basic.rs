@@ -7,10 +7,10 @@
 #![allow(clippy::unnecessary_get_then_check)]
 
 use super::common::{
-    default_redis_health_check, redis_config_volume, redis_data_volume, DEFAULT_REDIS_IMAGE,
-    DEFAULT_REDIS_TAG, REDIS_STACK_IMAGE, REDIS_STACK_TAG,
+    default_redis_health_check, redis_config_volume, redis_connection_string, redis_data_volume,
+    DEFAULT_REDIS_IMAGE, DEFAULT_REDIS_TAG, REDIS_STACK_IMAGE, REDIS_STACK_TAG,
 };
-use crate::template::{Template, TemplateConfig};
+use crate::template::{HasConnectionString, Template, TemplateConfig};
 use async_trait::async_trait;
 use std::collections::HashMap;
 
@@ -288,6 +288,31 @@ impl Template for RedisTemplate {
     }
 }
 
+impl HasConnectionString for RedisTemplate {
+    /// Returns the Redis connection string in URL format.
+    ///
+    /// Format: `redis://[:password@]host:port`
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use docker_wrapper::template::{RedisTemplate, HasConnectionString};
+    ///
+    /// let template = RedisTemplate::new("my-redis").port(6380);
+    /// assert_eq!(template.connection_string(), "redis://localhost:6380");
+    ///
+    /// let template_with_pass = RedisTemplate::new("my-redis")
+    ///     .port(6380)
+    ///     .password("secret");
+    /// assert_eq!(template_with_pass.connection_string(), "redis://:secret@localhost:6380");
+    /// ```
+    fn connection_string(&self) -> String {
+        let port = self.config.ports.first().map_or(6379, |(h, _)| *h);
+        let password = self.config.env.get("REDIS_PASSWORD").map(String::as_str);
+        redis_connection_string("localhost", port, password)
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -343,5 +368,34 @@ mod tests {
         assert!(args.contains(&"test-redis".to_string()));
         assert!(args.contains(&"--publish".to_string()));
         assert!(args.contains(&"16379:6379".to_string()));
+    }
+
+    #[test]
+    fn test_redis_connection_string() {
+        use crate::template::HasConnectionString;
+
+        let template = RedisTemplate::new("test-redis").port(6380);
+        assert_eq!(template.connection_string(), "redis://localhost:6380");
+    }
+
+    #[test]
+    fn test_redis_connection_string_with_password() {
+        use crate::template::HasConnectionString;
+
+        let template = RedisTemplate::new("test-redis")
+            .port(6380)
+            .password("secret");
+        assert_eq!(
+            template.connection_string(),
+            "redis://:secret@localhost:6380"
+        );
+    }
+
+    #[test]
+    fn test_redis_connection_string_default_port() {
+        use crate::template::HasConnectionString;
+
+        let template = RedisTemplate::new("test-redis");
+        assert_eq!(template.connection_string(), "redis://localhost:6379");
     }
 }
