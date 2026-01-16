@@ -380,4 +380,27 @@ mod tests {
         assert!(args.contains(&"my-project".to_string()));
         assert!(args.contains(&"--all".to_string()));
     }
+
+    /// Regression test for issue #233: ComposePsCommand was failing because
+    /// the command was being built as "docker docker compose ..." instead of
+    /// "docker compose ...". This verifies that build_command_args does not
+    /// include "docker" since the runtime binary is added separately.
+    #[test]
+    fn test_compose_args_no_docker_prefix() {
+        let cmd = ComposePsCommand::new()
+            .file("/path/to/docker-compose.yaml")
+            .service("php");
+
+        let args = ComposeCommand::build_command_args(&cmd);
+
+        // Args should start with "compose", not "docker"
+        assert_eq!(args[0], "compose");
+        // "docker" should not appear anywhere in the args (the runtime binary
+        // is added separately by CommandExecutor)
+        assert!(
+            !args.iter().any(|arg| arg == "docker"),
+            "args should not contain 'docker': {:?}",
+            args
+        );
+    }
 }
