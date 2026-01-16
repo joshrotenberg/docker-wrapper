@@ -1109,7 +1109,13 @@ mod tests {
         // Verify expected structure: compose [global opts] up [subcommand opts] [services]
         assert!(args.contains(&"up".to_string()), "must contain subcommand");
         assert!(args.contains(&"--file".to_string()), "must contain --file");
-        assert!(args.contains(&"--detach".to_string()), "must contain --detach");
-        assert!(args.contains(&"web".to_string()), "must contain service name");
+        assert!(
+            args.contains(&"--detach".to_string()),
+            "must contain --detach"
+        );
+        assert!(
+            args.contains(&"web".to_string()),
+            "must contain service name"
+        );
     }
 }
