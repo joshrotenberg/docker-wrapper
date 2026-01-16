@@ -1080,8 +1080,8 @@ mod tests {
     }
 
     /// Regression test for issue #233: Verify that compose commands don't produce
-    /// "docker docker compose" when executed. The args returned by ComposeCommand
-    /// should start with "compose" (not "docker"), and the execute_command logic
+    /// "docker docker compose" when executed. The args returned by `ComposeCommand`
+    /// should start with "compose" (not "docker"), and the `execute_command` logic
     /// should properly handle this by passing "compose" as the command name.
     #[cfg(feature = "compose")]
     #[test]
@@ -1102,8 +1102,7 @@ mod tests {
         // is added separately by CommandExecutor
         assert!(
             !args.iter().any(|arg| arg == "docker"),
-            "compose args should not contain 'docker': {:?}",
-            args
+            "compose args should not contain 'docker': {args:?}"
         );
 
         // Verify expected structure: compose [global opts] up [subcommand opts] [services]

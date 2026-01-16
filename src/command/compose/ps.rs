@@ -381,9 +381,9 @@ mod tests {
         assert!(args.contains(&"--all".to_string()));
     }
 
-    /// Regression test for issue #233: ComposePsCommand was failing because
+    /// Regression test for issue #233: `ComposePsCommand` was failing because
     /// the command was being built as "docker docker compose ..." instead of
-    /// "docker compose ...". This verifies that build_command_args does not
+    /// "docker compose ...". This verifies that `build_command_args` does not
     /// include "docker" since the runtime binary is added separately.
     #[test]
     fn test_compose_args_no_docker_prefix() {
@@ -399,8 +399,7 @@ mod tests {
         // is added separately by CommandExecutor)
         assert!(
             !args.iter().any(|arg| arg == "docker"),
-            "args should not contain 'docker': {:?}",
-            args
+            "args should not contain 'docker': {args:?}"
         );
     }
 }
