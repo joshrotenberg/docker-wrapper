@@ -210,8 +210,8 @@ pub struct ComposeConfig {
     pub project_directory: Option<PathBuf>,
     /// Profiles to enable (--profile)
     pub profiles: Vec<String>,
-    /// Environment file (--env-file)
-    pub env_file: Option<PathBuf>,
+    /// Environment files (--env-file), can be specified multiple times
+    pub env_files: Vec<PathBuf>,
     /// Run in compatibility mode
     pub compatibility: bool,
     /// Execute in dry run mode
@@ -307,10 +307,10 @@ impl ComposeConfig {
         self
     }
 
-    /// Set environment file
+    /// Add an environment file (can be called multiple times)
     #[must_use]
     pub fn env_file(mut self, path: impl Into<PathBuf>) -> Self {
-        self.env_file = Some(path.into());
+        self.env_files.push(path.into());
         self
     }
 
@@ -378,8 +378,8 @@ impl ComposeConfig {
             args.push(profile.clone());
         }
 
-        // Add environment file
-        if let Some(ref env_file) = self.env_file {
+        // Add environment files
+        for env_file in &self.env_files {
             args.push("--env-file".to_string());
             args.push(env_file.to_string_lossy().to_string());
         }
@@ -1077,6 +1077,39 @@ mod tests {
 
         assert!(empty_output.stdout_is_empty());
         assert!(empty_output.stderr_is_empty());
+    }
+
+    #[test]
+    fn test_compose_config_single_env_file() {
+        let config = ComposeConfig::new().env_file("/path/to/.env");
+        let args = config.build_global_args();
+
+        let env_file_count = args.iter().filter(|a| a.as_str() == "--env-file").count();
+        assert_eq!(env_file_count, 1);
+        assert!(args.contains(&"/path/to/.env".to_string()));
+    }
+
+    #[test]
+    fn test_compose_config_multiple_env_files() {
+        let config = ComposeConfig::new()
+            .env_file("/path/to/.env")
+            .env_file("/path/to/.env.local")
+            .env_file("/path/to/.env.production");
+        let args = config.build_global_args();
+
+        let env_file_count = args.iter().filter(|a| a.as_str() == "--env-file").count();
+        assert_eq!(env_file_count, 3);
+        assert!(args.contains(&"/path/to/.env".to_string()));
+        assert!(args.contains(&"/path/to/.env.local".to_string()));
+        assert!(args.contains(&"/path/to/.env.production".to_string()));
+    }
+
+    #[test]
+    fn test_compose_config_no_env_file() {
+        let config = ComposeConfig::new();
+        let args = config.build_global_args();
+
+        assert!(!args.contains(&"--env-file".to_string()));
     }
 
     /// Regression test for issue #233: Verify that compose commands don't produce
