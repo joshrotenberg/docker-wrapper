@@ -6,14 +6,14 @@ use async_trait::async_trait;
 
 /// Pull policy for compose pull command
 #[derive(Debug, Clone, Copy)]
-pub enum PullPolicy {
+pub enum ComposePullPolicy {
     /// Always pull images
     Always,
     /// Pull missing images only
     Missing,
 }
 
-impl std::fmt::Display for PullPolicy {
+impl std::fmt::Display for ComposePullPolicy {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Always => write!(f, "always"),
@@ -39,7 +39,7 @@ pub struct ComposePullCommand {
     /// Also pull services declared as dependencies
     pub include_deps: bool,
     /// Pull policy
-    pub policy: Option<PullPolicy>,
+    pub policy: Option<ComposePullPolicy>,
     /// Pull without printing progress information
     pub quiet: bool,
 }
@@ -114,7 +114,7 @@ impl ComposePullCommand {
 
     /// Set pull policy
     #[must_use]
-    pub fn policy(mut self, policy: PullPolicy) -> Self {
+    pub fn policy(mut self, policy: ComposePullPolicy) -> Self {
         self.policy = Some(policy);
         self
     }
@@ -253,7 +253,7 @@ mod tests {
     #[test]
     fn test_compose_pull_with_policy() {
         let cmd = ComposePullCommand::new()
-            .policy(PullPolicy::Always)
+            .policy(ComposePullPolicy::Always)
             .service("db");
 
         let args = cmd.build_subcommand_args();
@@ -264,7 +264,7 @@ mod tests {
 
     #[test]
     fn test_compose_pull_with_missing_policy() {
-        let cmd = ComposePullCommand::new().policy(PullPolicy::Missing);
+        let cmd = ComposePullCommand::new().policy(ComposePullPolicy::Missing);
 
         let args = cmd.build_subcommand_args();
         assert!(args.contains(&"--policy".to_string()));
