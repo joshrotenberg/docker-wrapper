@@ -2,10 +2,10 @@
 
 use crate::command::{CommandExecutor, CommandOutput};
 use crate::error::Result;
+use crate::tracing_compat::{debug, info, trace, warn};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tokio::time::sleep;
-use tracing::{debug, info, instrument, trace, warn};
 
 /// Configuration for dry-run mode and debugging
 #[derive(Debug, Clone)]
@@ -272,13 +272,16 @@ impl DebugExecutor {
     /// # Errors
     ///
     /// Returns an error if the command fails after all retry attempts
-    #[instrument(
-        name = "debug.execute",
-        skip(self, args),
-        fields(
-            command = %command_name,
-            dry_run = self.debug_config.dry_run,
-            has_retry = self.retry_policy.is_some(),
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            name = "debug.execute",
+            skip(self, args),
+            fields(
+                command = %command_name,
+                dry_run = self.debug_config.dry_run,
+                has_retry = self.retry_policy.is_some(),
+            )
         )
     )]
     pub async fn execute_command(
@@ -324,12 +327,15 @@ impl DebugExecutor {
     }
 
     /// Execute command with retry logic
-    #[instrument(
-        name = "debug.retry",
-        skip(self, args, policy),
-        fields(
-            command = %command_name,
-            max_attempts = policy.max_attempts,
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            name = "debug.retry",
+            skip(self, args, policy),
+            fields(
+                command = %command_name,
+                max_attempts = policy.max_attempts,
+            )
         )
     )]
     async fn execute_with_retry(
@@ -401,6 +407,7 @@ impl DebugExecutor {
                     let delay = policy.calculate_delay(attempt);
 
                     #[allow(clippy::cast_possible_truncation)]
+                    #[cfg_attr(not(feature = "tracing"), allow(unused_variables))]
                     let delay_ms = delay.as_millis() as u64;
                     warn!(
                         attempt = attempt,

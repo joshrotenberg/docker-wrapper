@@ -79,6 +79,67 @@ let id = redis.start().await?;
 redis.stop().await?;
 ```
 
+## Tracing
+
+Every command invocation emits [`tracing`](https://docs.rs/tracing) spans and
+events so you can observe Docker CLI activity in production. Instrumentation is
+enabled by default via the `tracing` cargo feature; compile with
+`--no-default-features` to drop the dependency entirely.
+
+```toml
+# Default: tracing instrumentation is on
+docker-wrapper = "0.10"
+
+# Opt out
+docker-wrapper = { version = "0.10", default-features = false, features = ["compose"] }
+```
+
+### What gets emitted
+
+Each call to `DockerCommand::execute` and `StreamableCommand::stream` is
+wrapped in a span:
+
+| Span                | Entered by                         | Fields                                                            |
+|---------------------|------------------------------------|-------------------------------------------------------------------|
+| `docker.command`    | `CommandExecutor::execute_command` | `command`, `args_count`, `platform`, `runtime`, `timeout_secs`    |
+| `docker.process`    | process spawn                      | `full_command`                                                    |
+| `docker.timeout`    | timeout-wrapped execution          | `timeout_secs`                                                    |
+| `docker.stream`     | streaming execution                | `command`, `mode` (`handler` or `channel`)                        |
+
+Within the `docker.command` span, events are emitted as:
+
+- `info` on success: `exit_code`, `duration_ms`, `stdout_len`, `stderr_len`.
+- `warn` on non-zero exit / spawn failure: `exit_code`, `duration_ms`,
+  `stderr_snippet` (truncated to ~512 bytes), plus the error message.
+- `trace` for raw stdout / stderr payloads.
+
+Streaming variants additionally emit `debug!` for every stdout/stderr line
+(set `RUST_LOG=docker_wrapper=debug` to see them), so noisy builds can be
+filtered down by level.
+
+### Subscribing
+
+```rust,no_run
+use tracing_subscriber::EnvFilter;
+
+tracing_subscriber::fmt()
+    .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| "docker_wrapper=info".into()))
+    .init();
+```
+
+Useful `RUST_LOG` filters:
+
+```bash
+# All docker-wrapper activity
+RUST_LOG=docker_wrapper=trace cargo run
+
+# Just the top-level execute spans + completion events
+RUST_LOG=docker_wrapper=info cargo run
+
+# Stream commands with per-line output
+RUST_LOG=docker_wrapper::stream=debug cargo run
+```
+
 ## Why docker-wrapper?
 
 This crate wraps the Docker CLI rather than calling the Docker API directly (like [bollard](https://crates.io/crates/bollard)).

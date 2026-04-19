@@ -10,10 +10,10 @@
 #![allow(clippy::redundant_closure_for_method_calls)]
 #![allow(clippy::inefficient_to_string)]
 
+use crate::tracing_compat::{debug, error, info, trace, warn};
 use crate::{DockerCommand, RunCommand};
 use async_trait::async_trait;
 use std::collections::HashMap;
-use tracing::{debug, error, info, trace, warn};
 
 // Redis templates
 #[cfg(any(

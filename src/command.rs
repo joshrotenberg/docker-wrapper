@@ -46,6 +46,7 @@
 
 use crate::error::{Error, Result};
 use crate::platform::PlatformInfo;
+use crate::tracing_compat::{debug, error, info, trace, warn};
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -53,7 +54,6 @@ use std::path::PathBuf;
 use std::process::Stdio;
 use std::time::Duration;
 use tokio::process::Command as TokioCommand;
-use tracing::{debug, error, instrument, trace, warn};
 
 // Re-export all command modules
 pub mod attach;
@@ -471,6 +471,28 @@ pub trait ComposeCommand: DockerCommand {
 /// Default timeout for command execution (30 seconds)
 pub const DEFAULT_COMMAND_TIMEOUT: Duration = Duration::from_secs(30);
 
+/// Maximum length (in bytes) of stderr snippets attached to tracing events.
+/// Bounded so that log sinks don't drown in large error payloads.
+const STDERR_LOG_SNIPPET_BYTES: usize = 512;
+
+/// Truncate `s` to at most `STDERR_LOG_SNIPPET_BYTES`, respecting UTF-8 char
+/// boundaries and appending an ellipsis marker when truncation occurs.
+#[cfg_attr(not(feature = "tracing"), allow(dead_code))]
+fn truncate_for_log(s: &str) -> String {
+    if s.len() <= STDERR_LOG_SNIPPET_BYTES {
+        return s.to_string();
+    }
+    // Walk back to a char boundary <= limit.
+    let mut end = STDERR_LOG_SNIPPET_BYTES;
+    while end > 0 && !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    let mut out = String::with_capacity(end + 4);
+    out.push_str(&s[..end]);
+    out.push_str("...");
+    out
+}
+
 /// Common functionality for executing Docker commands
 #[derive(Debug, Clone)]
 pub struct CommandExecutor {
@@ -540,20 +562,41 @@ impl CommandExecutor {
         }
     }
 
+    /// Get the runtime label suitable for a tracing field (e.g. "docker",
+    /// "podman"). Returns `None` when no platform has been detected.
+    #[cfg_attr(not(feature = "tracing"), allow(dead_code))]
+    fn tracing_platform(&self) -> Option<&'static str> {
+        use crate::platform::Runtime;
+        let runtime = self.platform_info.as_ref().map(|p| &p.runtime)?;
+        Some(match runtime {
+            Runtime::Docker | Runtime::DockerDesktop => "docker",
+            Runtime::Podman => "podman",
+            Runtime::Colima => "colima",
+            Runtime::RancherDesktop => "rancher-desktop",
+            Runtime::OrbStack => "orbstack",
+        })
+    }
+
     /// Execute a Docker command with the given arguments
     ///
     /// # Errors
     /// Returns an error if the Docker command fails to execute, returns a non-zero exit code,
     /// or times out (if a timeout is configured)
-    #[instrument(
-        name = "docker.command",
-        skip(self, args),
-        fields(
-            command = %command_name,
-            runtime = %self.get_runtime_command(),
-            timeout_secs = self.timeout.map(|t| t.as_secs()),
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            name = "docker.command",
+            skip(self, args),
+            fields(
+                command = %command_name,
+                args_count = args.len(),
+                platform = self.tracing_platform(),
+                runtime = %self.get_runtime_command(),
+                timeout_secs = self.timeout.map(|t| t.as_secs()),
+            )
         )
     )]
+    #[cfg_attr(not(feature = "tracing"), allow(unused_variables))]
     pub async fn execute_command(
         &self,
         command_name: &str,
@@ -570,6 +613,8 @@ impl CommandExecutor {
 
         trace!(args = ?all_args, "executing docker command");
 
+        let started_at = std::time::Instant::now();
+
         // Execute with or without timeout
         let result = if let Some(timeout_duration) = self.timeout {
             self.execute_with_timeout(&runtime_command, &all_args, timeout_duration)
@@ -578,13 +623,16 @@ impl CommandExecutor {
             self.execute_internal(&runtime_command, &all_args).await
         };
 
+        let duration_ms = u64::try_from(started_at.elapsed().as_millis()).unwrap_or(u64::MAX);
+
         match &result {
             Ok(output) => {
-                debug!(
+                info!(
                     exit_code = output.exit_code,
+                    duration_ms = duration_ms,
                     stdout_len = output.stdout.len(),
                     stderr_len = output.stderr.len(),
-                    "command completed successfully"
+                    "command completed"
                 );
                 trace!(stdout = %output.stdout, "command stdout");
                 if !output.stderr.is_empty() {
@@ -592,7 +640,20 @@ impl CommandExecutor {
                 }
             }
             Err(e) => {
-                error!(error = %e, "command failed");
+                let (exit_code, stderr_snippet) = match e {
+                    Error::CommandFailed {
+                        exit_code, stderr, ..
+                    } => (Some(*exit_code), Some(truncate_for_log(stderr))),
+                    _ => (None, None),
+                };
+                warn!(
+                    command = %command_name,
+                    exit_code = exit_code,
+                    duration_ms = duration_ms,
+                    stderr_snippet = stderr_snippet.as_deref(),
+                    error = %e,
+                    "command failed"
+                );
             }
         }
 
@@ -600,11 +661,14 @@ impl CommandExecutor {
     }
 
     /// Internal method to execute a command without timeout
-    #[instrument(
-        name = "docker.process",
-        skip(self, all_args),
-        fields(
-            full_command = %format!("{} {}", runtime_command, all_args.join(" ")),
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            name = "docker.process",
+            skip(self, all_args),
+            fields(
+                full_command = %format!("{} {}", runtime_command, all_args.join(" ")),
+            )
         )
     )]
     async fn execute_internal(
@@ -675,10 +739,13 @@ impl CommandExecutor {
     }
 
     /// Execute a command with a timeout
-    #[instrument(
-        name = "docker.timeout",
-        skip(self, all_args),
-        fields(timeout_secs = timeout_duration.as_secs())
+    #[cfg_attr(
+        feature = "tracing",
+        tracing::instrument(
+            name = "docker.timeout",
+            skip(self, all_args),
+            fields(timeout_secs = timeout_duration.as_secs())
+        )
     )]
     async fn execute_with_timeout(
         &self,

@@ -403,6 +403,11 @@ pub mod platform;
 pub mod prerequisites;
 pub mod stream;
 
+// Internal compatibility shim so the crate can be built without the
+// optional `tracing` dependency. Not part of the public API.
+#[doc(hidden)]
+pub mod tracing_compat;
+
 #[cfg(any(
     feature = "templates",
     feature = "template-redis",

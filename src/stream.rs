@@ -4,6 +4,7 @@
 //! commands in real-time, rather than waiting for completion.
 
 use crate::error::Result;
+use crate::tracing_compat::{debug, info, info_span, trace, warn, Instrument};
 use async_trait::async_trait;
 use std::process::Stdio;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -113,17 +114,36 @@ impl StreamHandler {
     }
 }
 
-/// Internal helper to spawn a streaming command
+/// Internal helper to spawn a streaming command.
+///
+/// `command_name` is a short label (e.g. "run", "logs", "build") used for
+/// tracing spans; it's purely diagnostic and not passed to the child process.
 pub(crate) async fn stream_command(
+    cmd: TokioCommand,
+    handler: impl FnMut(OutputLine) + Send + 'static,
+    command_name: &'static str,
+) -> Result<StreamResult> {
+    let span = info_span!("docker.stream", command = command_name, mode = "handler",);
+    stream_command_inner(cmd, handler, command_name)
+        .instrument(span)
+        .await
+}
+
+#[cfg_attr(not(feature = "tracing"), allow(unused_variables))]
+async fn stream_command_inner(
     mut cmd: TokioCommand,
     mut handler: impl FnMut(OutputLine) + Send + 'static,
+    command_name: &'static str,
 ) -> Result<StreamResult> {
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
 
-    let mut child = cmd
-        .spawn()
-        .map_err(|e| crate::error::Error::custom(format!("Failed to spawn command: {e}")))?;
+    let started_at = std::time::Instant::now();
+
+    let mut child = cmd.spawn().map_err(|e| {
+        warn!(command = command_name, error = %e, "failed to spawn streaming command");
+        crate::error::Error::custom(format!("Failed to spawn command: {e}"))
+    })?;
 
     let stdout = child
         .stdout
@@ -147,6 +167,7 @@ pub(crate) async fn stream_command(
             line = stdout_lines.next_line() => {
                 match line {
                     Ok(Some(text)) => {
+                        debug!(stream = "stdout", line = %text, "stream line");
                         stdout_accumulator.push(text.clone());
                         handler(OutputLine::Stdout(text));
                     }
@@ -161,6 +182,7 @@ pub(crate) async fn stream_command(
             line = stderr_lines.next_line() => {
                 match line {
                     Ok(Some(text)) => {
+                        debug!(stream = "stderr", line = %text, "stream line");
                         stderr_accumulator.push(text.clone());
                         handler(OutputLine::Stderr(text));
                     }
@@ -180,26 +202,69 @@ pub(crate) async fn stream_command(
         .await
         .map_err(|e| crate::error::Error::custom(format!("Failed to wait for command: {e}")))?;
 
+    let exit_code = status.code().unwrap_or(-1);
+    let success = status.success();
+    let duration_ms = u64::try_from(started_at.elapsed().as_millis()).unwrap_or(u64::MAX);
+
+    #[cfg_attr(not(feature = "tracing"), allow(clippy::if_same_then_else))]
+    if success {
+        info!(
+            command = command_name,
+            exit_code = exit_code,
+            duration_ms = duration_ms,
+            stdout_lines = stdout_accumulator.len(),
+            stderr_lines = stderr_accumulator.len(),
+            "stream command completed"
+        );
+    } else {
+        warn!(
+            command = command_name,
+            exit_code = exit_code,
+            duration_ms = duration_ms,
+            stdout_lines = stdout_accumulator.len(),
+            stderr_lines = stderr_accumulator.len(),
+            "stream command exited non-zero"
+        );
+    }
+
+    trace!(command = command_name, "stream finished");
+
     Ok(StreamResult {
-        exit_code: status.code().unwrap_or(-1),
-        success: status.success(),
+        exit_code,
+        success,
         stdout: Some(stdout_accumulator.join("\n")),
         stderr: Some(stderr_accumulator.join("\n")),
     })
 }
 
-/// Internal helper to spawn a streaming command with channel output
+/// Internal helper to spawn a streaming command with channel output.
+///
+/// `command_name` is a short diagnostic label used for tracing spans.
 pub(crate) async fn stream_command_channel(
+    cmd: TokioCommand,
+    command_name: &'static str,
+) -> Result<(mpsc::Receiver<OutputLine>, StreamResult)> {
+    let span = info_span!("docker.stream", command = command_name, mode = "channel",);
+    stream_command_channel_inner(cmd, command_name)
+        .instrument(span)
+        .await
+}
+
+#[cfg_attr(not(feature = "tracing"), allow(unused_variables))]
+async fn stream_command_channel_inner(
     mut cmd: TokioCommand,
+    command_name: &'static str,
 ) -> Result<(mpsc::Receiver<OutputLine>, StreamResult)> {
     let (tx, rx) = mpsc::channel(100);
+    let started_at = std::time::Instant::now();
 
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
 
-    let mut child = cmd
-        .spawn()
-        .map_err(|e| crate::error::Error::custom(format!("Failed to spawn command: {e}")))?;
+    let mut child = cmd.spawn().map_err(|e| {
+        warn!(command = command_name, error = %e, "failed to spawn streaming command");
+        crate::error::Error::custom(format!("Failed to spawn command: {e}"))
+    })?;
 
     let stdout = child
         .stdout
@@ -218,6 +283,7 @@ pub(crate) async fn stream_command_channel(
         let mut reader_lines = reader.lines();
         let mut lines = Vec::new();
         while let Ok(Some(line)) = reader_lines.next_line().await {
+            debug!(stream = "stdout", line = %line, "stream line");
             lines.push(line.clone());
             let _ = tx.send(OutputLine::Stdout(line)).await;
         }
@@ -230,6 +296,7 @@ pub(crate) async fn stream_command_channel(
         let mut reader_lines = reader.lines();
         let mut lines = Vec::new();
         while let Ok(Some(line)) = reader_lines.next_line().await {
+            debug!(stream = "stderr", line = %line, "stream line");
             lines.push(line.clone());
             let _ = tx_clone.send(OutputLine::Stderr(line)).await;
         }
@@ -246,11 +313,36 @@ pub(crate) async fn stream_command_channel(
     let status = status
         .map_err(|e| crate::error::Error::custom(format!("Failed to wait for command: {e}")))?;
 
+    let exit_code = status.code().unwrap_or(-1);
+    let success = status.success();
+    let duration_ms = u64::try_from(started_at.elapsed().as_millis()).unwrap_or(u64::MAX);
+
+    #[cfg_attr(not(feature = "tracing"), allow(clippy::if_same_then_else))]
+    if success {
+        info!(
+            command = command_name,
+            exit_code = exit_code,
+            duration_ms = duration_ms,
+            stdout_lines = stdout_lines.len(),
+            stderr_lines = stderr_lines.len(),
+            "stream command completed"
+        );
+    } else {
+        warn!(
+            command = command_name,
+            exit_code = exit_code,
+            duration_ms = duration_ms,
+            stdout_lines = stdout_lines.len(),
+            stderr_lines = stderr_lines.len(),
+            "stream command exited non-zero"
+        );
+    }
+
     Ok((
         rx,
         StreamResult {
-            exit_code: status.code().unwrap_or(-1),
-            success: status.success(),
+            exit_code,
+            success,
             stdout: Some(stdout_lines.join("\n")),
             stderr: Some(stderr_lines.join("\n")),
         },
