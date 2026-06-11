@@ -15,7 +15,7 @@ docker-wrapper = "0.10"
 tokio = { version = "1", features = ["full"] }
 ```
 
-**MSRV:** 1.89.0
+**MSRV:** 1.88.0
 
 ## Quick Start
 
