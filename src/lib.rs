@@ -467,7 +467,8 @@ pub mod tracing_compat;
     feature = "template-postgres",
     feature = "template-mysql",
     feature = "template-mongodb",
-    feature = "template-nginx"
+    feature = "template-nginx",
+    feature = "template-toxiproxy"
 ))]
 pub mod template;
 #[cfg(feature = "testing")]
@@ -584,7 +585,8 @@ pub use prerequisites::{
     feature = "template-postgres",
     feature = "template-mysql",
     feature = "template-mongodb",
-    feature = "template-nginx"
+    feature = "template-nginx",
+    feature = "template-toxiproxy"
 ))]
 pub use template::{Template, TemplateBuilder, TemplateConfig, TemplateError};
 
@@ -616,6 +618,10 @@ pub use template::database::{MongodbConnectionString, MongodbTemplate};
 // Web server templates
 #[cfg(feature = "template-nginx")]
 pub use template::web::NginxTemplate;
+
+// Fault-injection templates
+#[cfg(feature = "template-toxiproxy")]
+pub use template::toxiproxy::{ProxyInfo, Toxic, ToxicStream, ToxiproxyTemplate};
 
 /// The version of this crate
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

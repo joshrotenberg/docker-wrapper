@@ -35,6 +35,10 @@ pub mod database;
 #[cfg(feature = "template-nginx")]
 pub mod web;
 
+// Fault-injection templates
+#[cfg(feature = "template-toxiproxy")]
+pub mod toxiproxy;
+
 /// Result type for template operations
 pub type Result<T> = std::result::Result<T, TemplateError>;
 
@@ -632,3 +636,6 @@ pub use database::mongodb::{MongodbConnectionString, MongodbTemplate};
 
 #[cfg(feature = "template-nginx")]
 pub use web::nginx::NginxTemplate;
+
+#[cfg(feature = "template-toxiproxy")]
+pub use toxiproxy::{ProxyInfo, Toxic, ToxicStream, ToxiproxyTemplate};
