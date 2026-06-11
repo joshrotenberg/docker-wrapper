@@ -447,8 +447,7 @@ impl RedisClusterTemplate {
     pub async fn is_ready(&self) -> bool {
         self.cluster_info()
             .await
-            .map(|info| info.cluster_state == "ok")
-            .unwrap_or(false)
+            .is_ok_and(|info| info.cluster_state == "ok")
     }
 
     /// Wait for the cluster to become ready, with a timeout.

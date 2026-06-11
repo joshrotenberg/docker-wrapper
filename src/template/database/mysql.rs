@@ -316,7 +316,7 @@ impl Template for MysqlTemplate {
         // Custom MySQL readiness check - increased timeout for charset/collation configs
         // MySQL 8.0 can take 90+ seconds to initialize on slower CI systems
         let wait_timeout = Duration::from_secs(120);
-        let check_interval = Duration::from_millis(1000);
+        let check_interval = Duration::from_secs(1);
 
         timeout(wait_timeout, async {
             let mut consecutive_successes = 0;
