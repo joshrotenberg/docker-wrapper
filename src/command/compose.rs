@@ -19,6 +19,7 @@ pub mod ls;
 pub mod pause;
 pub mod port;
 pub mod ps;
+pub mod pull;
 pub mod push;
 pub mod restart;
 pub mod rm;
@@ -51,6 +52,7 @@ pub use port::{ComposePortCommand, ComposePortResult};
 pub use ps::{
     ComposeContainerInfo, ComposePsCommand, ComposePsResult, ContainerStatus, PortPublisher,
 };
+pub use pull::{ComposePullCommand, ComposePullResult};
 pub use push::{ComposePushCommand, ComposePushResult};
 pub use restart::{ComposeRestartCommand, ComposeRestartResult};
 pub use rm::{ComposeRmCommand, ComposeRmResult};

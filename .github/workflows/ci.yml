@@ -50,10 +50,11 @@ jobs:
         if: matrix.rust == 'stable' && matrix.os == 'ubuntu-latest'
         run: |
           # Commands should use self.execute_command(args) not self.executor.execute_command("docker", args)
-          # The latter causes "docker docker <cmd>" double-command bug
-          if grep -r 'executor\.execute_command("docker"' src/command/; then
-            echo "ERROR: Found executor.execute_command(\"docker\", ...) antipattern!"
+          # The latter causes "docker docker <cmd>" double-command bug (issue #233)
+          if grep -rE 'executor\.execute_command\("docker"|execute_command\("docker",' src/command.rs src/command/; then
+            echo "ERROR: Found execute_command(\"docker\", ...) antipattern!"
             echo "Use self.execute_command(args) instead to avoid 'docker docker' bug."
+            echo "For compose commands, pass 'compose' as command name, not 'docker'."
             exit 1
           fi
 

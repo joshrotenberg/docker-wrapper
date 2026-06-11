@@ -6,6 +6,48 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [0.11.1](https://github.com/joshrotenberg/docker-wrapper/compare/v0.11.0...v0.11.1) - 2026-03-03
+
+### Added
+
+- add `compose pull` command support ([#238](https://github.com/joshrotenberg/docker-wrapper/pull/238))
+
+### Other
+
+- *(deps)* bump actions/upload-artifact from 6 to 7 ([#239](https://github.com/joshrotenberg/docker-wrapper/pull/239))
+
+## [0.11.0](https://github.com/joshrotenberg/docker-wrapper/compare/v0.10.2...v0.11.0) - 2026-02-24
+
+### Added
+
+- support multiple --env-file in ComposeConfig ([#236](https://github.com/joshrotenberg/docker-wrapper/pull/236))
+
+## [0.10.2](https://github.com/joshrotenberg/docker-wrapper/compare/v0.10.1...v0.10.2) - 2026-01-16
+
+### Fixed
+
+- compose commands producing "docker docker compose" ([#233](https://github.com/joshrotenberg/docker-wrapper/pull/233)) ([#234](https://github.com/joshrotenberg/docker-wrapper/pull/234))
+
+## [0.10.1](https://github.com/joshrotenberg/docker-wrapper/compare/v0.10.0...v0.10.1) - 2026-01-06
+
+### Added
+
+- add connection_string() passthrough to ContainerGuard ([#229](https://github.com/joshrotenberg/docker-wrapper/pull/229))
+- add configurable stop timeout for ContainerGuard cleanup ([#228](https://github.com/joshrotenberg/docker-wrapper/pull/228))
+- add ContainerGuardSet for multi-container test management ([#227](https://github.com/joshrotenberg/docker-wrapper/pull/227))
+- add with_network() support to ContainerGuard ([#226](https://github.com/joshrotenberg/docker-wrapper/pull/226))
+- add wait_for_ready() method and builder option to ContainerGuard ([#225](https://github.com/joshrotenberg/docker-wrapper/pull/225))
+- add ContainerGuard for RAII container lifecycle management ([#217](https://github.com/joshrotenberg/docker-wrapper/pull/217))
+
+### Fixed
+
+- PortCommand parser handles single-port query format ([#232](https://github.com/joshrotenberg/docker-wrapper/pull/232))
+
+### Other
+
+- add comprehensive rustdoc for testing module ([#230](https://github.com/joshrotenberg/docker-wrapper/pull/230))
+- update version examples to 0.10 ([#214](https://github.com/joshrotenberg/docker-wrapper/pull/214))
+
 ## [0.10.0](https://github.com/joshrotenberg/docker-wrapper/compare/v0.9.1...v0.10.0) - 2026-01-05
 
 ### Added
