@@ -18,7 +18,9 @@ pub use basic::RedisTemplate;
 #[cfg(feature = "template-redis-cluster")]
 pub mod cluster;
 #[cfg(feature = "template-redis-cluster")]
-pub use cluster::{ClusterInfo, NodeInfo, NodeRole, RedisClusterConnection, RedisClusterTemplate};
+pub use cluster::{
+    ClusterInfo, ClusterNode, NodeInfo, NodeRole, RedisClusterConnection, RedisClusterTemplate,
+};
 
 // Redis Sentinel template
 pub mod sentinel;

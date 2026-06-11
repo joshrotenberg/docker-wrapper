@@ -287,6 +287,158 @@ impl RedisClusterTemplate {
         self.num_masters + (self.num_masters * self.num_replicas)
     }
 
+    /// Container name for the node at `index`.
+    ///
+    /// Nodes are named deterministically as `{name}-node-{index}`, where
+    /// `index` runs from `0` to `total_nodes() - 1`. This naming contract is
+    /// stable and is relied upon by readiness polling and the per-node
+    /// accessors ([`node_names`](Self::node_names) and [`node`](Self::node)).
+    fn node_name(&self, index: usize) -> String {
+        format!("{}-node-{}", self.name, index)
+    }
+
+    /// List the container names for every node in the cluster.
+    ///
+    /// Names follow the deterministic `{name}-node-{i}` contract, ordered by
+    /// node index from `0` to `total_nodes() - 1`. The first
+    /// [`get_num_masters`](Self::get_num_masters) entries are masters and the
+    /// remainder are replicas, mirroring how `redis-cli --cluster create`
+    /// assigns roles.
+    ///
+    /// This is the building block for targeted per-node fault injection: pick a
+    /// name and pause, partition, or kill exactly that container.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::RedisClusterTemplate;
+    ///
+    /// let cluster = RedisClusterTemplate::new("chaos").num_masters(3);
+    /// assert_eq!(
+    ///     cluster.node_names(),
+    ///     vec!["chaos-node-0", "chaos-node-1", "chaos-node-2"],
+    /// );
+    /// ```
+    pub fn node_names(&self) -> Vec<String> {
+        (0..self.total_nodes()).map(|i| self.node_name(i)).collect()
+    }
+
+    /// Get a handle to a single node by index.
+    ///
+    /// Returns a [`ClusterNode`] describing the node's container name, the host
+    /// port mapped to its Redis port, and its expected role, or `None` if
+    /// `index` is out of range (`index >= total_nodes()`).
+    ///
+    /// The returned values are derived from configuration only -- this is a
+    /// plain accessor that performs no Docker calls. The role is the role
+    /// `redis-cli --cluster create` assigns: indices `0..num_masters` are
+    /// masters and the rest are replicas. To read the live role from a running
+    /// node instead (for example after a failover), use
+    /// [`node_role`](Self::node_role).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use docker_wrapper::{NodeRole, RedisClusterTemplate};
+    ///
+    /// let cluster = RedisClusterTemplate::new("chaos")
+    ///     .num_masters(3)
+    ///     .num_replicas(1)
+    ///     .port_base(7000);
+    ///
+    /// let master = cluster.node(0).expect("node 0 exists");
+    /// assert_eq!(master.container_name, "chaos-node-0");
+    /// assert_eq!(master.host_port, 7000);
+    /// assert_eq!(master.role, NodeRole::Master);
+    ///
+    /// // The first three nodes are masters, the last three are replicas.
+    /// let replica = cluster.node(3).expect("node 3 exists");
+    /// assert_eq!(replica.host_port, 7003);
+    /// assert_eq!(replica.role, NodeRole::Replica);
+    ///
+    /// assert!(cluster.node(6).is_none());
+    /// ```
+    pub fn node(&self, index: usize) -> Option<ClusterNode> {
+        if index >= self.total_nodes() {
+            return None;
+        }
+
+        let role = if index < self.num_masters {
+            NodeRole::Master
+        } else {
+            NodeRole::Replica
+        };
+
+        Some(ClusterNode {
+            index,
+            container_name: self.node_name(index),
+            host_port: self.port_base + index as u16,
+            role,
+        })
+    }
+
+    /// Query the live role of a single node from the running container.
+    ///
+    /// Runs `redis-cli role` inside the node's container and reports whether the
+    /// node currently identifies as a master or a replica. Unlike
+    /// [`node`](Self::node), which returns the role assigned at creation time,
+    /// this reflects the cluster's current state (for example after a failover).
+    /// This performs a Docker `exec` and is therefore not free; the cluster must
+    /// be running.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `index` is out of range, if the `docker exec` call
+    /// fails (for example the container is not running), or if the role output
+    /// cannot be parsed.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// # use docker_wrapper::{RedisClusterTemplate, Template};
+    /// # #[tokio::main]
+    /// # async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let cluster = RedisClusterTemplate::new("my-cluster");
+    /// cluster.start().await?;
+    ///
+    /// let role = cluster.node_role(0).await?;
+    /// println!("node 0 is currently a {:?}", role);
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub async fn node_role(&self, index: usize) -> Result<NodeRole, TemplateError> {
+        if index >= self.total_nodes() {
+            return Err(TemplateError::InvalidConfig(format!(
+                "Node index {} out of range for cluster '{}' with {} nodes",
+                index,
+                self.name,
+                self.total_nodes()
+            )));
+        }
+
+        let node_name = self.node_name(index);
+
+        let mut role_args = vec!["redis-cli".to_string()];
+        if let Some(ref password) = self.password {
+            role_args.push("-a".to_string());
+            role_args.push(password.clone());
+        }
+        role_args.push("role".to_string());
+
+        let output = ExecCommand::new(&node_name, role_args).execute().await?;
+
+        // `redis-cli role` prints the role keyword ("master" or "slave") on the
+        // first line of its reply.
+        match output.stdout.lines().next().map(str::trim) {
+            Some("master") => Ok(NodeRole::Master),
+            Some("slave") => Ok(NodeRole::Replica),
+            other => Err(TemplateError::InvalidConfig(format!(
+                "Unexpected role output for node '{}': {:?}",
+                node_name, other
+            ))),
+        }
+    }
+
     /// Create the cluster network
     async fn create_network(&self) -> Result<String, TemplateError> {
         let output = NetworkCreateCommand::new(&self.network_name)
@@ -300,7 +452,7 @@ impl RedisClusterTemplate {
 
     /// Start a single Redis node
     async fn start_node(&self, node_index: usize) -> Result<String, TemplateError> {
-        let node_name = format!("{}-node-{}", self.name, node_index);
+        let node_name = self.node_name(node_index);
         let port = self.port_base + node_index as u16;
         let cluster_port = port + 10000;
 
@@ -462,7 +614,7 @@ impl RedisClusterTemplate {
         loop {
             let mut still_pending = Vec::new();
             for &i in &pending {
-                let node_name = format!("{}-node-{}", self.name, i);
+                let node_name = self.node_name(i);
                 let ready = ExecCommand::new(&node_name, ping_args.clone())
                     .execute()
                     .await
@@ -479,10 +631,7 @@ impl RedisClusterTemplate {
             pending = still_pending;
 
             if start.elapsed() >= timeout {
-                let names: Vec<String> = pending
-                    .iter()
-                    .map(|i| format!("{}-node-{}", self.name, i))
-                    .collect();
+                let names: Vec<String> = pending.iter().map(|&i| self.node_name(i)).collect();
                 return Err(TemplateError::Timeout(format!(
                     "Cluster '{}' nodes [{}] did not respond to PING within {:?}",
                     self.name,
@@ -516,7 +665,7 @@ impl RedisClusterTemplate {
 
         // Add all node addresses using container hostnames (internal port is always 6379)
         for i in 0..self.total_nodes() {
-            let host = format!("{}-node-{}", self.name, i);
+            let host = self.node_name(i);
             let port = 6379;
             create_args.push(format!("{}:{}", host, port));
         }
@@ -537,7 +686,7 @@ impl RedisClusterTemplate {
         create_args.push("--cluster-yes".to_string());
 
         // Execute cluster create in the first container
-        let first_node_name = format!("{}-node-0", self.name);
+        let first_node_name = self.node_name(0);
 
         ExecCommand::new(&first_node_name, create_args)
             .execute()
@@ -548,13 +697,13 @@ impl RedisClusterTemplate {
 
     /// Check cluster status
     pub async fn cluster_info(&self) -> Result<ClusterInfo, TemplateError> {
-        let node_name = format!("{}-node-0", self.name);
+        let node_name = self.node_name(0);
 
         let mut info_args = vec![
             "redis-cli".to_string(),
             "--cluster".to_string(),
             "info".to_string(),
-            format!("{}-node-0:6379", self.name),
+            format!("{}:6379", node_name),
         ];
 
         if let Some(ref password) = self.password {
@@ -777,7 +926,7 @@ impl Template for RedisClusterTemplate {
 
         // Stop all nodes
         for i in 0..self.total_nodes() {
-            let node_name = format!("{}-node-{}", self.name, i);
+            let node_name = self.node_name(i);
             let _ = StopCommand::new(&node_name).execute().await;
         }
 
@@ -795,7 +944,7 @@ impl Template for RedisClusterTemplate {
 
         // Remove all containers
         for i in 0..self.total_nodes() {
-            let node_name = format!("{}-node-{}", self.name, i);
+            let node_name = self.node_name(i);
             let _ = RmCommand::new(&node_name).force().volumes().execute().await;
         }
 
@@ -839,6 +988,31 @@ impl ClusterInfo {
     }
 }
 
+/// A deterministic handle to a single node in a [`RedisClusterTemplate`].
+///
+/// Returned by [`RedisClusterTemplate::node`]. The fields are derived purely
+/// from the template configuration (the `{name}-node-{index}` naming contract,
+/// the port base, and the master/replica split applied by
+/// `redis-cli --cluster create`), so constructing a handle is free and does not
+/// require the cluster to be running. This makes it suitable for targeted fault
+/// injection: pause, partition, or kill exactly the container you name.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ClusterNode {
+    /// Zero-based index of the node within the cluster.
+    pub index: usize,
+    /// Container name, following the `{name}-node-{index}` contract.
+    pub container_name: String,
+    /// Host port mapped to this node's Redis port (`port_base + index`).
+    pub host_port: u16,
+    /// Role assigned to the node at cluster-create time.
+    ///
+    /// This is the static assignment (`0..num_masters` are masters, the rest are
+    /// replicas), not necessarily the live role after a failover. Use
+    /// [`RedisClusterTemplate::node_role`] to read the current role from a
+    /// running node.
+    pub role: NodeRole,
+}
+
 /// Information about a cluster node
 #[derive(Debug, Clone)]
 pub struct NodeInfo {
@@ -855,7 +1029,7 @@ pub struct NodeInfo {
 }
 
 /// Node role in the cluster
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum NodeRole {
     /// Master node that owns hash slots
     Master,
@@ -1156,5 +1330,96 @@ mod tests {
         assert_eq!(template.get_port_base(), 9000);
         assert_eq!(template.get_num_masters(), 5);
         assert_eq!(template.get_num_replicas(), 2);
+    }
+
+    #[test]
+    fn test_node_name_construction() {
+        let template = RedisClusterTemplate::new("test-cluster");
+
+        assert_eq!(template.node_name(0), "test-cluster-node-0");
+        assert_eq!(template.node_name(2), "test-cluster-node-2");
+        assert_eq!(template.node_name(11), "test-cluster-node-11");
+    }
+
+    #[test]
+    fn test_node_names_masters_only() {
+        let template = RedisClusterTemplate::new("test-cluster").num_masters(3);
+
+        assert_eq!(
+            template.node_names(),
+            vec![
+                "test-cluster-node-0",
+                "test-cluster-node-1",
+                "test-cluster-node-2",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_node_names_with_replicas() {
+        let template = RedisClusterTemplate::new("test-cluster")
+            .num_masters(3)
+            .num_replicas(1);
+
+        // 3 masters + 3 replicas = 6 nodes, indices 0..6
+        let names = template.node_names();
+        assert_eq!(names.len(), 6);
+        assert_eq!(names[0], "test-cluster-node-0");
+        assert_eq!(names[5], "test-cluster-node-5");
+    }
+
+    #[test]
+    fn test_node_accessor_roles_and_ports() {
+        let template = RedisClusterTemplate::new("test-cluster")
+            .num_masters(3)
+            .num_replicas(1)
+            .port_base(7000);
+
+        // First num_masters nodes are masters.
+        for i in 0..3 {
+            let node = template.node(i).expect("master node exists");
+            assert_eq!(node.index, i);
+            assert_eq!(node.container_name, format!("test-cluster-node-{}", i));
+            assert_eq!(node.host_port, 7000 + i as u16);
+            assert_eq!(node.role, NodeRole::Master);
+        }
+
+        // Remaining nodes are replicas.
+        for i in 3..6 {
+            let node = template.node(i).expect("replica node exists");
+            assert_eq!(node.host_port, 7000 + i as u16);
+            assert_eq!(node.role, NodeRole::Replica);
+        }
+    }
+
+    #[test]
+    fn test_node_accessor_out_of_range() {
+        let template = RedisClusterTemplate::new("test-cluster").num_masters(3);
+
+        assert!(template.node(2).is_some());
+        assert!(template.node(3).is_none());
+        assert!(template.node(100).is_none());
+    }
+
+    #[test]
+    fn test_node_accessor_respects_custom_port_base() {
+        let template = RedisClusterTemplate::new("test-cluster")
+            .num_masters(3)
+            .port_base(9100);
+
+        assert_eq!(template.node(0).unwrap().host_port, 9100);
+        assert_eq!(template.node(2).unwrap().host_port, 9102);
+    }
+
+    #[test]
+    fn test_node_names_match_node_accessor() {
+        // node_names() and node().container_name must agree on every index.
+        let template = RedisClusterTemplate::new("test-cluster")
+            .num_masters(3)
+            .num_replicas(2);
+
+        for (i, name) in template.node_names().iter().enumerate() {
+            assert_eq!(&template.node(i).unwrap().container_name, name);
+        }
     }
 }
