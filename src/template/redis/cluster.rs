@@ -353,6 +353,70 @@ impl RedisClusterTemplate {
         Ok(output.0)
     }
 
+    /// Build the redis-cli ping arguments used for node readiness checks
+    fn build_ping_args(&self) -> Vec<String> {
+        let mut args = vec!["redis-cli".to_string()];
+
+        if let Some(ref password) = self.password {
+            args.push("-a".to_string());
+            args.push(password.clone());
+        }
+
+        args.push("ping".to_string());
+        args
+    }
+
+    /// Wait for all cluster nodes to respond to PING.
+    ///
+    /// Polls each node with `redis-cli ping` (the same readiness check used
+    /// by `wait_for_ready()` on single-node templates) every 500ms until all
+    /// nodes reply with PONG or the timeout is exceeded.
+    async fn wait_for_nodes_ready(
+        &self,
+        timeout: std::time::Duration,
+    ) -> Result<(), TemplateError> {
+        let ping_args = self.build_ping_args();
+        let check_interval = std::time::Duration::from_millis(500);
+        let start = std::time::Instant::now();
+
+        let mut pending: Vec<usize> = (0..self.total_nodes()).collect();
+
+        loop {
+            let mut still_pending = Vec::new();
+            for &i in &pending {
+                let node_name = format!("{}-node-{}", self.name, i);
+                let ready = ExecCommand::new(&node_name, ping_args.clone())
+                    .execute()
+                    .await
+                    .is_ok_and(|output| output.stdout.trim() == "PONG");
+
+                if !ready {
+                    still_pending.push(i);
+                }
+            }
+
+            if still_pending.is_empty() {
+                return Ok(());
+            }
+            pending = still_pending;
+
+            if start.elapsed() >= timeout {
+                let names: Vec<String> = pending
+                    .iter()
+                    .map(|i| format!("{}-node-{}", self.name, i))
+                    .collect();
+                return Err(TemplateError::Timeout(format!(
+                    "Cluster '{}' nodes [{}] did not respond to PING within {:?}",
+                    self.name,
+                    names.join(", "),
+                    timeout
+                )));
+            }
+
+            tokio::time::sleep(check_interval).await;
+        }
+    }
+
     /// Initialize the cluster after all nodes are started
     async fn initialize_cluster(&self, container_ids: &[String]) -> Result<(), TemplateError> {
         if container_ids.is_empty() {
@@ -361,8 +425,9 @@ impl RedisClusterTemplate {
             ));
         }
 
-        // Wait a bit for all nodes to be ready
-        tokio::time::sleep(tokio::time::Duration::from_secs(2)).await;
+        // Wait until every node accepts connections before running cluster create
+        self.wait_for_nodes_ready(std::time::Duration::from_secs(60))
+            .await?;
 
         // Build the cluster create command
         let mut create_args = vec![
@@ -933,6 +998,23 @@ mod tests {
         std::env::remove_var("REDIS_CLUSTER_NUM_MASTERS");
         std::env::remove_var("REDIS_CLUSTER_NUM_REPLICAS");
         std::env::remove_var("REDIS_CLUSTER_PASSWORD");
+    }
+
+    #[test]
+    fn test_build_ping_args_without_password() {
+        let template = RedisClusterTemplate::new("test-cluster");
+
+        assert_eq!(template.build_ping_args(), vec!["redis-cli", "ping"]);
+    }
+
+    #[test]
+    fn test_build_ping_args_with_password() {
+        let template = RedisClusterTemplate::new("test-cluster").password("secret");
+
+        assert_eq!(
+            template.build_ping_args(),
+            vec!["redis-cli", "-a", "secret", "ping"]
+        );
     }
 
     #[test]
