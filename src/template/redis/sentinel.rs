@@ -12,7 +12,9 @@
 #![allow(clippy::unnecessary_get_then_check)]
 
 use super::common::{DEFAULT_REDIS_IMAGE, DEFAULT_REDIS_TAG};
+use crate::template::{Template, TemplateConfig, TemplateError};
 use crate::{DockerCommand, NetworkCreateCommand, RunCommand};
+use async_trait::async_trait;
 
 /// Redis Sentinel template for high availability setup
 pub struct RedisSentinelTemplate {
@@ -30,6 +32,8 @@ pub struct RedisSentinelTemplate {
     parallel_syncs: u32,
     persistence: bool,
     network: Option<String>,
+    /// IP to announce to Sentinel-aware clients and for the monitored master
+    announce_ip: Option<String>,
     /// Custom Redis image
     redis_image: Option<String>,
     /// Custom Redis tag
@@ -56,6 +60,7 @@ impl RedisSentinelTemplate {
             parallel_syncs: 1,
             persistence: false,
             network: None,
+            announce_ip: None,
             redis_image: None,
             redis_tag: None,
             platform: None,
@@ -140,6 +145,25 @@ impl RedisSentinelTemplate {
         self
     }
 
+    /// Set the IP address to announce to Sentinel-aware clients.
+    ///
+    /// By default Sentinel monitors the master by its container hostname and
+    /// reports replica/sentinel addresses using internal Docker addresses,
+    /// which are unreachable from a host-side client. Setting an announce IP
+    /// makes the topology reachable from outside the Docker network:
+    ///
+    /// - the monitored master is registered at `<announce_ip>:<master_port>`,
+    ///   so `SENTINEL get-master-addr-by-name` returns a host-reachable address,
+    /// - each replica announces `<announce_ip>:<replica_host_port>`,
+    /// - each sentinel announces `<announce_ip>:<sentinel_host_port>`.
+    ///
+    /// Use `127.0.0.1` (or the host's LAN address) when connecting from the
+    /// machine running Docker.
+    pub fn announce_ip(mut self, ip: impl Into<String>) -> Self {
+        self.announce_ip = Some(ip.into());
+        self
+    }
+
     /// Use a custom Redis image and tag
     pub fn custom_redis_image(mut self, image: impl Into<String>, tag: impl Into<String>) -> Self {
         self.redis_image = Some(image.into());
@@ -161,6 +185,33 @@ impl RedisSentinelTemplate {
     /// - Network creation fails
     /// - Starting any container (master, replica, or sentinel) fails
     pub async fn start(self) -> Result<SentinelConnectionInfo, crate::Error> {
+        self.start_topology().await
+    }
+
+    /// Host address reported to clients for the master, replicas and sentinels.
+    ///
+    /// Returns the configured announce IP when set, otherwise `localhost`.
+    fn resolved_host(&self) -> String {
+        self.announce_ip
+            .clone()
+            .unwrap_or_else(|| "localhost".to_string())
+    }
+
+    /// The host port mapped to a replica's Redis port.
+    fn replica_port(&self, index: usize) -> u16 {
+        self.replica_port_base + u16::try_from(index).unwrap_or(0)
+    }
+
+    /// The host port mapped to a sentinel's port.
+    fn sentinel_port(&self, index: usize) -> u16 {
+        self.sentinel_port_base + u16::try_from(index).unwrap_or(0)
+    }
+
+    /// Start the topology and return connection information.
+    ///
+    /// Shared by the consuming [`start`](Self::start) helper and the
+    /// [`Template`] implementation so both bring up an identical topology.
+    async fn start_topology(&self) -> Result<SentinelConnectionInfo, crate::Error> {
         let network_name = self
             .network
             .clone()
@@ -178,7 +229,7 @@ impl RedisSentinelTemplate {
 
         // Start Redis master
         let master_name = format!("{}-master", self.name);
-        let mut master_cmd = self.build_redis_command(&master_name, self.master_port, None);
+        let mut master_cmd = self.build_redis_command(&master_name, self.master_port, None, None);
         master_cmd = master_cmd.network(&network_name);
 
         master_cmd
@@ -192,10 +243,14 @@ impl RedisSentinelTemplate {
         let mut replica_containers = Vec::new();
         for i in 0..self.num_replicas {
             let replica_name = format!("{}-replica-{}", self.name, i + 1);
-            let replica_port = self.replica_port_base + u16::try_from(i).unwrap_or(0);
+            let replica_port = self.replica_port(i);
 
-            let mut replica_cmd =
-                self.build_redis_command(&replica_name, replica_port, Some(&master_name));
+            let mut replica_cmd = self.build_redis_command(
+                &replica_name,
+                replica_port,
+                Some(&master_name),
+                Some(replica_port),
+            );
             replica_cmd = replica_cmd.network(&network_name);
 
             replica_cmd
@@ -215,7 +270,15 @@ impl RedisSentinelTemplate {
         let mut sentinel_containers = Vec::new();
         for i in 0..self.num_sentinels {
             let sentinel_name = format!("{}-sentinel-{}", self.name, i + 1);
-            let sentinel_port = self.sentinel_port_base + u16::try_from(i).unwrap_or(0);
+            let sentinel_port = self.sentinel_port(i);
+
+            // Each sentinel announces its own host-mapped port when an
+            // announce IP is configured so clients can reach it directly.
+            let sentinel_config = if self.announce_ip.is_some() {
+                format!("{sentinel_config}\nsentinel announce-port {sentinel_port}")
+            } else {
+                sentinel_config.clone()
+            };
 
             let mut sentinel_cmd = Self::build_sentinel_command(
                 &sentinel_name,
@@ -237,18 +300,20 @@ impl RedisSentinelTemplate {
             sentinel_containers.push((sentinel_name, sentinel_port));
         }
 
+        let host = self.resolved_host();
+
         Ok(SentinelConnectionInfo {
             name: self.name.clone(),
             master_name: self.master_name.clone(),
-            master_host: "localhost".to_string(),
+            master_host: host.clone(),
             master_port: self.master_port,
             replica_ports: (0..self.num_replicas)
-                .map(|i| self.replica_port_base + u16::try_from(i).unwrap_or(0))
+                .map(|i| self.replica_port(i))
                 .collect(),
             sentinels: sentinel_containers
                 .into_iter()
                 .map(|(_, port)| SentinelInfo {
-                    host: "localhost".to_string(),
+                    host: host.clone(),
                     port,
                 })
                 .collect(),
@@ -266,7 +331,17 @@ impl RedisSentinelTemplate {
     }
 
     /// Build a Redis command (master or replica)
-    fn build_redis_command(&self, name: &str, port: u16, master: Option<&str>) -> RunCommand {
+    ///
+    /// When `announce_port` is provided alongside a configured announce IP, the
+    /// instance advertises `<announce_ip>:<announce_port>` so a host-side client
+    /// can reach it directly (used for replicas).
+    fn build_redis_command(
+        &self,
+        name: &str,
+        port: u16,
+        master: Option<&str>,
+        announce_port: Option<u16>,
+    ) -> RunCommand {
         // Choose image based on custom image or default
         let image = if let Some(ref custom_image) = self.redis_image {
             if let Some(ref tag) = self.redis_tag {
@@ -308,6 +383,15 @@ impl RedisSentinelTemplate {
 
         // Add protected mode
         args.push("--protected-mode no".to_string());
+
+        // Announce a host-reachable address so Sentinel reports an address
+        // clients outside the Docker network can connect to.
+        if let Some(ref ip) = self.announce_ip {
+            args.push(format!("--replica-announce-ip {ip}"));
+            if let Some(announce_port) = announce_port {
+                args.push(format!("--replica-announce-port {announce_port}"));
+            }
+        }
 
         if !args.is_empty() {
             cmd = cmd.entrypoint("redis-server").cmd(args);
@@ -359,10 +443,25 @@ impl RedisSentinelTemplate {
         let mut config = Vec::new();
 
         config.push("port 26379".to_string());
-        config.push(format!(
-            "sentinel monitor {} {} 6379 {}",
-            self.master_name, master_container, self.quorum
-        ));
+
+        // When an announce IP is configured, monitor the master at its
+        // host-reachable address (announce IP + published master port) so
+        // `SENTINEL get-master-addr-by-name` returns a usable address. The
+        // sentinels also advertise the announce IP to clients. Without it,
+        // the master is monitored by its container hostname on the internal
+        // Redis port, which is only reachable inside the Docker network.
+        if let Some(ref ip) = self.announce_ip {
+            config.push(format!(
+                "sentinel monitor {} {} {} {}",
+                self.master_name, ip, self.master_port, self.quorum
+            ));
+            config.push(format!("sentinel announce-ip {ip}"));
+        } else {
+            config.push(format!(
+                "sentinel monitor {} {} 6379 {}",
+                self.master_name, master_container, self.quorum
+            ));
+        }
 
         if let Some(ref password) = self.password {
             config.push(format!(
@@ -385,6 +484,162 @@ impl RedisSentinelTemplate {
         ));
 
         config.join("\n")
+    }
+
+    /// Names of every container managed by this template.
+    ///
+    /// Mirrors the naming used when starting the topology: one master, then
+    /// replicas (`{name}-replica-{i}`) and sentinels (`{name}-sentinel-{i}`).
+    fn container_names(&self) -> Vec<String> {
+        let mut names = vec![format!("{}-master", self.name)];
+        names.extend((0..self.num_replicas).map(|i| format!("{}-replica-{}", self.name, i + 1)));
+        names.extend((0..self.num_sentinels).map(|i| format!("{}-sentinel-{}", self.name, i + 1)));
+        names
+    }
+
+    /// The `redis-cli` PING arguments used for readiness checks.
+    fn build_ping_args(&self) -> Vec<String> {
+        let mut args = vec!["redis-cli".to_string()];
+        if let Some(ref password) = self.password {
+            args.push("-a".to_string());
+            args.push(password.clone());
+        }
+        args.push("ping".to_string());
+        args
+    }
+
+    /// Wait for the master and every sentinel to respond to PING.
+    ///
+    /// Polls each container with `redis-cli ping` every 500ms until all reply
+    /// with PONG or the timeout is exceeded. Sentinels accept `PING` on their
+    /// port, so the same check works for both roles.
+    async fn wait_for_topology_ready(
+        &self,
+        timeout: std::time::Duration,
+    ) -> Result<(), TemplateError> {
+        use crate::ExecCommand;
+
+        let ping_args = self.build_ping_args();
+        let check_interval = std::time::Duration::from_millis(500);
+        let start = std::time::Instant::now();
+
+        // The master plus every sentinel must answer before the topology is usable.
+        let mut targets: Vec<String> = vec![format!("{}-master", self.name)];
+        targets
+            .extend((0..self.num_sentinels).map(|i| format!("{}-sentinel-{}", self.name, i + 1)));
+
+        let mut pending = targets;
+
+        loop {
+            let mut still_pending = Vec::new();
+            for name in &pending {
+                let ready = ExecCommand::new(name, ping_args.clone())
+                    .execute()
+                    .await
+                    .is_ok_and(|output| output.stdout.trim().eq_ignore_ascii_case("PONG"));
+
+                if !ready {
+                    still_pending.push(name.clone());
+                }
+            }
+
+            if still_pending.is_empty() {
+                return Ok(());
+            }
+            pending = still_pending;
+
+            if start.elapsed() >= timeout {
+                return Err(TemplateError::Timeout(format!(
+                    "Sentinel topology '{}' containers [{}] did not respond to PING within {:?}",
+                    self.name,
+                    pending.join(", "),
+                    timeout
+                )));
+            }
+
+            tokio::time::sleep(check_interval).await;
+        }
+    }
+}
+
+#[async_trait]
+impl Template for RedisSentinelTemplate {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn config(&self) -> &TemplateConfig {
+        // Sentinel manages multiple containers and does not map to a single config.
+        unimplemented!("RedisSentinelTemplate manages multiple containers")
+    }
+
+    fn config_mut(&mut self) -> &mut TemplateConfig {
+        unimplemented!("RedisSentinelTemplate manages multiple containers")
+    }
+
+    async fn start(&self) -> Result<String, TemplateError> {
+        let info = self.start_topology().await?;
+        Ok(format!(
+            "Redis Sentinel '{}' started with master, {} replica(s) and {} sentinel(s) (master at {}:{})",
+            self.name,
+            self.num_replicas,
+            self.num_sentinels,
+            info.master_host,
+            info.master_port
+        ))
+    }
+
+    async fn start_and_wait(&self) -> Result<String, TemplateError> {
+        // Override the default, which inspects `config()`; this template
+        // manages multiple containers and has no single config.
+        let summary = self.start().await?;
+        self.wait_for_ready().await?;
+        Ok(summary)
+    }
+
+    async fn is_running(&self) -> Result<bool, TemplateError> {
+        use crate::PsCommand;
+
+        // Report on the master container, which represents the topology.
+        let master = format!("{}-master", self.name);
+        let output = PsCommand::new()
+            .filter(format!("name={master}"))
+            .quiet()
+            .execute()
+            .await?;
+
+        Ok(!output.stdout.trim().is_empty())
+    }
+
+    async fn wait_for_ready(&self) -> Result<(), TemplateError> {
+        self.wait_for_topology_ready(std::time::Duration::from_secs(60))
+            .await
+    }
+
+    async fn stop(&self) -> Result<(), TemplateError> {
+        use crate::StopCommand;
+
+        for name in self.container_names() {
+            let _ = StopCommand::new(&name).execute().await;
+        }
+
+        Ok(())
+    }
+
+    async fn remove(&self) -> Result<(), TemplateError> {
+        use crate::{NetworkRmCommand, RmCommand};
+
+        for name in self.container_names() {
+            let _ = RmCommand::new(&name).force().volumes().execute().await;
+        }
+
+        // Remove the network only if it was created by the template.
+        if self.network.is_none() {
+            let network_name = format!("{}-network", self.name);
+            let _ = NetworkRmCommand::new(&network_name).execute().await;
+        }
+
+        Ok(())
     }
 }
 
@@ -526,5 +781,108 @@ mod tests {
         assert!(config.contains("sentinel monitor mymaster redis-master 6379 2"));
         assert!(config.contains("sentinel auth-pass mymaster secret"));
         assert!(config.contains("sentinel down-after-milliseconds mymaster 5000"));
+    }
+
+    #[test]
+    fn test_sentinel_config_without_announce_uses_container_host() {
+        let template = RedisSentinelTemplate::new("test").master_name("mymaster");
+        let config = template.build_sentinel_config("test-master");
+
+        assert!(config.contains("sentinel monitor mymaster test-master 6379 2"));
+        assert!(!config.contains("sentinel announce-ip"));
+    }
+
+    #[test]
+    fn test_sentinel_config_with_announce_uses_announced_master_address() {
+        let template = RedisSentinelTemplate::new("test")
+            .master_name("mymaster")
+            .master_port(6390)
+            .quorum(2)
+            .announce_ip("127.0.0.1");
+
+        let config = template.build_sentinel_config("test-master");
+
+        // The master is registered at the announced host-reachable address,
+        // not the container hostname on the internal port.
+        assert!(config.contains("sentinel monitor mymaster 127.0.0.1 6390 2"));
+        assert!(config.contains("sentinel announce-ip 127.0.0.1"));
+        assert!(!config.contains("sentinel monitor mymaster test-master"));
+    }
+
+    #[test]
+    fn test_resolved_host_defaults_to_localhost() {
+        let template = RedisSentinelTemplate::new("test");
+        assert_eq!(template.resolved_host(), "localhost");
+    }
+
+    #[test]
+    fn test_resolved_host_uses_announce_ip() {
+        let template = RedisSentinelTemplate::new("test").announce_ip("10.0.0.5");
+        assert_eq!(template.resolved_host(), "10.0.0.5");
+    }
+
+    #[test]
+    fn test_replica_command_includes_announce_args() {
+        let template = RedisSentinelTemplate::new("test").announce_ip("127.0.0.1");
+
+        let cmd =
+            template.build_redis_command("test-replica-1", 6381, Some("test-master"), Some(6381));
+        let args = cmd.build_command_args();
+        let joined = args.join(" ");
+
+        assert!(joined.contains("--replica-announce-ip 127.0.0.1"));
+        assert!(joined.contains("--replica-announce-port 6381"));
+    }
+
+    #[test]
+    fn test_replica_command_without_announce_has_no_announce_args() {
+        let template = RedisSentinelTemplate::new("test");
+
+        let cmd =
+            template.build_redis_command("test-replica-1", 6381, Some("test-master"), Some(6381));
+        let joined = cmd.build_command_args().join(" ");
+
+        assert!(!joined.contains("--replica-announce-ip"));
+        assert!(!joined.contains("--replica-announce-port"));
+    }
+
+    #[test]
+    fn test_build_ping_args_without_password() {
+        let template = RedisSentinelTemplate::new("test");
+        assert_eq!(template.build_ping_args(), vec!["redis-cli", "ping"]);
+    }
+
+    #[test]
+    fn test_build_ping_args_with_password() {
+        let template = RedisSentinelTemplate::new("test").password("secret");
+        assert_eq!(
+            template.build_ping_args(),
+            vec!["redis-cli", "-a", "secret", "ping"]
+        );
+    }
+
+    #[test]
+    fn test_container_names() {
+        let template = RedisSentinelTemplate::new("test")
+            .num_replicas(2)
+            .num_sentinels(3);
+
+        assert_eq!(
+            template.container_names(),
+            vec![
+                "test-master",
+                "test-replica-1",
+                "test-replica-2",
+                "test-sentinel-1",
+                "test-sentinel-2",
+                "test-sentinel-3",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_template_trait_name() {
+        let template = RedisSentinelTemplate::new("test-sentinel");
+        assert_eq!(Template::name(&template), "test-sentinel");
     }
 }
