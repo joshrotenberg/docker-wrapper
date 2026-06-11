@@ -5,7 +5,7 @@
 
 #![cfg(feature = "template-redis")]
 
-use docker_wrapper::RedisSentinelTemplate;
+use docker_wrapper::{DockerCommand, ExecCommand, RedisSentinelTemplate, Template};
 use std::time::Duration;
 use tokio::time::timeout;
 
@@ -265,4 +265,133 @@ async fn test_redis_sentinel_container_smoke_test() {
             );
         }
     }
+}
+
+/// Verify that `SENTINEL get-master-addr-by-name` returns the announced
+/// address (host-reachable) rather than the master's container hostname.
+///
+/// Requires Docker; ignored by default like the other container tests.
+#[tokio::test]
+#[ignore] // Requires Docker
+async fn test_redis_sentinel_announce_master_addr() {
+    let sentinel_name = format!("test-sentinel-announce-{}", uuid::Uuid::new_v4());
+    let master_name = "announcemaster";
+    let announce_ip = "127.0.0.1";
+    let master_port: u16 = 9210;
+
+    let sentinel = RedisSentinelTemplate::new(&sentinel_name)
+        .master_name(master_name)
+        .num_replicas(1)
+        .num_sentinels(1)
+        .quorum(1)
+        .announce_ip(announce_ip)
+        .master_port(master_port)
+        .replica_port_base(9211)
+        .sentinel_port_base(29210);
+
+    let connection_info = match timeout(TEST_TIMEOUT, sentinel.start()).await {
+        Ok(Ok(info)) => info,
+        Ok(Err(e)) => {
+            println!("Sentinel announce test skipped - failed to start: {e}");
+            return;
+        }
+        Err(_) => {
+            println!("Sentinel announce test skipped - start timed out");
+            return;
+        }
+    };
+
+    // The connection info should report the announced master address.
+    assert_eq!(connection_info.master_host, announce_ip);
+    assert_eq!(connection_info.master_port, master_port);
+
+    // Give Sentinel a moment to settle after the containers report ready.
+    tokio::time::sleep(Duration::from_secs(2)).await;
+
+    // Ask the sentinel for the master address and confirm it matches what we
+    // announced (a host-reachable address), not the container hostname.
+    let sentinel_container = format!("{sentinel_name}-sentinel-1");
+    let exec = ExecCommand::new(
+        &sentinel_container,
+        vec![
+            "redis-cli".to_string(),
+            "-p".to_string(),
+            "26379".to_string(),
+            "sentinel".to_string(),
+            "get-master-addr-by-name".to_string(),
+            master_name.to_string(),
+        ],
+    )
+    .execute()
+    .await;
+
+    let result = match exec {
+        Ok(output) => output.stdout,
+        Err(e) => {
+            let _ = timeout(Duration::from_secs(30), connection_info.stop()).await;
+            panic!("Failed to query sentinel get-master-addr-by-name: {e}");
+        }
+    };
+
+    // redis-cli prints the IP on the first line and the port on the second.
+    let lines: Vec<&str> = result.lines().map(str::trim).collect();
+    let reported_ip = lines.first().copied().unwrap_or_default();
+    let reported_port = lines.get(1).copied().unwrap_or_default();
+
+    let matches_announced = reported_ip == announce_ip && reported_port == master_port.to_string();
+
+    // Always clean up before asserting so a failure does not leak containers.
+    let _ = timeout(Duration::from_secs(30), connection_info.stop()).await;
+
+    assert!(
+        matches_announced,
+        "Expected sentinel to report announced master {announce_ip}:{master_port}, got {reported_ip}:{reported_port}"
+    );
+}
+
+/// Verify the Sentinel template composes with the generic `Template` trait so
+/// it can be driven through `start`/`wait_for_ready`/`stop`/`remove` like the
+/// other Redis templates (the integration path used by `ContainerGuard`).
+///
+/// Requires Docker; ignored by default.
+#[tokio::test]
+#[ignore] // Requires Docker
+async fn test_redis_sentinel_template_trait_lifecycle() {
+    let sentinel_name = format!("test-sentinel-trait-{}", uuid::Uuid::new_v4());
+
+    let sentinel = RedisSentinelTemplate::new(&sentinel_name)
+        .master_name("traitmaster")
+        .num_replicas(1)
+        .num_sentinels(1)
+        .quorum(1)
+        .announce_ip("127.0.0.1")
+        .master_port(9220)
+        .replica_port_base(9221)
+        .sentinel_port_base(29220);
+
+    // Drive the topology through the Template trait surface.
+    match timeout(TEST_TIMEOUT, Template::start_and_wait(&sentinel)).await {
+        Ok(Ok(summary)) => {
+            assert!(
+                summary.contains(&sentinel_name),
+                "summary should mention the deployment name"
+            );
+            assert!(
+                Template::is_running(&sentinel).await.unwrap_or(false),
+                "master container should be running"
+            );
+        }
+        Ok(Err(e)) => {
+            println!("Sentinel trait lifecycle test skipped - failed to start: {e}");
+            return;
+        }
+        Err(_) => {
+            println!("Sentinel trait lifecycle test skipped - start timed out");
+            return;
+        }
+    }
+
+    // Clean up via the trait's stop/remove (mirrors ContainerGuard cleanup).
+    let _ = timeout(Duration::from_secs(30), Template::stop(&sentinel)).await;
+    let _ = timeout(Duration::from_secs(30), Template::remove(&sentinel)).await;
 }
