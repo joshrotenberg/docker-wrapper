@@ -18,6 +18,7 @@ use std::collections::HashMap;
 pub struct RedisTemplate {
     config: TemplateConfig,
     use_redis_stack: bool,
+    stack_tag: String,
 }
 
 impl RedisTemplate {
@@ -45,6 +46,7 @@ impl RedisTemplate {
         Self {
             config,
             use_redis_stack: false,
+            stack_tag: REDIS_STACK_TAG.to_string(),
         }
     }
 
@@ -115,10 +117,40 @@ impl RedisTemplate {
         self
     }
 
-    /// Use Redis Stack image instead of basic Redis
+    /// Use Redis Stack image instead of basic Redis.
+    ///
+    /// Uses the `redis/redis-stack` image pinned to a known-good default tag
+    /// (`7.4.0-v3`) rather than `latest`, so that runs are reproducible. Call
+    /// [`stack_version`](Self::stack_version) to pin a different tag.
     pub fn with_redis_stack(mut self) -> Self {
         self.use_redis_stack = true;
         self
+    }
+
+    /// Pin the Redis Stack image tag (e.g. `"7.4.0-v3"`).
+    ///
+    /// Only affects the image used when [`Self::with_redis_stack`] is enabled.
+    /// The default is a known-good pinned tag rather than `latest`, so that runs
+    /// are reproducible. For full control over both the image name and tag, use
+    /// [`Self::custom_image`] instead.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use docker_wrapper::template::RedisTemplate;
+    ///
+    /// let template = RedisTemplate::new("my-redis")
+    ///     .with_redis_stack()
+    ///     .stack_version("7.4.0-v3");
+    /// ```
+    pub fn stack_version(mut self, tag: impl Into<String>) -> Self {
+        self.stack_tag = tag.into();
+        self
+    }
+
+    /// Build the image reference used when Redis Stack is enabled.
+    fn stack_image(&self) -> String {
+        format!("{REDIS_STACK_IMAGE}:{}", self.stack_tag)
     }
 
     /// Use a custom image and tag
@@ -204,7 +236,7 @@ impl Template for RedisTemplate {
 
         // Choose image based on Redis Stack preference
         let image_tag = if self.use_redis_stack {
-            format!("{REDIS_STACK_IMAGE}:{REDIS_STACK_TAG}")
+            self.stack_image()
         } else {
             format!("{}:{}", config.image, config.tag)
         };
@@ -368,6 +400,47 @@ mod tests {
         assert!(args.contains(&"test-redis".to_string()));
         assert!(args.contains(&"--publish".to_string()));
         assert!(args.contains(&"16379:6379".to_string()));
+    }
+
+    #[test]
+    fn test_redis_stack_default_pinned_tag() {
+        // Redis Stack defaults to a pinned, known-good tag (not latest) for
+        // reproducible runs.
+        let template = RedisTemplate::new("test-redis").with_redis_stack();
+
+        assert_eq!(
+            template.stack_image(),
+            format!("{REDIS_STACK_IMAGE}:7.4.0-v3")
+        );
+
+        let cmd = template.build_command();
+        let args = cmd.build_command_args();
+        assert!(args.contains(&"redis/redis-stack:7.4.0-v3".to_string()));
+        assert!(!args.iter().any(|a| a == "redis/redis-stack:latest"));
+    }
+
+    #[test]
+    fn test_redis_stack_version_override() {
+        let template = RedisTemplate::new("test-redis")
+            .with_redis_stack()
+            .stack_version("7.2.0-v9");
+
+        assert_eq!(template.stack_image(), "redis/redis-stack:7.2.0-v9");
+
+        let cmd = template.build_command();
+        let args = cmd.build_command_args();
+        assert!(args.contains(&"redis/redis-stack:7.2.0-v9".to_string()));
+    }
+
+    #[test]
+    fn test_redis_stack_version_ignored_without_stack() {
+        // stack_version only affects the image when Redis Stack is enabled.
+        let template = RedisTemplate::new("test-redis").stack_version("7.2.0-v9");
+
+        let cmd = template.build_command();
+        let args = cmd.build_command_args();
+        assert!(args.contains(&"redis:7-alpine".to_string()));
+        assert!(!args.iter().any(|a| a.starts_with("redis/redis-stack")));
     }
 
     #[test]
