@@ -1833,7 +1833,7 @@ impl StreamableCommand for RunCommand {
             cmd.arg(arg);
         }
 
-        crate::stream::stream_command(cmd, handler).await
+        crate::stream::stream_command(cmd, handler, "run").await
     }
 
     async fn stream_channel(&self) -> Result<(mpsc::Receiver<OutputLine>, StreamResult)> {
@@ -1851,7 +1851,7 @@ impl StreamableCommand for RunCommand {
             cmd.arg(arg);
         }
 
-        crate::stream::stream_command_channel(cmd).await
+        crate::stream::stream_command_channel(cmd, "run").await
     }
 }
 

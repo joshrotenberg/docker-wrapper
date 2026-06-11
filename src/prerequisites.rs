@@ -4,12 +4,12 @@
 //! validate version compatibility, and ensure the Docker daemon is running.
 
 use crate::error::{Error, Result};
+use crate::tracing_compat::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::process::Stdio;
 use std::time::Duration;
 use tokio::process::Command;
 use tokio::time::timeout;
-use tracing::{debug, info, warn};
 use which::which;
 
 /// Default timeout for prerequisite checks (30 seconds)
@@ -186,6 +186,7 @@ impl DockerPrerequisites {
         // Check if daemon is running
         let (daemon_running, server_version) = self.check_daemon(&binary_path).await;
 
+        #[cfg_attr(not(feature = "tracing"), allow(clippy::if_same_then_else))]
         if daemon_running {
             info!("Docker daemon is running");
         } else {
