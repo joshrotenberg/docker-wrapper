@@ -6,6 +6,27 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
+## [0.11.2](https://github.com/joshrotenberg/docker-wrapper/compare/v0.11.1...v0.11.2) - 2026-06-11
+
+### Added
+
+- add TLS support for Redis templates ([#260](https://github.com/joshrotenberg/docker-wrapper/pull/260))
+- add host-network mode for Redis templates ([#259](https://github.com/joshrotenberg/docker-wrapper/pull/259))
+- add ToxiproxyTemplate and fault-injection helpers ([#258](https://github.com/joshrotenberg/docker-wrapper/pull/258))
+- add per-node accessors to RedisClusterTemplate ([#257](https://github.com/joshrotenberg/docker-wrapper/pull/257))
+- add sentinel announce-ip support and Template impl ([#256](https://github.com/joshrotenberg/docker-wrapper/pull/256))
+- add version pinning for Redis Stack and RedisInsight images ([#255](https://github.com/joshrotenberg/docker-wrapper/pull/255))
+- add tracing instrumentation for command execution ([#242](https://github.com/joshrotenberg/docker-wrapper/pull/242))
+
+### Fixed
+
+- poll node readiness before cluster create instead of fixed sleep ([#253](https://github.com/joshrotenberg/docker-wrapper/pull/253))
+- resolve clippy lints from Rust 1.95 (map_unwrap_or, duration_suboptimal_units) ([#251](https://github.com/joshrotenberg/docker-wrapper/pull/251))
+
+### Other
+
+- lower MSRV to 1.88 ([#254](https://github.com/joshrotenberg/docker-wrapper/pull/254))
+
 ## [0.11.1](https://github.com/joshrotenberg/docker-wrapper/compare/v0.11.0...v0.11.1) - 2026-03-03
 
 ### Added
