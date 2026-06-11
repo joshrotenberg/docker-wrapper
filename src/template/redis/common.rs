@@ -12,17 +12,36 @@ pub const DEFAULT_REDIS_IMAGE: &str = "redis";
 /// Default Redis Alpine image tag
 pub const DEFAULT_REDIS_TAG: &str = "7-alpine";
 
-/// Redis Stack image
+/// Redis Stack image (full image, includes RedisInsight)
 pub const REDIS_STACK_IMAGE: &str = "redis/redis-stack";
 
-/// Redis Stack image tag
-pub const REDIS_STACK_TAG: &str = "latest";
+/// Redis Stack server image (server only, no RedisInsight)
+pub const REDIS_STACK_SERVER_IMAGE: &str = "redis/redis-stack-server";
 
-/// RedisInsight image
+/// Default Redis Stack image tag.
+///
+/// Pinned to a known-good release rather than `latest` so that runs are
+/// reproducible -- the image under test does not silently change when
+/// upstream publishes a new `latest`. Override with `stack_version()` or
+/// `custom_image()` to use a different tag.
+pub const REDIS_STACK_TAG: &str = "7.4.0-v3";
+
+/// RedisInsight image (as used by the standalone insight template)
 pub const REDIS_INSIGHT_IMAGE: &str = "redis/redisinsight";
 
-/// RedisInsight image tag
-pub const REDIS_INSIGHT_TAG: &str = "latest";
+/// RedisInsight image as used by the cluster template.
+///
+/// The cluster template historically pulls RedisInsight from the
+/// `redislabs/` organization, which is kept here for backwards
+/// compatibility. New standalone usage should prefer [`REDIS_INSIGHT_IMAGE`].
+pub const REDIS_INSIGHT_CLUSTER_IMAGE: &str = "redislabs/redisinsight";
+
+/// Default RedisInsight image tag.
+///
+/// Pinned to a known-good release rather than `latest` for reproducibility.
+/// Override with `redis_insight_version()` or `custom_image()` to use a
+/// different tag.
+pub const REDIS_INSIGHT_TAG: &str = "2.60";
 
 /// Default RedisInsight port
 pub const DEFAULT_REDIS_INSIGHT_PORT: u16 = 5540;

@@ -7,6 +7,9 @@
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::missing_errors_doc)]
 
+use super::common::{
+    REDIS_INSIGHT_CLUSTER_IMAGE, REDIS_INSIGHT_TAG, REDIS_STACK_SERVER_IMAGE, REDIS_STACK_TAG,
+};
 use crate::template::{Template, TemplateConfig, TemplateError};
 use crate::{DockerCommand, ExecCommand, NetworkCreateCommand, RunCommand};
 use async_trait::async_trait;
@@ -37,10 +40,14 @@ pub struct RedisClusterTemplate {
     auto_remove: bool,
     /// Whether to use Redis Stack instead of standard Redis
     use_redis_stack: bool,
+    /// Image tag used for the Redis Stack server image
+    stack_tag: String,
     /// Whether to include RedisInsight GUI
     with_redis_insight: bool,
     /// Port for RedisInsight UI
     redis_insight_port: u16,
+    /// Image tag used for the RedisInsight image
+    redis_insight_tag: String,
     /// Custom Redis image
     redis_image: Option<String>,
     /// Custom Redis tag
@@ -68,8 +75,10 @@ impl RedisClusterTemplate {
             node_timeout: 5000,
             auto_remove: false,
             use_redis_stack: false,
+            stack_tag: REDIS_STACK_TAG.to_string(),
             with_redis_insight: false,
             redis_insight_port: 8001,
+            redis_insight_tag: REDIS_INSIGHT_TAG.to_string(),
             redis_image: None,
             redis_tag: None,
             platform: None,
@@ -192,13 +201,43 @@ impl RedisClusterTemplate {
         self
     }
 
-    /// Use Redis Stack instead of standard Redis (includes modules like JSON, Search, Graph, TimeSeries, Bloom)
+    /// Use Redis Stack instead of standard Redis (includes modules like JSON, Search, Graph, TimeSeries, Bloom).
+    ///
+    /// Uses the `redis/redis-stack-server` image pinned to a known-good default
+    /// tag (`7.4.0-v3`) rather than `latest`, so that runs are reproducible.
+    /// Call [`Self::stack_version`] to pin a different tag, or
+    /// [`Self::custom_redis_image`] for full control.
     pub fn with_redis_stack(mut self) -> Self {
         self.use_redis_stack = true;
         self
     }
 
-    /// Enable RedisInsight GUI for cluster visualization and management
+    /// Pin the Redis Stack server image tag (e.g. `"7.4.0-v3"`).
+    ///
+    /// Only affects the image used when [`Self::with_redis_stack`] is enabled.
+    /// The default is a known-good pinned tag rather than `latest`, so that runs
+    /// are reproducible. A [`Self::custom_redis_image`] takes precedence over
+    /// this setting.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use docker_wrapper::RedisClusterTemplate;
+    ///
+    /// let template = RedisClusterTemplate::new("my-cluster")
+    ///     .with_redis_stack()
+    ///     .stack_version("7.4.0-v3");
+    /// ```
+    pub fn stack_version(mut self, tag: impl Into<String>) -> Self {
+        self.stack_tag = tag.into();
+        self
+    }
+
+    /// Enable RedisInsight GUI for cluster visualization and management.
+    ///
+    /// Uses the `redislabs/redisinsight` image pinned to a known-good default
+    /// tag (`2.60`) rather than `latest`, so that runs are reproducible. Call
+    /// [`Self::redis_insight_version`] to pin a different tag.
     pub fn with_redis_insight(mut self) -> Self {
         self.with_redis_insight = true;
         self
@@ -207,6 +246,26 @@ impl RedisClusterTemplate {
     /// Set the port for RedisInsight UI (default: 8001)
     pub fn redis_insight_port(mut self, port: u16) -> Self {
         self.redis_insight_port = port;
+        self
+    }
+
+    /// Pin the RedisInsight image tag (e.g. `"2.60"`).
+    ///
+    /// Only affects the image used when [`Self::with_redis_insight`] is enabled.
+    /// The default is a known-good pinned tag rather than `latest`, so that runs
+    /// are reproducible.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use docker_wrapper::RedisClusterTemplate;
+    ///
+    /// let template = RedisClusterTemplate::new("my-cluster")
+    ///     .with_redis_insight()
+    ///     .redis_insight_version("2.60");
+    /// ```
+    pub fn redis_insight_version(mut self, tag: impl Into<String>) -> Self {
+        self.redis_insight_tag = tag.into();
         self
     }
 
@@ -246,17 +305,7 @@ impl RedisClusterTemplate {
         let cluster_port = port + 10000;
 
         // Choose image based on custom image or Redis Stack preference
-        let image = if let Some(ref custom_image) = self.redis_image {
-            if let Some(ref tag) = self.redis_tag {
-                format!("{}:{}", custom_image, tag)
-            } else {
-                custom_image.clone()
-            }
-        } else if self.use_redis_stack {
-            "redis/redis-stack-server:latest".to_string()
-        } else {
-            "redis:7-alpine".to_string()
-        };
+        let image = self.node_image();
 
         let mut cmd = RunCommand::new(image)
             .name(&node_name)
@@ -329,7 +378,7 @@ impl RedisClusterTemplate {
     async fn start_redis_insight(&self) -> Result<String, TemplateError> {
         let insight_name = format!("{}-insight", self.name);
 
-        let mut cmd = RunCommand::new("redislabs/redisinsight:latest")
+        let mut cmd = RunCommand::new(self.insight_image())
             .name(&insight_name)
             .network(&self.network_name)
             .port(self.redis_insight_port, 8001)
@@ -351,6 +400,35 @@ impl RedisClusterTemplate {
 
         let output = cmd.execute().await?;
         Ok(output.0)
+    }
+
+    /// Resolve the image reference used for each Redis node.
+    ///
+    /// A custom image (via [`custom_redis_image`](Self::custom_redis_image))
+    /// takes precedence; otherwise Redis Stack uses the pinned
+    /// `redis/redis-stack-server` tag and the default is `redis:7-alpine`.
+    fn node_image(&self) -> String {
+        if let Some(ref custom_image) = self.redis_image {
+            if let Some(ref tag) = self.redis_tag {
+                format!("{}:{}", custom_image, tag)
+            } else {
+                custom_image.clone()
+            }
+        } else if self.use_redis_stack {
+            self.stack_image()
+        } else {
+            "redis:7-alpine".to_string()
+        }
+    }
+
+    /// Build the Redis Stack server image reference (pinned tag by default).
+    fn stack_image(&self) -> String {
+        format!("{}:{}", REDIS_STACK_SERVER_IMAGE, self.stack_tag)
+    }
+
+    /// Build the RedisInsight image reference (pinned tag by default).
+    fn insight_image(&self) -> String {
+        format!("{}:{}", REDIS_INSIGHT_CLUSTER_IMAGE, self.redis_insight_tag)
     }
 
     /// Build the redis-cli ping arguments used for node readiness checks
@@ -930,6 +1008,57 @@ mod tests {
         assert!(template.use_redis_stack);
         assert!(template.with_redis_insight);
         assert_eq!(template.redis_insight_port, 8080);
+    }
+
+    #[test]
+    fn test_redis_cluster_stack_image_default_pinned() {
+        // Redis Stack defaults to a pinned, known-good tag (not latest).
+        let template = RedisClusterTemplate::new("test-cluster").with_redis_stack();
+
+        assert_eq!(template.stack_image(), "redis/redis-stack-server:7.4.0-v3");
+        assert_eq!(template.node_image(), "redis/redis-stack-server:7.4.0-v3");
+        assert_ne!(template.stack_image(), "redis/redis-stack-server:latest");
+    }
+
+    #[test]
+    fn test_redis_cluster_stack_version_override() {
+        let template = RedisClusterTemplate::new("test-cluster")
+            .with_redis_stack()
+            .stack_version("7.2.0-v9");
+
+        assert_eq!(template.stack_image(), "redis/redis-stack-server:7.2.0-v9");
+        assert_eq!(template.node_image(), "redis/redis-stack-server:7.2.0-v9");
+    }
+
+    #[test]
+    fn test_redis_cluster_node_image_default_and_custom() {
+        // Default (no stack, no custom) is the pinned alpine image.
+        let default_template = RedisClusterTemplate::new("test-cluster");
+        assert_eq!(default_template.node_image(), "redis:7-alpine");
+
+        // A custom image takes precedence over the stack preference.
+        let custom_template = RedisClusterTemplate::new("test-cluster")
+            .with_redis_stack()
+            .custom_redis_image("myrepo/redis", "1.2.3");
+        assert_eq!(custom_template.node_image(), "myrepo/redis:1.2.3");
+    }
+
+    #[test]
+    fn test_redis_cluster_insight_image_default_pinned() {
+        // RedisInsight defaults to a pinned, known-good tag (not latest).
+        let template = RedisClusterTemplate::new("test-cluster").with_redis_insight();
+
+        assert_eq!(template.insight_image(), "redislabs/redisinsight:2.60");
+        assert_ne!(template.insight_image(), "redislabs/redisinsight:latest");
+    }
+
+    #[test]
+    fn test_redis_cluster_insight_version_override() {
+        let template = RedisClusterTemplate::new("test-cluster")
+            .with_redis_insight()
+            .redis_insight_version("2.58");
+
+        assert_eq!(template.insight_image(), "redislabs/redisinsight:2.58");
     }
 
     #[test]
