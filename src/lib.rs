@@ -597,7 +597,7 @@ pub use template::redis::{RedisSentinelTemplate, SentinelConnectionInfo, Sentine
 
 #[cfg(feature = "template-redis-cluster")]
 pub use template::redis::{
-    ClusterInfo, NodeInfo, NodeRole, RedisClusterConnection, RedisClusterTemplate,
+    ClusterInfo, ClusterNode, NodeInfo, NodeRole, RedisClusterConnection, RedisClusterTemplate,
 };
 
 #[cfg(feature = "template-redis-enterprise")]

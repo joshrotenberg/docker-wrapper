@@ -5,7 +5,7 @@
 
 #![cfg(feature = "template-redis-cluster")]
 
-use docker_wrapper::{RedisClusterConnection, RedisClusterTemplate, Template};
+use docker_wrapper::{NodeRole, RedisClusterConnection, RedisClusterTemplate, Template};
 use std::time::Duration;
 use tokio::time::timeout;
 
@@ -179,6 +179,41 @@ async fn test_redis_cluster_builder_pattern_api() {
     );
 }
 
+/// Test per-node accessors for targeted fault injection - API only
+#[tokio::test]
+async fn test_redis_cluster_node_accessors_api() {
+    let cluster_name = format!("test-cluster-nodes-{}", uuid::Uuid::new_v4());
+
+    let cluster = RedisClusterTemplate::new(&cluster_name)
+        .num_masters(3)
+        .num_replicas(1) // 6 nodes total
+        .port_base(8700);
+
+    // node_names() lists every container following the {name}-node-{i} contract.
+    let names = cluster.node_names();
+    assert_eq!(names.len(), 6, "3 masters + 3 replicas = 6 nodes");
+    assert_eq!(names[0], format!("{}-node-0", cluster_name));
+    assert_eq!(names[5], format!("{}-node-5", cluster_name));
+
+    // node(i) exposes the container name, host port, and assigned role.
+    let master = cluster.node(0).expect("node 0 exists");
+    assert_eq!(master.container_name, format!("{}-node-0", cluster_name));
+    assert_eq!(master.host_port, 8700);
+    assert_eq!(master.role, NodeRole::Master);
+
+    let replica = cluster.node(3).expect("node 3 exists");
+    assert_eq!(replica.host_port, 8703);
+    assert_eq!(replica.role, NodeRole::Replica);
+
+    // Out-of-range indices return None.
+    assert!(cluster.node(6).is_none());
+
+    // node_names() and node().container_name agree on every index.
+    for (i, name) in names.iter().enumerate() {
+        assert_eq!(&cluster.node(i).unwrap().container_name, name);
+    }
+}
+
 /// Test actual Redis Cluster container creation (single integration test)
 /// This test is more likely to fail in CI due to Docker limitations, but provides
 /// a basic smoke test for actual container functionality.
@@ -197,6 +232,17 @@ async fn test_redis_cluster_container_smoke_test() {
     match timeout(TEST_TIMEOUT, cluster.start()).await {
         Ok(Ok(result)) => {
             assert!(!result.is_empty(), "Cluster result should not be empty");
+
+            // The deterministic node handles must resolve to real, running
+            // containers: query the live role of node 0 and confirm it matches
+            // the statically assigned role.
+            let node0 = cluster.node(0).expect("node 0 exists");
+            assert_eq!(node0.role, NodeRole::Master);
+            if let Ok(Ok(role)) =
+                timeout(Duration::from_secs(30), cluster.node_role(node0.index)).await
+            {
+                assert_eq!(role, NodeRole::Master, "node 0 should report as master");
+            }
 
             // Clean up on success
             let _ = timeout(Duration::from_secs(30), cluster.stop()).await;
