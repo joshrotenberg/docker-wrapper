@@ -111,6 +111,57 @@ impl RedisTemplate {
         self
     }
 
+    /// Set the container network mode (e.g. `"host"`, `"bridge"`, `"none"`).
+    ///
+    /// This is a thin alias over [`network`](Self::network) that reads better
+    /// when selecting a Docker network *mode* rather than a named network. See
+    /// [`host_network`](Self::host_network) for the host-mode caveats.
+    pub fn network_mode(mut self, mode: impl Into<String>) -> Self {
+        self.config.network = Some(mode.into());
+        self
+    }
+
+    /// Run the container with `--network host`.
+    ///
+    /// In host networking mode the container shares the host's network
+    /// namespace: the Redis port is reachable directly on the host with no
+    /// published port mapping, so no `-p` flag is emitted and the host-side
+    /// port equals the container port (6379 by default).
+    ///
+    /// # Platform support
+    ///
+    /// Host networking is a **Linux-only** Docker feature. On Docker Desktop
+    /// for macOS and Windows the daemon runs inside a Linux VM, so
+    /// `--network host` binds ports inside that VM rather than on your machine:
+    /// the option is effectively a **no-op** there and the Redis port will not
+    /// be reachable from the host. This method does not return an error on
+    /// non-Linux hosts (the Docker CLI accepts the flag regardless of backend);
+    /// only use host mode against a native Linux daemon.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use docker_wrapper::template::{RedisTemplate, Template};
+    /// use docker_wrapper::DockerCommand;
+    ///
+    /// // Linux only: Redis is reachable on localhost:6379 with no -p mapping.
+    /// let template = RedisTemplate::new("host-redis").host_network();
+    /// let args = template.build_command().build_command_args();
+    /// assert!(args.contains(&"--network".to_string()));
+    /// assert!(args.contains(&"host".to_string()));
+    /// // Host mode publishes no ports.
+    /// assert!(!args.contains(&"--publish".to_string()));
+    /// ```
+    pub fn host_network(mut self) -> Self {
+        self.config.network = Some("host".to_string());
+        self
+    }
+
+    /// Returns true when the template is configured for host networking.
+    fn uses_host_network(&self) -> bool {
+        self.config.network.as_deref() == Some("host")
+    }
+
     /// Enable auto-remove when stopped
     pub fn auto_remove(mut self) -> Self {
         self.config.auto_remove = true;
@@ -245,9 +296,13 @@ impl Template for RedisTemplate {
             .name(&config.name)
             .detach();
 
-        // Add port mappings
-        for (host, container) in &config.ports {
-            cmd = cmd.port(*host, *container);
+        // Add port mappings. In host networking mode the container shares the
+        // host's network namespace, so published ports are ignored by Docker
+        // (and emit a warning); skip them entirely.
+        if !self.uses_host_network() {
+            for (host, container) in &config.ports {
+                cmd = cmd.port(*host, *container);
+            }
         }
 
         // Add volume mounts
@@ -398,6 +453,44 @@ mod tests {
         assert!(args.contains(&"run".to_string()));
         assert!(args.contains(&"--name".to_string()));
         assert!(args.contains(&"test-redis".to_string()));
+        assert!(args.contains(&"--publish".to_string()));
+        assert!(args.contains(&"16379:6379".to_string()));
+    }
+
+    #[test]
+    fn test_redis_host_network() {
+        let template = RedisTemplate::new("test-redis").host_network();
+        assert_eq!(template.config().network.as_deref(), Some("host"));
+
+        let cmd = template.build_command();
+        let args = cmd.build_command_args();
+
+        // --network host is wired and no ports are published.
+        let network_pos = args.iter().position(|a| a == "--network").unwrap();
+        assert_eq!(args[network_pos + 1], "host");
+        assert!(!args.contains(&"--publish".to_string()));
+    }
+
+    #[test]
+    fn test_redis_network_mode_host() {
+        let template = RedisTemplate::new("test-redis").network_mode("host");
+        assert_eq!(template.config().network.as_deref(), Some("host"));
+
+        let cmd = template.build_command();
+        let args = cmd.build_command_args();
+        assert!(!args.contains(&"--publish".to_string()));
+    }
+
+    #[test]
+    fn test_redis_network_mode_named_still_publishes() {
+        // A non-host network mode is just a named network and still publishes
+        // ports as usual.
+        let template = RedisTemplate::new("test-redis")
+            .port(16379)
+            .network_mode("my-net");
+
+        let cmd = template.build_command();
+        let args = cmd.build_command_args();
         assert!(args.contains(&"--publish".to_string()));
         assert!(args.contains(&"16379:6379".to_string()));
     }

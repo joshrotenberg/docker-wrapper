@@ -6,6 +6,9 @@
 #![allow(clippy::uninlined_format_args)]
 #![allow(clippy::cast_possible_truncation)]
 #![allow(clippy::missing_errors_doc)]
+// Each bool is an independent, orthogonal configuration toggle (auto-remove,
+// Redis Stack, RedisInsight, host networking), not a hidden state machine.
+#![allow(clippy::struct_excessive_bools)]
 
 use super::common::{
     REDIS_INSIGHT_CLUSTER_IMAGE, REDIS_INSIGHT_TAG, REDIS_STACK_SERVER_IMAGE, REDIS_STACK_TAG,
@@ -36,6 +39,8 @@ pub struct RedisClusterTemplate {
     memory_limit: Option<String>,
     /// Cluster node timeout in milliseconds
     node_timeout: u32,
+    /// Whether to run nodes with `--network host` instead of a bridge network
+    host_network: bool,
     /// Whether to remove containers on stop
     auto_remove: bool,
     /// Whether to use Redis Stack instead of standard Redis
@@ -73,6 +78,7 @@ impl RedisClusterTemplate {
             volume_prefix: None,
             memory_limit: None,
             node_timeout: 5000,
+            host_network: false,
             auto_remove: false,
             use_redis_stack: false,
             stack_tag: REDIS_STACK_TAG.to_string(),
@@ -193,6 +199,89 @@ impl RedisClusterTemplate {
     pub fn cluster_node_timeout(mut self, timeout: u32) -> Self {
         self.node_timeout = timeout;
         self
+    }
+
+    /// Select the container network mode for cluster nodes.
+    ///
+    /// Only `"host"` is special-cased: it is equivalent to calling
+    /// [`host_network`](Self::host_network) (see that method for the Linux-only
+    /// caveats). Any other value leaves the cluster on its default,
+    /// automatically managed bridge network, since a multi-node cluster relies
+    /// on a private bridge for inter-node DNS and announce-IP wiring.
+    pub fn network_mode(mut self, mode: impl Into<String>) -> Self {
+        self.host_network = mode.into() == "host";
+        self
+    }
+
+    /// Run every cluster node with `--network host`.
+    ///
+    /// In host networking mode each node shares the host's network namespace,
+    /// so its Redis port is a real host port and no published port mapping or
+    /// `--cluster-announce-ip` ceremony is needed. To keep the nodes from
+    /// colliding on a single shared namespace, each node listens on a distinct
+    /// port derived from the port base (`port_base + index`), which is exactly
+    /// the host port reported by [`node`](Self::node) and
+    /// [`RedisClusterConnection::from_template`]. The private bridge network is
+    /// not created in this mode.
+    ///
+    /// # Platform support
+    ///
+    /// Host networking is a **Linux-only** Docker feature. On Docker Desktop
+    /// for macOS and Windows the daemon runs inside a Linux VM, so
+    /// `--network host` binds ports inside that VM rather than on your machine:
+    /// the option is effectively a **no-op** there and the cluster will not be
+    /// reachable from the host. This method does not return an error on
+    /// non-Linux hosts (the Docker CLI accepts the flag regardless of backend);
+    /// only use host mode against a native Linux daemon, such as a Linux CI
+    /// runner.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use docker_wrapper::RedisClusterTemplate;
+    ///
+    /// // Linux only: nodes are reachable on localhost:7000, 7001, 7002 with no
+    /// // bridge network and no announce-ip wiring.
+    /// let cluster = RedisClusterTemplate::new("host-cluster")
+    ///     .num_masters(3)
+    ///     .port_base(7000)
+    ///     .host_network();
+    /// ```
+    pub fn host_network(mut self) -> Self {
+        self.host_network = true;
+        self
+    }
+
+    /// Returns true when the cluster is configured for host networking.
+    fn uses_host_network(&self) -> bool {
+        self.host_network
+    }
+
+    /// The port a node listens on *inside* its container.
+    ///
+    /// In the default bridge mode every node listens on 6379 and is told apart
+    /// by container name. In host mode all nodes share the host namespace, so
+    /// each one listens on a distinct `port_base + index` port instead.
+    fn node_internal_port(&self, index: usize) -> u16 {
+        if self.uses_host_network() {
+            self.port_base + index as u16
+        } else {
+            6379
+        }
+    }
+
+    /// The address used to reach a node from inside a sibling container during
+    /// cluster setup and inspection.
+    ///
+    /// Bridge mode uses the container name on the fixed internal port (6379).
+    /// Host mode uses the loopback address on the node's distinct host port,
+    /// since all containers share the host network namespace.
+    fn node_cluster_address(&self, index: usize) -> String {
+        if self.uses_host_network() {
+            format!("127.0.0.1:{}", self.node_internal_port(index))
+        } else {
+            format!("{}:6379", self.node_name(index))
+        }
     }
 
     /// Enable auto-remove when stopped
@@ -419,6 +508,10 @@ impl RedisClusterTemplate {
         let node_name = self.node_name(index);
 
         let mut role_args = vec!["redis-cli".to_string()];
+        if self.uses_host_network() {
+            role_args.push("-p".to_string());
+            role_args.push(self.node_internal_port(index).to_string());
+        }
         if let Some(ref password) = self.password {
             role_args.push("-a".to_string());
             role_args.push(password.clone());
@@ -453,18 +546,27 @@ impl RedisClusterTemplate {
     /// Start a single Redis node
     async fn start_node(&self, node_index: usize) -> Result<String, TemplateError> {
         let node_name = self.node_name(node_index);
+        let host_mode = self.uses_host_network();
         let port = self.port_base + node_index as u16;
+        // In bridge mode the node listens on 6379 and is reached by container
+        // name; in host mode it must listen on its distinct host port.
+        let internal_port = self.node_internal_port(node_index);
         let cluster_port = port + 10000;
 
         // Choose image based on custom image or Redis Stack preference
         let image = self.node_image();
 
-        let mut cmd = RunCommand::new(image)
-            .name(&node_name)
-            .network(&self.network_name)
-            .port(port, 6379)
-            .port(cluster_port, 16379)
-            .detach();
+        let mut cmd = RunCommand::new(image).name(&node_name).detach();
+
+        if host_mode {
+            // Host networking: share the host namespace, no published ports.
+            cmd = cmd.network("host");
+        } else {
+            cmd = cmd
+                .network(&self.network_name)
+                .port(port, 6379)
+                .port(cluster_port, 16379);
+        }
 
         // Add memory limit if specified
         if let Some(ref limit) = self.memory_limit {
@@ -499,7 +601,7 @@ impl RedisClusterTemplate {
             "--appendonly".to_string(),
             "yes".to_string(),
             "--port".to_string(),
-            "6379".to_string(),
+            internal_port.to_string(),
         ];
 
         // Add password if configured
@@ -510,14 +612,18 @@ impl RedisClusterTemplate {
             redis_args.push(password.clone());
         }
 
-        // Add announce IP if configured
-        if let Some(ref ip) = self.announce_ip {
-            redis_args.push("--cluster-announce-ip".to_string());
-            redis_args.push(ip.clone());
-            redis_args.push("--cluster-announce-port".to_string());
-            redis_args.push(port.to_string());
-            redis_args.push("--cluster-announce-bus-port".to_string());
-            redis_args.push(cluster_port.to_string());
+        // Add announce IP if configured. Host networking makes the container
+        // port a real host port, so the announce-ip ceremony is unnecessary and
+        // is skipped entirely.
+        if !host_mode {
+            if let Some(ref ip) = self.announce_ip {
+                redis_args.push("--cluster-announce-ip".to_string());
+                redis_args.push(ip.clone());
+                redis_args.push("--cluster-announce-port".to_string());
+                redis_args.push(port.to_string());
+                redis_args.push("--cluster-announce-bus-port".to_string());
+                redis_args.push(cluster_port.to_string());
+            }
         }
 
         cmd = cmd.cmd(redis_args);
@@ -532,9 +638,17 @@ impl RedisClusterTemplate {
 
         let mut cmd = RunCommand::new(self.insight_image())
             .name(&insight_name)
-            .network(&self.network_name)
-            .port(self.redis_insight_port, 8001)
             .detach();
+
+        if self.uses_host_network() {
+            // No bridge network exists in host mode; the UI is reached on the
+            // host port directly.
+            cmd = cmd.network("host");
+        } else {
+            cmd = cmd
+                .network(&self.network_name)
+                .port(self.redis_insight_port, 8001);
+        }
 
         // Add volume for RedisInsight data persistence
         if let Some(ref prefix) = self.volume_prefix {
@@ -583,9 +697,18 @@ impl RedisClusterTemplate {
         format!("{}:{}", REDIS_INSIGHT_CLUSTER_IMAGE, self.redis_insight_tag)
     }
 
-    /// Build the redis-cli ping arguments used for node readiness checks
-    fn build_ping_args(&self) -> Vec<String> {
+    /// Build the redis-cli ping arguments used for node readiness checks.
+    ///
+    /// In host networking mode each node listens on its own `port_base + index`
+    /// port rather than the default 6379, so an explicit `-p` is added to target
+    /// the right node inside the shared host namespace.
+    fn build_ping_args(&self, node_index: usize) -> Vec<String> {
         let mut args = vec!["redis-cli".to_string()];
+
+        if self.uses_host_network() {
+            args.push("-p".to_string());
+            args.push(self.node_internal_port(node_index).to_string());
+        }
 
         if let Some(ref password) = self.password {
             args.push("-a".to_string());
@@ -605,7 +728,6 @@ impl RedisClusterTemplate {
         &self,
         timeout: std::time::Duration,
     ) -> Result<(), TemplateError> {
-        let ping_args = self.build_ping_args();
         let check_interval = std::time::Duration::from_millis(500);
         let start = std::time::Instant::now();
 
@@ -615,7 +737,8 @@ impl RedisClusterTemplate {
             let mut still_pending = Vec::new();
             for &i in &pending {
                 let node_name = self.node_name(i);
-                let ready = ExecCommand::new(&node_name, ping_args.clone())
+                let ping_args = self.build_ping_args(i);
+                let ready = ExecCommand::new(&node_name, ping_args)
                     .execute()
                     .await
                     .is_ok_and(|output| output.stdout.trim() == "PONG");
@@ -663,11 +786,12 @@ impl RedisClusterTemplate {
             "create".to_string(),
         ];
 
-        // Add all node addresses using container hostnames (internal port is always 6379)
+        // Add all node addresses. In bridge mode nodes are reached by container
+        // name on the fixed internal port 6379. In host mode every node shares
+        // the host namespace, so they are reached on 127.0.0.1 at their distinct
+        // host ports (port_base + index).
         for i in 0..self.total_nodes() {
-            let host = self.node_name(i);
-            let port = 6379;
-            create_args.push(format!("{}:{}", host, port));
+            create_args.push(self.node_cluster_address(i));
         }
 
         // Add replicas configuration
@@ -703,7 +827,7 @@ impl RedisClusterTemplate {
             "redis-cli".to_string(),
             "--cluster".to_string(),
             "info".to_string(),
-            format!("{}:6379", node_name),
+            self.node_cluster_address(0),
         ];
 
         if let Some(ref password) = self.password {
@@ -886,8 +1010,11 @@ impl Template for RedisClusterTemplate {
     }
 
     async fn start(&self) -> Result<String, TemplateError> {
-        // Create network first
-        let _network_id = self.create_network().await?;
+        // Create the private bridge network first. Host networking shares the
+        // host namespace, so no bridge network is created in that mode.
+        if !self.uses_host_network() {
+            let _network_id = self.create_network().await?;
+        }
 
         // Start all nodes
         let mut container_ids = Vec::new();
@@ -958,8 +1085,10 @@ impl Template for RedisClusterTemplate {
                 .await;
         }
 
-        // Remove the network
-        let _ = NetworkRmCommand::new(&self.network_name).execute().await;
+        // Remove the network. None is created in host networking mode.
+        if !self.uses_host_network() {
+            let _ = NetworkRmCommand::new(&self.network_name).execute().await;
+        }
 
         Ok(())
     }
@@ -1307,7 +1436,8 @@ mod tests {
     fn test_build_ping_args_without_password() {
         let template = RedisClusterTemplate::new("test-cluster");
 
-        assert_eq!(template.build_ping_args(), vec!["redis-cli", "ping"]);
+        // Bridge mode: node listens on the default port, so no -p is emitted.
+        assert_eq!(template.build_ping_args(0), vec!["redis-cli", "ping"]);
     }
 
     #[test]
@@ -1315,7 +1445,7 @@ mod tests {
         let template = RedisClusterTemplate::new("test-cluster").password("secret");
 
         assert_eq!(
-            template.build_ping_args(),
+            template.build_ping_args(0),
             vec!["redis-cli", "-a", "secret", "ping"]
         );
     }
@@ -1421,5 +1551,111 @@ mod tests {
         for (i, name) in template.node_names().iter().enumerate() {
             assert_eq!(&template.node(i).unwrap().container_name, name);
         }
+    }
+
+    #[test]
+    fn test_host_network_defaults_off() {
+        let template = RedisClusterTemplate::new("test-cluster");
+        assert!(!template.uses_host_network());
+    }
+
+    #[test]
+    fn test_host_network_enables_flag() {
+        let template = RedisClusterTemplate::new("test-cluster").host_network();
+        assert!(template.uses_host_network());
+    }
+
+    #[test]
+    fn test_network_mode_host_enables_host_network() {
+        let template = RedisClusterTemplate::new("test-cluster").network_mode("host");
+        assert!(template.uses_host_network());
+    }
+
+    #[test]
+    fn test_network_mode_non_host_stays_bridge() {
+        let template = RedisClusterTemplate::new("test-cluster").network_mode("bridge");
+        assert!(!template.uses_host_network());
+    }
+
+    #[test]
+    fn test_node_internal_port_bridge_vs_host() {
+        let bridge = RedisClusterTemplate::new("test-cluster")
+            .num_masters(3)
+            .port_base(7000);
+        // Bridge mode: every node listens on the fixed internal port.
+        assert_eq!(bridge.node_internal_port(0), 6379);
+        assert_eq!(bridge.node_internal_port(2), 6379);
+
+        let host = RedisClusterTemplate::new("test-cluster")
+            .num_masters(3)
+            .port_base(7000)
+            .host_network();
+        // Host mode: distinct port per node so they do not collide in the
+        // shared host namespace.
+        assert_eq!(host.node_internal_port(0), 7000);
+        assert_eq!(host.node_internal_port(2), 7002);
+    }
+
+    #[test]
+    fn test_node_cluster_address_bridge_vs_host() {
+        let bridge = RedisClusterTemplate::new("test-cluster")
+            .num_masters(3)
+            .port_base(7000);
+        assert_eq!(bridge.node_cluster_address(0), "test-cluster-node-0:6379");
+        assert_eq!(bridge.node_cluster_address(2), "test-cluster-node-2:6379");
+
+        let host = RedisClusterTemplate::new("test-cluster")
+            .num_masters(3)
+            .port_base(7000)
+            .host_network();
+        // Host mode reaches siblings over loopback on their distinct ports.
+        assert_eq!(host.node_cluster_address(0), "127.0.0.1:7000");
+        assert_eq!(host.node_cluster_address(2), "127.0.0.1:7002");
+    }
+
+    #[test]
+    fn test_build_ping_args_host_targets_node_port() {
+        let host = RedisClusterTemplate::new("test-cluster")
+            .num_masters(3)
+            .port_base(7000)
+            .host_network();
+        // Host mode pings the node's distinct port explicitly.
+        assert_eq!(
+            host.build_ping_args(1),
+            vec!["redis-cli", "-p", "7001", "ping"]
+        );
+
+        let bridge = RedisClusterTemplate::new("test-cluster").num_masters(3);
+        // Bridge mode pings the default port, so no -p is needed.
+        assert_eq!(bridge.build_ping_args(1), vec!["redis-cli", "ping"]);
+    }
+
+    #[test]
+    fn test_build_ping_args_host_with_password() {
+        let host = RedisClusterTemplate::new("test-cluster")
+            .port_base(7000)
+            .password("secret")
+            .host_network();
+        assert_eq!(
+            host.build_ping_args(0),
+            vec!["redis-cli", "-p", "7000", "-a", "secret", "ping"]
+        );
+    }
+
+    #[test]
+    fn test_host_network_connection_uses_host_ports() {
+        // External clients connect to the distinct host ports, which match the
+        // per-node host_port accessor.
+        let template = RedisClusterTemplate::new("test-cluster")
+            .num_masters(3)
+            .port_base(7000)
+            .host_network();
+
+        let conn = RedisClusterConnection::from_template(&template);
+        assert_eq!(
+            conn.nodes(),
+            &["localhost:7000", "localhost:7001", "localhost:7002"]
+        );
+        assert_eq!(template.node(1).unwrap().host_port, 7001);
     }
 }

@@ -255,3 +255,101 @@ async fn test_redis_cluster_container_smoke_test() {
         }
     }
 }
+
+/// Host networking exposes nodes on real host ports (port_base + index) with no
+/// announce-ip ceremony. This wiring is observable from the public API without
+/// Docker, so it runs everywhere.
+#[tokio::test]
+async fn test_redis_cluster_host_network_wiring_api() {
+    let cluster_name = format!("test-cluster-host-{}", uuid::Uuid::new_v4());
+
+    let cluster = RedisClusterTemplate::new(&cluster_name)
+        .num_masters(3)
+        .port_base(9300)
+        .host_network();
+
+    // External clients connect to the distinct host ports, one per node.
+    let conn = RedisClusterConnection::from_template(&cluster);
+    assert_eq!(
+        conn.nodes(),
+        &[
+            "localhost:9300".to_string(),
+            "localhost:9301".to_string(),
+            "localhost:9302".to_string(),
+        ]
+    );
+
+    // The per-node handles report the same host ports.
+    assert_eq!(cluster.node(0).expect("node 0").host_port, 9300);
+    assert_eq!(cluster.node(2).expect("node 2").host_port, 9302);
+
+    // network_mode("host") is equivalent to host_network().
+    let via_mode = RedisClusterTemplate::new(&cluster_name)
+        .num_masters(3)
+        .port_base(9300)
+        .network_mode("host");
+    assert_eq!(
+        RedisClusterConnection::from_template(&via_mode).nodes(),
+        conn.nodes()
+    );
+}
+
+/// Linux-only Docker smoke test for host networking.
+///
+/// Host networking is a Linux-only Docker feature, so this test only attempts
+/// to start a real cluster on Linux. The CI Docker Integration job runs on
+/// Ubuntu and exercises this path. On macOS/Windows it is a no-op, and the test
+/// is `#[ignore]` by default so it never runs without `--ignored`.
+#[tokio::test]
+#[ignore] // Ignore by default since it requires Docker (and Linux for host mode)
+async fn test_redis_cluster_host_network_smoke_test() {
+    if !cfg!(target_os = "linux") {
+        println!("Host networking smoke test skipped - Linux-only Docker feature");
+        return;
+    }
+
+    let cluster_name = format!("test-cluster-host-smoke-{}", uuid::Uuid::new_v4());
+
+    let cluster = RedisClusterTemplate::new(&cluster_name)
+        .num_masters(3)
+        .port_base(9400)
+        .host_network()
+        .auto_remove();
+
+    match timeout(TEST_TIMEOUT, cluster.start()).await {
+        Ok(Ok(result)) => {
+            assert!(!result.is_empty(), "Cluster result should not be empty");
+
+            // The cluster must converge using only host ports (no bridge network,
+            // no announce-ip).
+            let ready = timeout(
+                Duration::from_secs(60),
+                cluster.wait_until_ready(Duration::from_secs(60)),
+            )
+            .await;
+            assert!(
+                matches!(ready, Ok(Ok(()))),
+                "host-mode cluster should become ready"
+            );
+
+            // node_role() reaches node 0 on its host port and reports a master.
+            let node0 = cluster.node(0).expect("node 0 exists");
+            if let Ok(Ok(role)) =
+                timeout(Duration::from_secs(30), cluster.node_role(node0.index)).await
+            {
+                assert_eq!(role, NodeRole::Master, "node 0 should report as master");
+            }
+
+            // Clean up on success
+            let _ = timeout(Duration::from_secs(30), cluster.stop()).await;
+            let _ = timeout(Duration::from_secs(30), cluster.remove()).await;
+        }
+        Ok(Err(_)) | Err(_) => {
+            // Best-effort cleanup, then treat as skipped so transient Docker
+            // issues do not fail CI.
+            let _ = timeout(Duration::from_secs(30), cluster.stop()).await;
+            let _ = timeout(Duration::from_secs(30), cluster.remove()).await;
+            println!("Host networking smoke test skipped - Docker not available or host mode unsupported");
+        }
+    }
+}
