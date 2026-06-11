@@ -300,7 +300,9 @@
 use crate::command::DockerCommand;
 use crate::template::{HasConnectionString, Template, TemplateError};
 use crate::{
-    LogsCommand, NetworkCreateCommand, NetworkRmCommand, PortCommand, RmCommand, StopCommand,
+    KillCommand, LogsCommand, NetworkConnectCommand, NetworkCreateCommand,
+    NetworkDisconnectCommand, NetworkRmCommand, PauseCommand, PortCommand, RestartCommand,
+    RmCommand, StopCommand, UnpauseCommand,
 };
 use std::collections::HashMap;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -785,6 +787,145 @@ impl<T: Template> ContainerGuard<T> {
         if self.options.remove_on_drop {
             let _ = self.template.remove().await;
         }
+        Ok(())
+    }
+}
+
+/// Fault-injection helpers for chaos testing.
+///
+/// These are thin convenience wrappers over the underlying Docker commands
+/// ([`PauseCommand`], [`UnpauseCommand`], [`KillCommand`], [`RestartCommand`],
+/// [`NetworkConnectCommand`], [`NetworkDisconnectCommand`]) that target the
+/// guard's container by name. They make it easy to simulate real faults --
+/// hangs, crashes, and network partitions -- against a service under test
+/// without hand-rolling the command plumbing.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// # use docker_wrapper::testing::ContainerGuard;
+/// # use docker_wrapper::RedisTemplate;
+/// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
+/// let guard = ContainerGuard::new(RedisTemplate::new("redis"))
+///     .wait_for_ready(true)
+///     .start()
+///     .await?;
+///
+/// // Freeze the container's processes (simulate a hang), then resume.
+/// guard.pause().await?;
+/// guard.unpause().await?;
+///
+/// // Kill the container outright (simulate a crash).
+/// guard.crash().await?;
+/// # Ok(())
+/// # }
+/// ```
+impl<T: Template> ContainerGuard<T> {
+    /// Pause all processes in the container (simulate a hang).
+    ///
+    /// This freezes the container's processes using `docker pause`. They can be
+    /// resumed with [`unpause`](Self::unpause).
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the Docker command fails (for example, if the
+    /// container is not running).
+    pub async fn pause(&self) -> Result<(), TemplateError> {
+        let name = self.template.config().name.clone();
+        PauseCommand::new(name)
+            .run()
+            .await
+            .map_err(TemplateError::DockerError)?;
+        Ok(())
+    }
+
+    /// Resume a paused container.
+    ///
+    /// This is the inverse of [`pause`](Self::pause) and uses `docker unpause`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the Docker command fails (for example, if the
+    /// container is not paused).
+    pub async fn unpause(&self) -> Result<(), TemplateError> {
+        let name = self.template.config().name.clone();
+        UnpauseCommand::new(name)
+            .run()
+            .await
+            .map_err(TemplateError::DockerError)?;
+        Ok(())
+    }
+
+    /// Kill the container immediately with SIGKILL (simulate a crash).
+    ///
+    /// This sends `SIGKILL` via `docker kill`, terminating the container
+    /// without a graceful shutdown.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the Docker command fails (for example, if the
+    /// container is not running).
+    pub async fn crash(&self) -> Result<(), TemplateError> {
+        let name = self.template.config().name.clone();
+        KillCommand::new(name)
+            .signal("SIGKILL")
+            .run()
+            .await
+            .map_err(TemplateError::DockerError)?;
+        Ok(())
+    }
+
+    /// Restart the container.
+    ///
+    /// This stops and starts the container via `docker restart`, which is useful
+    /// for simulating a recovery after a fault.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the Docker command fails.
+    pub async fn restart_container(&self) -> Result<(), TemplateError> {
+        let name = self.template.config().name.clone();
+        RestartCommand::new(name)
+            .execute()
+            .await
+            .map_err(TemplateError::DockerError)?;
+        Ok(())
+    }
+
+    /// Partition the container from a network (simulate a network outage).
+    ///
+    /// This disconnects the container from `network` via `docker network
+    /// disconnect`, cutting it off from other containers on that network. Use
+    /// [`heal`](Self::heal) to reconnect.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the Docker command fails (for example, if the
+    /// container is not attached to the network).
+    pub async fn partition(&self, network: impl Into<String>) -> Result<(), TemplateError> {
+        let name = self.template.config().name.clone();
+        NetworkDisconnectCommand::new(network.into(), name)
+            .force()
+            .run()
+            .await
+            .map_err(TemplateError::DockerError)?;
+        Ok(())
+    }
+
+    /// Reconnect the container to a network after a partition.
+    ///
+    /// This is the inverse of [`partition`](Self::partition) and uses `docker
+    /// network connect`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the Docker command fails.
+    pub async fn heal(&self, network: impl Into<String>) -> Result<(), TemplateError> {
+        let name = self.template.config().name.clone();
+        NetworkConnectCommand::new(network.into(), name)
+            .run()
+            .await
+            .map_err(TemplateError::DockerError)?;
         Ok(())
     }
 }

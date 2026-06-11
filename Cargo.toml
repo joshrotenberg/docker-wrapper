@@ -38,6 +38,7 @@ templates = [
     "template-mysql",
     "template-mongodb",
     "template-nginx",
+    "template-toxiproxy",
 ]
 
 # Individual template features
@@ -48,6 +49,8 @@ template-postgres = ["reqwest"]
 template-mysql = ["reqwest"]
 template-mongodb = ["reqwest"]
 template-nginx = ["reqwest"]
+# Toxiproxy fault-injection template (talks to the :8474 control API over HTTP).
+template-toxiproxy = ["reqwest"]
 
 # Future Redis variants
 template-redis-sentinel = ["template-redis"]
@@ -126,3 +129,8 @@ required-features = ["template-redis-enterprise"]
 name = "test_sentinel"
 path = "examples/test_sentinel.rs"
 required-features = ["template-redis"]
+
+[[example]]
+name = "toxiproxy_fault_injection"
+path = "examples/toxiproxy_fault_injection.rs"
+required-features = ["template-toxiproxy", "template-redis", "testing"]
