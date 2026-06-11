@@ -8,7 +8,8 @@
 
 use super::common::{
     default_redis_health_check, redis_config_volume, redis_connection_string, redis_data_volume,
-    DEFAULT_REDIS_IMAGE, DEFAULT_REDIS_TAG, REDIS_STACK_IMAGE, REDIS_STACK_TAG,
+    redis_tls_connection_string, redis_tls_server_args, redis_tls_volume, DEFAULT_REDIS_IMAGE,
+    DEFAULT_REDIS_TAG, DEFAULT_REDIS_TLS_PORT, REDIS_STACK_IMAGE, REDIS_STACK_TAG,
 };
 use crate::template::{HasConnectionString, Template, TemplateConfig};
 use async_trait::async_trait;
@@ -19,6 +20,14 @@ pub struct RedisTemplate {
     config: TemplateConfig,
     use_redis_stack: bool,
     stack_tag: String,
+    /// Host directory containing TLS certificate material, mounted read-only
+    /// into the container when TLS is enabled.
+    tls_certs_dir: Option<String>,
+    /// Host-side port mapped to the container TLS port when TLS is enabled.
+    tls_port: u16,
+    /// When true, the plaintext port is disabled (`--port 0`) and only TLS is
+    /// served.
+    tls_only: bool,
 }
 
 impl RedisTemplate {
@@ -47,6 +56,9 @@ impl RedisTemplate {
             config,
             use_redis_stack: false,
             stack_tag: REDIS_STACK_TAG.to_string(),
+            tls_certs_dir: None,
+            tls_port: DEFAULT_REDIS_TLS_PORT,
+            tls_only: false,
         }
     }
 
@@ -216,6 +228,107 @@ impl RedisTemplate {
         self.config.platform = Some(platform.into());
         self
     }
+
+    /// Enable TLS, bind-mounting the given host certificate directory.
+    ///
+    /// The directory is mounted read-only into the container and Redis is
+    /// started with `--tls-port`, `--tls-cert-file`, `--tls-key-file` and
+    /// `--tls-ca-cert-file`. The directory **must** contain these files:
+    ///
+    /// - `redis.crt` -- the server certificate
+    /// - `redis.key` -- the server private key
+    /// - `ca.crt` -- the CA certificate used to verify client certificates
+    ///
+    /// By default the plaintext port stays open alongside TLS; call
+    /// [`tls_only`](Self::tls_only) to disable plaintext (`--port 0`). The TLS
+    /// port is published on the host (6380 by default, override with
+    /// [`tls_port`](Self::tls_port)).
+    ///
+    /// # Generating throwaway certificates
+    ///
+    /// For local testing you can generate a self-signed CA and server
+    /// certificate with `openssl`:
+    ///
+    /// ```sh
+    /// openssl genrsa -out ca.key 2048
+    /// openssl req -x509 -new -nodes -key ca.key -sha256 -days 365 \
+    ///   -subj "/CN=test-ca" -out ca.crt
+    /// openssl genrsa -out redis.key 2048
+    /// openssl req -new -key redis.key -subj "/CN=localhost" -out redis.csr
+    /// openssl x509 -req -in redis.csr -CA ca.crt -CAkey ca.key \
+    ///   -CAcreateserial -days 365 -sha256 -out redis.crt
+    /// ```
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use docker_wrapper::template::{RedisTemplate, Template};
+    /// use docker_wrapper::DockerCommand;
+    ///
+    /// let template = RedisTemplate::new("tls-redis").tls("/path/to/certs");
+    /// let args = template.build_command().build_command_args();
+    /// assert!(args.contains(&"--tls-port".to_string()));
+    /// assert!(args.contains(&"6380".to_string()));
+    /// ```
+    pub fn tls(mut self, certs_dir: impl Into<String>) -> Self {
+        self.tls_certs_dir = Some(certs_dir.into());
+        self
+    }
+
+    /// Set the host-side port published for TLS connections (default 6380).
+    ///
+    /// Only has an effect when TLS is enabled via [`tls`](Self::tls).
+    pub fn tls_port(mut self, port: u16) -> Self {
+        self.tls_port = port;
+        self
+    }
+
+    /// Disable the plaintext port and serve only TLS.
+    ///
+    /// Sets `--port 0` (which tells Redis to stop listening on the plaintext
+    /// port) and skips publishing the plaintext port mapping. Only has an
+    /// effect when TLS is enabled via [`tls`](Self::tls).
+    pub fn tls_only(mut self) -> Self {
+        self.tls_only = true;
+        self
+    }
+
+    /// Returns true when TLS has been enabled on this template.
+    fn tls_enabled(&self) -> bool {
+        self.tls_certs_dir.is_some()
+    }
+
+    /// Returns the TLS connection string in URL format, or `None` when TLS is
+    /// not enabled.
+    ///
+    /// Format: `rediss://[:password@]host:port`, where `port` is the published
+    /// TLS port (6380 by default, see [`tls_port`](Self::tls_port)).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use docker_wrapper::template::RedisTemplate;
+    ///
+    /// let template = RedisTemplate::new("my-redis").tls("/certs");
+    /// assert_eq!(
+    ///     template.tls_connection_string().as_deref(),
+    ///     Some("rediss://localhost:6380")
+    /// );
+    ///
+    /// let plaintext = RedisTemplate::new("my-redis");
+    /// assert_eq!(plaintext.tls_connection_string(), None);
+    /// ```
+    pub fn tls_connection_string(&self) -> Option<String> {
+        if !self.tls_enabled() {
+            return None;
+        }
+        let password = self.config.env.get("REDIS_PASSWORD").map(String::as_str);
+        Some(redis_tls_connection_string(
+            "localhost",
+            self.tls_port,
+            password,
+        ))
+    }
 }
 
 #[async_trait]
@@ -300,8 +413,15 @@ impl Template for RedisTemplate {
         // host's network namespace, so published ports are ignored by Docker
         // (and emit a warning); skip them entirely.
         if !self.uses_host_network() {
-            for (host, container) in &config.ports {
-                cmd = cmd.port(*host, *container);
+            // Publish the plaintext port unless TLS-only mode disabled it.
+            if !(self.tls_enabled() && self.tls_only) {
+                for (host, container) in &config.ports {
+                    cmd = cmd.port(*host, *container);
+                }
+            }
+            // Publish the TLS port when TLS is enabled.
+            if self.tls_enabled() {
+                cmd = cmd.port(self.tls_port, DEFAULT_REDIS_TLS_PORT);
             }
         }
 
@@ -312,6 +432,12 @@ impl Template for RedisTemplate {
             } else {
                 cmd = cmd.volume(&mount.source, &mount.target);
             }
+        }
+
+        // Mount the TLS certificate directory read-only when TLS is enabled.
+        if let Some(ref certs_dir) = self.tls_certs_dir {
+            let mount = redis_tls_volume(certs_dir.clone());
+            cmd = cmd.volume_ro(&mount.source, &mount.target);
         }
 
         // Add network
@@ -343,28 +469,47 @@ impl Template for RedisTemplate {
             cmd = cmd.remove();
         }
 
-        // Handle Redis-specific command args
-        if let Some(password) = config.env.get("REDIS_PASSWORD") {
+        // Handle Redis-specific command args. Password and TLS both require
+        // overriding the redis-server flags; compose them together so they can
+        // coexist.
+        let password = config.env.get("REDIS_PASSWORD");
+        if password.is_some() || self.tls_enabled() {
+            // Flags shared by both the Stack (REDIS_ARGS) and basic
+            // (entrypoint override) paths.
+            let mut server_flags: Vec<String> = Vec::new();
+            if let Some(password) = password {
+                server_flags.push("--requirepass".to_string());
+                server_flags.push(password.clone());
+                server_flags.push("--protected-mode".to_string());
+                server_flags.push("yes".to_string());
+            }
+            if self.tls_enabled() {
+                if self.tls_only {
+                    // Disable the plaintext listener.
+                    server_flags.push("--port".to_string());
+                    server_flags.push("0".to_string());
+                }
+                server_flags.extend(redis_tls_server_args(DEFAULT_REDIS_TLS_PORT));
+            }
+
             if self.use_redis_stack {
-                // For Redis Stack, use environment variable instead of command override
-                cmd = cmd.env("REDIS_ARGS", format!("--requirepass {password}"));
+                // For Redis Stack, pass flags via the REDIS_ARGS environment
+                // variable instead of overriding the entrypoint.
+                cmd = cmd.env("REDIS_ARGS", server_flags.join(" "));
             } else {
-                // For basic Redis, override entrypoint to bypass docker-entrypoint.sh and directly run redis-server
-                cmd = cmd.entrypoint("redis-server").cmd(vec![
-                    "--requirepass".to_string(),
-                    password.clone(),
-                    "--protected-mode".to_string(),
-                    "yes".to_string(),
-                ]);
+                // For basic Redis, override the entrypoint to bypass
+                // docker-entrypoint.sh and run redis-server directly.
+                cmd = cmd.entrypoint("redis-server").cmd(server_flags);
             }
         }
 
-        // If custom config file is mounted
+        // If a custom config file is mounted (and neither password nor TLS
+        // overrode the command), launch redis-server with that config file.
         let has_config = config
             .volumes
             .iter()
             .any(|v| v.target == "/usr/local/etc/redis/redis.conf");
-        if has_config && config.env.get("REDIS_PASSWORD").is_none() {
+        if has_config && password.is_none() && !self.tls_enabled() {
             cmd = cmd.cmd(vec![
                 "redis-server".to_string(),
                 "/usr/local/etc/redis/redis.conf".to_string(),
@@ -380,6 +525,13 @@ impl HasConnectionString for RedisTemplate {
     ///
     /// Format: `redis://[:password@]host:port`
     ///
+    /// When the template is configured for TLS-only access (see
+    /// [`tls_only`](RedisTemplate::tls_only)) the plaintext port is disabled, so
+    /// this returns the `rediss://` TLS endpoint instead. When TLS is enabled
+    /// *alongside* plaintext, this still returns the plaintext URL; use
+    /// [`tls_connection_string`](RedisTemplate::tls_connection_string) for the
+    /// TLS endpoint.
+    ///
     /// # Example
     ///
     /// ```rust
@@ -392,8 +544,19 @@ impl HasConnectionString for RedisTemplate {
     ///     .port(6380)
     ///     .password("secret");
     /// assert_eq!(template_with_pass.connection_string(), "redis://:secret@localhost:6380");
+    ///
+    /// // TLS-only falls back to the rediss:// endpoint.
+    /// let tls = RedisTemplate::new("my-redis").tls("/certs").tls_only();
+    /// assert_eq!(tls.connection_string(), "rediss://localhost:6380");
     /// ```
     fn connection_string(&self) -> String {
+        // In TLS-only mode the plaintext port is closed, so the only usable
+        // endpoint is the TLS one.
+        if self.tls_enabled() && self.tls_only {
+            if let Some(tls) = self.tls_connection_string() {
+                return tls;
+            }
+        }
         let port = self.config.ports.first().map_or(6379, |(h, _)| *h);
         let password = self.config.env.get("REDIS_PASSWORD").map(String::as_str);
         redis_connection_string("localhost", port, password)
@@ -563,5 +726,112 @@ mod tests {
 
         let template = RedisTemplate::new("test-redis");
         assert_eq!(template.connection_string(), "redis://localhost:6379");
+    }
+
+    #[test]
+    fn test_redis_tls_args_and_volume() {
+        let template = RedisTemplate::new("test-redis").tls("/tmp/certs");
+
+        let cmd = template.build_command();
+        let args = cmd.build_command_args();
+
+        // TLS server flags are present.
+        assert!(args.contains(&"--tls-port".to_string()));
+        assert!(args.contains(&"6380".to_string()));
+        assert!(args.contains(&"--tls-cert-file".to_string()));
+        assert!(args.contains(&"/tls/redis.crt".to_string()));
+        assert!(args.contains(&"--tls-key-file".to_string()));
+        assert!(args.contains(&"/tls/redis.key".to_string()));
+        assert!(args.contains(&"--tls-ca-cert-file".to_string()));
+        assert!(args.contains(&"/tls/ca.crt".to_string()));
+
+        // Certs are mounted read-only at /tls.
+        assert!(args.contains(&"/tmp/certs:/tls:ro".to_string()));
+
+        // The TLS port is published, and plaintext stays open by default.
+        assert!(args.contains(&"6380:6380".to_string()));
+        assert!(args.contains(&"6379:6379".to_string()));
+
+        // Plaintext is not disabled by default.
+        assert!(!args.windows(2).any(|w| w == ["--port", "0"]));
+    }
+
+    #[test]
+    fn test_redis_tls_custom_port() {
+        let template = RedisTemplate::new("test-redis")
+            .tls("/tmp/certs")
+            .tls_port(7000);
+
+        let cmd = template.build_command();
+        let args = cmd.build_command_args();
+
+        // The host TLS port maps to the container TLS port.
+        assert!(args.contains(&"7000:6380".to_string()));
+    }
+
+    #[test]
+    fn test_redis_tls_only_disables_plaintext() {
+        let template = RedisTemplate::new("test-redis")
+            .tls("/tmp/certs")
+            .tls_only();
+
+        let cmd = template.build_command();
+        let args = cmd.build_command_args();
+
+        // Plaintext is disabled via --port 0 and not published.
+        assert!(args.windows(2).any(|w| w == ["--port", "0"]));
+        assert!(!args.contains(&"6379:6379".to_string()));
+
+        // The TLS port is still published.
+        assert!(args.contains(&"6380:6380".to_string()));
+    }
+
+    #[test]
+    fn test_redis_tls_with_password() {
+        let template = RedisTemplate::new("test-redis")
+            .tls("/tmp/certs")
+            .password("secret");
+
+        let cmd = template.build_command();
+        let args = cmd.build_command_args();
+
+        // Both password and TLS flags coexist.
+        assert!(args.windows(2).any(|w| w == ["--requirepass", "secret"]));
+        assert!(args.contains(&"--tls-port".to_string()));
+    }
+
+    #[test]
+    fn test_redis_tls_connection_string() {
+        let template = RedisTemplate::new("test-redis").tls("/tmp/certs");
+        assert_eq!(
+            template.tls_connection_string().as_deref(),
+            Some("rediss://localhost:6380")
+        );
+
+        let with_pass = RedisTemplate::new("test-redis")
+            .tls("/tmp/certs")
+            .tls_port(7000)
+            .password("secret");
+        assert_eq!(
+            with_pass.tls_connection_string().as_deref(),
+            Some("rediss://:secret@localhost:7000")
+        );
+    }
+
+    #[test]
+    fn test_redis_tls_connection_string_none_without_tls() {
+        let template = RedisTemplate::new("test-redis");
+        assert_eq!(template.tls_connection_string(), None);
+    }
+
+    #[test]
+    fn test_redis_tls_only_connection_string_falls_back_to_tls() {
+        use crate::template::HasConnectionString;
+
+        let template = RedisTemplate::new("test-redis")
+            .tls("/tmp/certs")
+            .tls_only();
+        // Plaintext is closed, so connection_string() returns the TLS endpoint.
+        assert_eq!(template.connection_string(), "rediss://localhost:6380");
     }
 }

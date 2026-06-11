@@ -11,7 +11,9 @@
 #![allow(clippy::struct_excessive_bools)]
 
 use super::common::{
-    REDIS_INSIGHT_CLUSTER_IMAGE, REDIS_INSIGHT_TAG, REDIS_STACK_SERVER_IMAGE, REDIS_STACK_TAG,
+    redis_tls_server_args, REDIS_INSIGHT_CLUSTER_IMAGE, REDIS_INSIGHT_TAG,
+    REDIS_STACK_SERVER_IMAGE, REDIS_STACK_TAG, REDIS_TLS_CA_FILE, REDIS_TLS_CERT_FILE,
+    REDIS_TLS_DIR, REDIS_TLS_KEY_FILE,
 };
 use crate::template::{Template, TemplateConfig, TemplateError};
 use crate::{DockerCommand, ExecCommand, NetworkCreateCommand, RunCommand};
@@ -59,6 +61,9 @@ pub struct RedisClusterTemplate {
     redis_tag: Option<String>,
     /// Platform for containers
     platform: Option<String>,
+    /// Host directory containing TLS certificate material, mounted read-only
+    /// into every node when TLS is enabled.
+    tls_certs_dir: Option<String>,
 }
 
 impl RedisClusterTemplate {
@@ -88,6 +93,7 @@ impl RedisClusterTemplate {
             redis_image: None,
             redis_tag: None,
             platform: None,
+            tls_certs_dir: None,
         }
     }
 
@@ -371,6 +377,60 @@ impl RedisClusterTemplate {
         self
     }
 
+    /// Enable TLS for every cluster node, bind-mounting the given host
+    /// certificate directory read-only into each container.
+    ///
+    /// The directory **must** contain these files (the same layout used by the
+    /// single-node [`RedisTemplate`](super::RedisTemplate)):
+    ///
+    /// - `redis.crt` -- the server certificate
+    /// - `redis.key` -- the server private key
+    /// - `ca.crt` -- the CA certificate used to verify peers
+    ///
+    /// Each node is started with `--tls-port` set to its data port, `--port 0`
+    /// (plaintext disabled), and `--tls-cluster yes`/`--tls-replication yes` so
+    /// that the cluster bus and replication links are encrypted too. This mirrors
+    /// Redis's documented cluster-over-TLS layout: unlike the single-node
+    /// template, a TLS cluster is **always TLS-only** on the data port -- the
+    /// gossip protocol cannot mix plaintext and TLS nodes. The
+    /// `redis-cli --cluster create`, readiness, and inspection calls all connect
+    /// with `--tls` and the mounted certificates.
+    ///
+    /// See [`RedisTemplate::tls`](super::RedisTemplate::tls) for an `openssl`
+    /// recipe to generate throwaway certificates for local testing.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use docker_wrapper::RedisClusterTemplate;
+    ///
+    /// let cluster = RedisClusterTemplate::new("tls-cluster").tls("/path/to/certs");
+    /// ```
+    pub fn tls(mut self, certs_dir: impl Into<String>) -> Self {
+        self.tls_certs_dir = Some(certs_dir.into());
+        self
+    }
+
+    /// Returns true when TLS has been enabled on this cluster.
+    fn tls_enabled(&self) -> bool {
+        self.tls_certs_dir.is_some()
+    }
+
+    /// Append the `redis-cli` TLS flags (`--tls --cacert --cert --key`) to a
+    /// command vector when TLS is enabled, so management commands can reach the
+    /// TLS-only nodes.
+    fn push_cli_tls_args(&self, args: &mut Vec<String>) {
+        if self.tls_enabled() {
+            args.push("--tls".to_string());
+            args.push("--cacert".to_string());
+            args.push(format!("{REDIS_TLS_DIR}/{REDIS_TLS_CA_FILE}"));
+            args.push("--cert".to_string());
+            args.push(format!("{REDIS_TLS_DIR}/{REDIS_TLS_CERT_FILE}"));
+            args.push("--key".to_string());
+            args.push(format!("{REDIS_TLS_DIR}/{REDIS_TLS_KEY_FILE}"));
+        }
+    }
+
     /// Get the total number of nodes
     fn total_nodes(&self) -> usize {
         self.num_masters + (self.num_masters * self.num_replicas)
@@ -512,6 +572,7 @@ impl RedisClusterTemplate {
             role_args.push("-p".to_string());
             role_args.push(self.node_internal_port(index).to_string());
         }
+        self.push_cli_tls_args(&mut role_args);
         if let Some(ref password) = self.password {
             role_args.push("-a".to_string());
             role_args.push(password.clone());
@@ -579,6 +640,11 @@ impl RedisClusterTemplate {
             cmd = cmd.volume(&volume_name, "/data");
         }
 
+        // Mount the TLS certificate directory read-only when TLS is enabled.
+        if let Some(ref certs_dir) = self.tls_certs_dir {
+            cmd = cmd.volume_ro(certs_dir, REDIS_TLS_DIR);
+        }
+
         // Add platform if specified
         if let Some(ref platform) = self.platform {
             cmd = cmd.platform(platform);
@@ -600,9 +666,23 @@ impl RedisClusterTemplate {
             self.node_timeout.to_string(),
             "--appendonly".to_string(),
             "yes".to_string(),
-            "--port".to_string(),
-            internal_port.to_string(),
         ];
+
+        if self.tls_enabled() {
+            // Cluster-over-TLS: serve TLS on the node's data port, disable the
+            // plaintext listener, and encrypt the cluster bus and replication
+            // links. This is the layout Redis documents for TLS clusters.
+            redis_args.push("--port".to_string());
+            redis_args.push("0".to_string());
+            redis_args.extend(redis_tls_server_args(internal_port));
+            redis_args.push("--tls-cluster".to_string());
+            redis_args.push("yes".to_string());
+            redis_args.push("--tls-replication".to_string());
+            redis_args.push("yes".to_string());
+        } else {
+            redis_args.push("--port".to_string());
+            redis_args.push(internal_port.to_string());
+        }
 
         // Add password if configured
         if let Some(ref password) = self.password {
@@ -701,7 +781,8 @@ impl RedisClusterTemplate {
     ///
     /// In host networking mode each node listens on its own `port_base + index`
     /// port rather than the default 6379, so an explicit `-p` is added to target
-    /// the right node inside the shared host namespace.
+    /// the right node inside the shared host namespace. When TLS is enabled the
+    /// `--tls` flags are appended so the check can reach the TLS-only node.
     fn build_ping_args(&self, node_index: usize) -> Vec<String> {
         let mut args = vec!["redis-cli".to_string()];
 
@@ -709,6 +790,8 @@ impl RedisClusterTemplate {
             args.push("-p".to_string());
             args.push(self.node_internal_port(node_index).to_string());
         }
+
+        self.push_cli_tls_args(&mut args);
 
         if let Some(ref password) = self.password {
             args.push("-a".to_string());
@@ -800,6 +883,9 @@ impl RedisClusterTemplate {
             create_args.push(self.num_replicas.to_string());
         }
 
+        // Connect over TLS when enabled (nodes are TLS-only).
+        self.push_cli_tls_args(&mut create_args);
+
         // Add password if configured
         if let Some(ref password) = self.password {
             create_args.push("-a".to_string());
@@ -829,6 +915,8 @@ impl RedisClusterTemplate {
             "info".to_string(),
             self.node_cluster_address(0),
         ];
+
+        self.push_cli_tls_args(&mut info_args);
 
         if let Some(ref password) = self.password {
             info_args.push("-a".to_string());
@@ -1657,5 +1745,89 @@ mod tests {
             &["localhost:7000", "localhost:7001", "localhost:7002"]
         );
         assert_eq!(template.node(1).unwrap().host_port, 7001);
+    }
+
+    #[test]
+    fn test_tls_disabled_by_default() {
+        let template = RedisClusterTemplate::new("test-cluster");
+        assert!(!template.tls_enabled());
+
+        // No TLS flags leak into the management commands.
+        let mut args = Vec::new();
+        template.push_cli_tls_args(&mut args);
+        assert!(args.is_empty());
+    }
+
+    #[test]
+    fn test_tls_enables_flag() {
+        let template = RedisClusterTemplate::new("test-cluster").tls("/tmp/certs");
+        assert!(template.tls_enabled());
+    }
+
+    #[test]
+    fn test_push_cli_tls_args_when_enabled() {
+        let template = RedisClusterTemplate::new("test-cluster").tls("/tmp/certs");
+
+        let mut args = vec!["redis-cli".to_string()];
+        template.push_cli_tls_args(&mut args);
+
+        assert_eq!(
+            args,
+            vec![
+                "redis-cli",
+                "--tls",
+                "--cacert",
+                "/tls/ca.crt",
+                "--cert",
+                "/tls/redis.crt",
+                "--key",
+                "/tls/redis.key",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_build_ping_args_with_tls() {
+        let template = RedisClusterTemplate::new("test-cluster").tls("/tmp/certs");
+
+        // Bridge mode + TLS: default port, but TLS flags are appended.
+        assert_eq!(
+            template.build_ping_args(0),
+            vec![
+                "redis-cli",
+                "--tls",
+                "--cacert",
+                "/tls/ca.crt",
+                "--cert",
+                "/tls/redis.crt",
+                "--key",
+                "/tls/redis.key",
+                "ping",
+            ]
+        );
+    }
+
+    #[test]
+    fn test_build_ping_args_with_tls_and_password() {
+        let template = RedisClusterTemplate::new("test-cluster")
+            .tls("/tmp/certs")
+            .password("secret");
+
+        assert_eq!(
+            template.build_ping_args(0),
+            vec![
+                "redis-cli",
+                "--tls",
+                "--cacert",
+                "/tls/ca.crt",
+                "--cert",
+                "/tls/redis.crt",
+                "--key",
+                "/tls/redis.key",
+                "-a",
+                "secret",
+                "ping",
+            ]
+        );
     }
 }
